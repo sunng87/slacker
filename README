@@ -1,6 +1,8 @@
 # slacker
 
-FIXME: write description
+slacker is a deadly simple RPC framework for Clojure based on aleph and carbonite.
+
+slacker is growing.
 
 ## Usage
 
