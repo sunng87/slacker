@@ -5,7 +5,10 @@
 
 (def ^{:private true} m (atom 0))
 (defn inc-m [amount]
+  (println "inc-m")
   (swap! m + amount))
 
-(defn get-m [] @m)
+(defn get-m []
+  (println "get-m")
+  @m)
 

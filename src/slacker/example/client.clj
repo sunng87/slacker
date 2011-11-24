@@ -5,8 +5,10 @@
 (defremote inc-m)
 (defremote get-m)
 
+(def conn (slacker-client "localhost" 2104))
+
 (defn -main [& args]
-  (with-slacker-client (slacker-client "localhost" 2104)
-    (inc-m 200)
-    (inc-m 100)
-    (get-m)))
+  (println (with-slacker-client conn (timestamp)))
+  (println (with-slacker-client conn (inc-m 100)))
+  (println (with-slacker-client conn (inc-m 200)))
+  (println (with-slacker-client conn (get-m))))
