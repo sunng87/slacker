@@ -4,11 +4,13 @@
 (defremote timestamp)
 (defremote inc-m)
 (defremote get-m)
+(defremote rand-ints)
 
-(def conn (slacker-client "localhost" 2104))
+(def conn (slackerc "localhost" 2104))
 
 (defn -main [& args]
-  (println (with-slacker-client conn (timestamp)))
-  (println (with-slacker-client conn (inc-m 100)))
-  (println (with-slacker-client conn (inc-m 200)))
-  (println (with-slacker-client conn (get-m))))
+  (println (with-slackerc conn (timestamp)))
+  (println (with-slackerc conn (inc-m 100)))
+  (println (with-slackerc conn (inc-m 200)))
+  (println (with-slackerc conn (get-m)))
+  (println (with-slackerc conn (rand-ints 10))))

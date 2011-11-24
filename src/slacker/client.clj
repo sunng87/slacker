@@ -9,10 +9,10 @@
     (if-let [[version type func-name data] (wait-for-message ch *timeout*)]
       (read-carb (first data)))))
   
-(defn slacker-client [host port]
+(defn slackerc [host port]
   (tcp-client {:host host :port port :frame slacker-codec}))
 
-(defn with-slacker-client [conn remote-call-info]
+(defn with-slackerc [conn remote-call-info]
   (let [[fname args] remote-call-info]
     (call-remote conn fname args)))
 

@@ -12,3 +12,6 @@
   (println "get-m")
   @m)
 
+(defn rand-ints [n]
+  (map (fn [_] (rand-int Integer/MAX_VALUE)) (range n)))
+

@@ -30,8 +30,8 @@ client
 ``` clojure
 (use 'slacker.client)
 (defremote timestamp)
-(def sc (slacker-client "localhost" 2104)
-(with-slacker-client sc (timestamp))
+(def sc (slackerc "localhost" 2104)
+(with-slackerc sc (timestamp))
 ```
 
 ## License

@@ -11,7 +11,7 @@
                     (do
                       (let [params (read-carb (first data)) ;; gloss buffer
                             f (get funcs fname not-found)
-                            r (apply f params)]
+                            r (apply f params)]                        
                         (enqueue ch
                                  [version
                                   type-response
