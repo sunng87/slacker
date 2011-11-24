@@ -1,10 +1,12 @@
 (ns slacker.example.client
-  (:use slacker.client))
+  (:use slacker.client)
+  (:import [slacker SlackerException]))
 
 (defremote timestamp)
 (defremote inc-m)
 (defremote get-m)
 (defremote rand-ints)
+(defremote make-error)
 
 (def conn (slackerc "localhost" 2104))
 
@@ -13,4 +15,7 @@
   (println (with-slackerc conn (inc-m 100)))
   (println (with-slackerc conn (inc-m 200)))
   (println (with-slackerc conn (get-m)))
-  (println (with-slackerc conn (rand-ints 10))))
+  (println (with-slackerc conn (rand-ints 10)))
+  (try
+    (with-slackerc conn (make-error))
+    (catch SlackerException e (println (.getMessage e)))))

@@ -15,3 +15,6 @@
 (defn rand-ints [n]
   (map (fn [_] (rand-int Integer/MAX_VALUE)) (range n)))
 
+(defn make-error []
+  (throw (Exception. "Excepted exception.")))
+
