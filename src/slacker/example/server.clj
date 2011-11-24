@@ -1,5 +1,5 @@
 (ns slacker.example.server
-  (:use slacker.core)
+  (:use slacker.server)
   (:require [slacker.example.api]))
 
 (defn -main [& args]

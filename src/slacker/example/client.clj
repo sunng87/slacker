@@ -1,5 +1,5 @@
 (ns slacker.example.client
-  (:use slacker.core))
+  (:use slacker.client))
 
 (defremote timestamp)
 (defremote inc-m)

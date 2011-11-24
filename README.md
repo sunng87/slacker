@@ -20,7 +20,7 @@ namespace.
 To expose `slapi`, use:
 
 ``` clojure
-(use 'slacker.core)
+(use 'slacker.server)
 (start-slacker-server (the-ns 'slapi) 2104)
 ```
 
@@ -28,7 +28,7 @@ On the client side, define a remote function and run it with the
 client
 
 ``` clojure
-(use 'slacker.core)
+(use 'slacker.client)
 (defremote timestamp)
 (def sc (slacker-client "localhost" 2104)
 (with-slacker-client sc (timestamp))
