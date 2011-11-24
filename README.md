@@ -36,6 +36,6 @@ client
 
 ## License
 
-Copyright (C) 2011 <Sun Ning, classicning@gmail.com>
+Copyright (C) 2011 Sun Ning
 
 Distributed under the Eclipse Public License, the same as Clojure.
