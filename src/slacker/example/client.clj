@@ -7,6 +7,7 @@
 (defremote get-m)
 (defremote rand-ints)
 (defremote make-error)
+(defremote first-arg)
 
 (def conn (slackerc "localhost" 2104))
 

@@ -12,9 +12,14 @@
   (println "get-m")
   @m)
 
-(defn rand-ints [n]
+(defn rand-ints
+  "test collection result"
+  [n]
   (map (fn [_] (rand-int Integer/MAX_VALUE)) (range n)))
 
-(defn make-error []
-  (throw (Exception. "Excepted exception.")))
+(defn make-error
+  "test runtime exception"
+  []
+  (throw (RuntimeException. "Excepted exception.")))
+
 
