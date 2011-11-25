@@ -17,12 +17,12 @@
     (if-let [[version type code data] (wait-for-message ch)]
       (handle-response code data))))
 
-(defn- async-call-remote [conn func-name params]
+(defn- async-call-remote [conn func-name params cb]
   (run-pipeline conn
     (fn [ch]
       (enqueue ch [version type-request func-name (write-carb params)])
       (if-let [[version type code data] (read-channel ch *timeout*)]
-        (handle-response code data)))))
+        (cb (handle-response code data))))))
   
 (defn slackerc [host port]
   (tcp-client {:host host
@@ -34,13 +34,13 @@
   [conn remote-call-info
    & {:keys [async]
       :or {async false}}]
-  (let [[fname args] remote-call-info]
+  (let [[fname args callback] remote-call-info]
     (if async
-      (async-call-remote conn fname args)
+      (async-call-remote conn fname args callback)
       (sync-call-remote conn fname args))))
 
-(defmacro defremote [fname]
+(defmacro defremote
+  [fname & {:keys [callback] :or {callback nil}}]
   `(defn ~fname [& args#]
-     [(name '~fname) (into [] args#)]))
-
+       [(name '~fname) (into [] args#) ~callback]))
 
