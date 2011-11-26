@@ -34,6 +34,12 @@ client
 (with-slackerc sc (timestamp))
 ```
 
+Also, asynchronous way is also supported
+
+``` clojure
+(with-slackerc sc (timestamp) :async true :callback #(println %))
+```
+
 ## License
 
 Copyright (C) 2011 Sun Ning
