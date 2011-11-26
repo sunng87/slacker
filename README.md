@@ -6,6 +6,12 @@ slacker is growing.
 
 ## Usage
 
+### Leiningen
+
+    :dependencies [[info.sunng/slacker "0.1.0-SNAPSHOT"]]
+
+### API
+
 Slacker will expose all your public functions under a given
 namespace. 
 
@@ -32,12 +38,6 @@ client
 (defremote timestamp)
 (def sc (slackerc "localhost" 2104)
 (with-slackerc sc (timestamp))
-```
-
-Also, asynchronous way is also supported
-
-``` clojure
-(with-slackerc sc (timestamp) :async true :callback #(println %))
 ```
 
 ## License
