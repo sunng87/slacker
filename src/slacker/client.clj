@@ -18,15 +18,19 @@
       (handle-response code data))))
 
 (defn- async-call-remote [conn func-name params cb]
-  (on-success
-   (run-pipeline
-    conn
-    (fn [ch]
-      (enqueue ch [version type-request func-name (write-carb params)])
-      (read-channel ch *timeout*)))
-   #(when-let [[_ _ code data] %]
-      (when-not (nil? cb)
-        (cb (handle-response code data))))))
+  (let [result (run-pipeline
+                conn
+                (fn [ch]
+                  (enqueue ch [version type-request func-name (write-carb params)])
+                  (read-channel ch *timeout*)))]
+    (on-success
+     result
+     #(when-let [[_ _ code data] %]
+        (when-not (nil? cb)
+          (cb (handle-response code data)))))
+    (on-error
+     result
+     #(throw (SlackerException. %)))))
 
 (defn slackerc [host port]
   (tcp-client {:host host
