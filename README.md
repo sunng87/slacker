@@ -34,7 +34,7 @@ client
 (with-slackerc sc (timestamp))
 ```
 
-Also, asynchronous way is also supported
+Asynchronous way is also supported (unstable, even more unstable than slacker)
 
 ``` clojure
 (with-slackerc sc (timestamp) :async true :callback #(println %))
