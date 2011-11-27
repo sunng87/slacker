@@ -2,23 +2,19 @@
   (:use slacker.client)
   (:import [slacker SlackerException]))
 
-(defremote timestamp)
-(defremote inc-m)
-(defremote get-m)
-(defremote rand-ints)
-(defremote make-error)
-(defremote first-arg)
-
 (def conn (slackerc "localhost" 2104))
+(defremote conn timestamp)
+(defremote conn inc-m)
+(defremote conn get-m)
+(defremote conn rand-ints)
+(defremote conn make-error)
+(defremote conn first-arg)
 
 (defn -main [& args]
-  (println (with-slackerc conn (timestamp)))
-  (println (with-slackerc conn (inc-m 100)))
-  (with-slackerc conn (inc-m 200)
-    :async true
-    :callback #(println (str "async call: " %)))
-  (println (with-slackerc conn (get-m)))
-  (println (with-slackerc conn (rand-ints 10)))
+  (println (timestamp))
+  (println (inc-m 100))
+  (println (get-m))
+  (println (rand-ints 10))
   (try
-    (with-slackerc conn (make-error))
+    (make-error)
     (catch SlackerException e (println (.getMessage e)))))

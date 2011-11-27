@@ -48,7 +48,7 @@
       (sync-call-remote conn fname args))))
 
 (defmacro defremote
-  [fname]
+  [sc fname]
   `(defn ~fname [& args#]
-       [(name '~fname) (into [] args#)]))
+     (with-slackerc ~sc [(name '~fname) (into [] args#)])))
 
