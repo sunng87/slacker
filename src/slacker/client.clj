@@ -1,6 +1,6 @@
 (ns slacker.client
   (:use [slacker.common])
-  (:use [lamina.core])
+  (:use [lamina core connections])
   (:use [aleph.tcp])
   (:import [slacker SlackerException]))
 
@@ -12,31 +12,26 @@
    :else (throw (SlackerException. (str "invalid result code: " code)))))
 
 (defn- sync-call-remote [conn func-name params]
-  (let [ch (wait-for-result conn)]
-    (enqueue ch [version type-request func-name (write-carb params)])
-    (if-let [[version type code data] (wait-for-message ch)]
+  (let [request [version type-request func-name (write-carb params)]
+        response (wait-for-result (conn request))]
+    (when-let [[_ _ code data] response]
       (handle-response code data))))
 
 (defn- async-call-remote [conn func-name params cb]
-  (let [result (run-pipeline
-                conn
-                (fn [ch]
-                  (enqueue ch [version type-request func-name (write-carb params)])
-                  (read-channel ch *timeout*)))]
-    (on-success
-     result
-     #(when-let [[_ _ code data] %]
-        (when-not (nil? cb)
-          (cb (handle-response code data)))))
-    (on-error
-     result
-     #(throw (SlackerException. %)))))
+  (run-pipeline
+   (conn [version type-request func-name (write-carb params)])
+   #(if-let [[_ _ code data] %]
+      (when-not (nil? cb)
+        (cb (handle-response code data))))))
 
 (defn slackerc [host port]
-  (tcp-client {:host host
-               :port port
-               :encoder slacker-request-codec
-               :decoder slacker-response-codec}))
+  (client #(tcp-client {:host host
+                                  :port port
+                                  :encoder slacker-request-codec
+                                  :decoder slacker-response-codec})))
+
+(defn close-slackerc [sc]
+  (close-connection sc))
 
 (defn with-slackerc
   [conn remote-call-info
