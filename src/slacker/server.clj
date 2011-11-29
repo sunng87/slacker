@@ -24,7 +24,11 @@
                                   (first r)
                                   (write-carb (second r))])))))))
 
-(defn start-slacker-server [exposed-ns port]
+(defn start-slacker-server
+  "Starting a slacker server to expose all public functions under
+  a namespace. If you have multiple namespace to expose, it's better
+  to combine them into one."
+  [exposed-ns port]
   (let [funcs (into {} (for [f (ns-publics exposed-ns)] [(name (key f)) (val f)]))
         handler (create-server-handler funcs)]
     (when *debug* (doseq [f (keys funcs)] (println f)))

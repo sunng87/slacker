@@ -24,16 +24,23 @@
       (when-not (nil? cb)
         (cb (handle-response code data))))))
 
-(defn slackerc [host port]
+(defn slackerc
+  "Create connection to a slacker server."
+  [host port]
   (client #(tcp-client {:host host
                                   :port port
                                   :encoder slacker-request-codec
                                   :decoder slacker-response-codec})))
 
-(defn close-slackerc [sc]
+(defn close-slackerc
+  "Close the connection"
+  [sc]
   (close-connection sc))
 
 (defn with-slackerc
+  "Invoke remote function with given slacker connection.
+  A call-info tuple should be passed in. Usually you don't use this
+  function directly. You should define remote call facade with defremote"
   [conn remote-call-info
    & {:keys [async callback]
       :or {async false callback nil}}]
@@ -43,6 +50,8 @@
       (sync-call-remote conn fname args))))
 
 (defmacro defremote
+  "Define a facade for remote function. You have to provide the
+  connection and the function name. (Argument list is not required here.)"
   [sc fname]
   `(defn ~fname [& args#]
      (with-slackerc ~sc [(name '~fname) (into [] args#)])))
