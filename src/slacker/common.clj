@@ -41,10 +41,14 @@
 (def result-code-notfound (short 10))
 (def result-code-exception (short 20))
 
-(defn read-carb [data]
+(defn read-carb
+  "Serialize clojure data structure with carbonite"
+  [data]
   (carb/read-buffer carb-registry data))
 
-(defn write-carb [data]
+(defn write-carb
+  "Deserialize clojure data structure encoded by carbonite"
+  [data]
   (ByteBuffer/wrap (carb/write-buffer carb-registry data)))
 
 
