@@ -52,7 +52,10 @@
 (defmacro defremote
   "Define a facade for remote function. You have to provide the
   connection and the function name. (Argument list is not required here.)"
-  [sc fname]
+  [sc fname & {:keys [remote-name]
+               :or {remote-name nil}}]
   `(defn ~fname [& args#]
-     (with-slackerc ~sc [(name '~fname) (into [] args#)])))
+     (with-slackerc ~sc
+       [(or ~remote-name (name '~fname))
+        (into [] args#)])))
 
