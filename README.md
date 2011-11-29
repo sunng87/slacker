@@ -30,8 +30,7 @@ To expose `slapi`, use:
 (start-slacker-server (the-ns 'slapi) 2104)
 ```
 
-On the client side, define a remote function and run it with the
-client
+On the client side, define a facade for the remote function:
 
 ``` clojure
 (use 'slacker.client)
