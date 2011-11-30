@@ -17,12 +17,14 @@
     (when-let [[_ _ code data] response]
       (handle-response code data))))
 
-(defn- async-call-remote [conn func-name params cb]
-  (run-pipeline
-   (conn [version type-request func-name (write-carb params)])
-   #(if-let [[_ _ code data] %]
-      (when-not (nil? cb)
-        (cb (handle-response code data))))))
+(defn- async-call-remote [conn func-name params]
+  (let [result-promise (promise)]
+    (run-pipeline
+     (conn [version type-request func-name (write-carb params)])
+     #(if-let [[_ _ code data] %]
+        (when-not (nil? cb)
+          (deliver result-promise (handle-response code data)))))
+    result-promise))
 
 (defn slackerc
   "Create connection to a slacker server."
@@ -42,20 +44,21 @@
   A call-info tuple should be passed in. Usually you don't use this
   function directly. You should define remote call facade with defremote"
   [conn remote-call-info
-   & {:keys [async callback]
-      :or {async false callback nil}}]
+   & {:keys [async]
+      :or {async false}}]
   (let [[fname args] remote-call-info]
     (if async
-      (async-call-remote conn fname args callback)
+      (async-call-remote conn fname args)
       (sync-call-remote conn fname args))))
 
 (defmacro defremote
   "Define a facade for remote function. You have to provide the
   connection and the function name. (Argument list is not required here.)"
-  [sc fname & {:keys [remote-name]
-               :or {remote-name nil}}]
+  [sc fname & {:keys [remote-name async]
+               :or {remote-name nil async false}}]
   `(defn ~fname [& args#]
      (with-slackerc ~sc
        [(or ~remote-name (name '~fname))
-        (into [] args#)])))
+        (into [] args#)]
+       :async ~async)))
 
