@@ -10,7 +10,7 @@ slacker is growing.
 
     :dependencies [[info.sunng/slacker "0.1.0-SNAPSHOT"]]
 
-### API
+### Getting Started
 
 Slacker will expose all your public functions under a given
 namespace. 
@@ -36,6 +36,32 @@ On the client side, define a facade for the remote function:
 (use 'slacker.client)
 (def sc (slackerc "localhost" 2104)
 (defremote sc timestamp)
+(timestamp)
+```
+
+### Options in defremote
+
+You are specify the remote function name when the name is occupied in
+current namespace
+
+``` clojure
+(defremote sc remote-time
+  :remote-name "timestamp")
+```
+
+If you add an `:async` flag to `defremote`, then the facade will be
+asynchronous which returns a *promise* when you call it. You should
+deref it by yourself to get the return value.
+
+``` clojure
+(defremote timestamp :async true)
+@(timestamp)
+```
+
+You can also use callback for an async facade.
+
+``` clojure
+(defremote timestamp :callback #(println %))
 (timestamp)
 ```
 
