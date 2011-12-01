@@ -1,6 +1,8 @@
 # slacker
 
-slacker is a deadly simple RPC framework for Clojure based on
+**"Superman is a slacker."**
+
+slacker is a simple RPC framework for Clojure based on
 [aleph](https://github.com/ztellman/aleph) and
 [carbonite](https://github.com/sunng87/carbonite/). I forked carbonite
 because slacker requires it to work on clojure 1.2.
@@ -67,6 +69,20 @@ You can also assign a callback for an async facade.
 (defremote timestamp :callback #(println %))
 (timestamp)
 ```
+
+### Serialize additional types
+
+By default, most clojure data types are registered in carbonite. (As
+kryo requires you to **register** a class before you can serialize
+it.) To add your own types, you should register your custom
+serializers on *both server side and client side*.
+
+``` clojure
+(use '[slacker common server])
+(register-serializers some-serializers)
+(start-slacker-server ...)
+```
+[Carbonite](https://github.com/revelytix/carbonite "carbonite") has some docs on how to create your own serializers.
 
 ## License
 
