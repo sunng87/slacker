@@ -34,7 +34,7 @@
 (def *debug* true)
 (def *timeout* 10000)
 (def version (short 1))
-(def type-request (short 1))
+(def type-request (short 0))
 (def type-response (short 1))
 
 (def result-code-success (short 0))
