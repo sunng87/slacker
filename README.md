@@ -70,19 +70,21 @@ You can also assign a callback for an async facade.
 (timestamp)
 ```
 
-### Serialize additional types
+### Serializing custom types
 
 By default, most clojure data types are registered in carbonite. (As
 kryo requires you to **register** a class before you can serialize
-it.) To add your own types, you should register your custom
-serializers on *both server side and client side*.
+its instances.) However, you may have additional types to
+transport between client and server. To add your own types, you should
+register custom serializers on *both server side and client side*. Run
+this before you start server or client:
 
 ``` clojure
-(use '[slacker common server])
+(use '[slacker common])
 (register-serializers some-serializers)
-(start-slacker-server ...)
 ```
-[Carbonite](https://github.com/revelytix/carbonite "carbonite") has some docs on how to create your own serializers.
+[Carbonite](https://github.com/revelytix/carbonite "carbonite") has
+some detailed docs on how to create your own serializers.
 
 ## License
 
