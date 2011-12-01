@@ -29,7 +29,7 @@
    :byte
    (finite-block :int16)])
 
-(def carb-registry (carb/default-registry))
+(def carb-registry (atom (carb/default-registry)))
 
 (def *debug* true)
 (def *timeout* 10000)
@@ -44,11 +44,17 @@
 (defn read-carb
   "Serialize clojure data structure with carbonite"
   [data]
-  (carb/read-buffer carb-registry data))
+  (carb/read-buffer @carb-registry data))
 
 (defn write-carb
   "Deserialize clojure data structure encoded by carbonite"
   [data]
-  (ByteBuffer/wrap (carb/write-buffer carb-registry data)))
+  (ByteBuffer/wrap (carb/write-buffer @carb-registry data)))
 
+(defn register-serializers
+  "Register additional serializers to carbonite. This allows
+  slacker to transport custom data types. Caution: you should
+  register serializers on both server side and client side."
+  [serializers]
+  (swap! carb-registry carb/register-serializers serializers))
 
