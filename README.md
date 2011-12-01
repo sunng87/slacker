@@ -13,7 +13,7 @@ slacker is growing.
 
 ### Leiningen
 
-    :dependencies [[info.sunng/slacker "0.1.0-SNAPSHOT"]]
+    :dependencies [[info.sunng/slacker "0.1.0"]]
 
 ### Getting Started
 
