@@ -58,7 +58,7 @@ deref it by yourself to get the return value.
 @(timestamp)
 ```
 
-You can also use callback for an async facade.
+You can also assign a callback for an async facade.
 
 ``` clojure
 (defremote timestamp :callback #(println %))
