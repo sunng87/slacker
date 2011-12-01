@@ -1,6 +1,9 @@
 # slacker
 
-slacker is a deadly simple RPC framework for Clojure based on [aleph](https://github.com/ztellman/aleph) and [carbonite](https://github.com/sunng87/carbonite/).
+slacker is a deadly simple RPC framework for Clojure based on
+[aleph](https://github.com/ztellman/aleph) and
+[carbonite](https://github.com/sunng87/carbonite/). I forked carbonite
+because slacker requires it to work on clojure 1.2.
 
 slacker is growing.
 
