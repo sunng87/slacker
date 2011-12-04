@@ -31,15 +31,16 @@
 
 (def carb-registry (atom (carb/default-registry)))
 
-(def *debug* true)
+(def *debug* false)
 (def *timeout* 10000)
 (def version (short 1))
 (def type-request (short 0))
 (def type-response (short 1))
 
 (def result-code-success (short 0))
-(def result-code-notfound (short 10))
-(def result-code-exception (short 20))
+(def result-code-notfound (short 11))
+(def result-code-exception (short 12))
+(def result-code-version-mismatch (short 13))
 
 (defn read-carb
   "Serialize clojure data structure with carbonite"

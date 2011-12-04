@@ -3,26 +3,58 @@
   (:use [lamina.core])
   (:use [aleph.tcp]))
 
-(defn- do-invoke [func params]
-  (try
-    [result-code-success (apply func params)]
-    (catch Exception e [result-code-exception (.toString e)])))
+(defn- map-req-fields [req]
+  (zipmap [:version :type :fname :data] req))
+
+(defn- check-version [req]
+  (if (= version (:version req))
+    req
+    (assoc req :code result-code-version-mismatch)))
+
+(defn- look-up-function [funcs req]
+  (if (nil? (:code req))
+    (if-let [func (funcs (:fname req))]
+      (assoc req :func func)
+      (assoc req :code result-code-notfound))
+    req))
+
+(defn- deserialize-params [req]
+  (if (nil? (:code req))
+    (assoc req :params (read-carb (first (:data req))))
+    req))
+
+(defn- do-invoke [req]
+  (if (nil? (:code req))
+    (try
+      (let [{f :func params :params} req
+            r (apply f params)]
+        (assoc req :result r :code result-code-success))
+      (catch Exception e
+        (assoc req :code result-code-exception :result (.toString e))))
+    req))
+
+(defn- serialize-result [req]
+  (if-not (nil? (:result req))
+    (assoc req :result (write-carb (:result req)))
+    req))
+
+(defn- map-response-fields [req]
+  (map (assoc req :type type-response)
+       [:version :type :code :result]))
 
 (defn- create-server-handler [funcs]
-  (fn [ch client-info]
-    (receive-all ch
-                 #(if-let [[version type fname data] %]
-                    (do
-                      (let [params (read-carb (first data)) ;; gloss buffer
-                            f (get funcs fname)
-                            r (if (not (nil? f))                              
-                                (do-invoke f params)
-                                [result-code-notfound nil])]
-                        (enqueue ch
-                                 [version
-                                  type-response
-                                  (first r)
-                                  (write-carb (second r))])))))))
+  (let [find-func (partial look-up-function funcs)]
+    (fn [ch client-info]
+      (receive-all ch
+                   #(if-let [req %]
+                      (enqueue ch (-> req
+                                      map-req-fields
+                                      check-version
+                                      find-func
+                                      deserialize-params
+                                      do-invoke
+                                      serialize-result
+                                      map-response-fields)))))))
 
 (defn start-slacker-server
   "Starting a slacker server to expose all public functions under
