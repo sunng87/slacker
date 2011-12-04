@@ -1,6 +1,7 @@
 (ns slacker.common
   (:use gloss.core)
   (:require [carbonite.api :as carb])
+  (:require [clj-json.core :as json])
   (:import [java.nio ByteBuffer]))
 
 ;; slacker protocol: request
@@ -43,12 +44,13 @@
 (def result-code-version-mismatch (short 13))
 
 (defn read-carb
-  "Serialize clojure data structure with carbonite"
+  "Deserialize clojure data structure from ByteBuffer with
+  carbonite."
   [data]
   (carb/read-buffer @carb-registry data))
 
 (defn write-carb
-  "Deserialize clojure data structure encoded by carbonite"
+  "Serialize clojure data structure to ByteBuffer by carbonite"
   [data]
   (ByteBuffer/wrap (carb/write-buffer @carb-registry data)))
 
@@ -58,4 +60,22 @@
   register serializers on both server side and client side."
   [serializers]
   (swap! carb-registry carb/register-serializers serializers))
+
+(defn- key-to-keyword [m]
+  (into {} (for [e m]
+             [(if (string? (key e))
+                (keyword (key e))
+                (key e))
+              (val e)])))
+
+(defn read-json
+  "Deserialize clojure data structure from bytebuffer with
+  jackson"
+  [data]
+  (json/parse-string (String. (.array data) "UTF-8") true))
+
+(defn write-json
+  "Serialize clojure data structure to ByteBuffer with jackson"
+  [data]
+  (ByteBuffer/wrap (.getBytes (json/generate-string data) "UTF-8")))
 
