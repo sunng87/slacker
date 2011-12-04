@@ -9,6 +9,26 @@ because slacker requires it to work on clojure 1.2.
 
 slacker is growing.
 
+### RPC vs Remote Eval
+
+Before slacker, the clojure world uses a *remote eval* approach for
+remoting. Comparing to remote eval, RPC (especially slacker) has some
+pros and cons:
+
+#### pros
+
+* slacker uses direct function call, which is much faster than eval
+  (about *100x*)
+* with slacker, you can select a set of functions to expose, instead
+  of the whole system in eval. So it's much securer and generally you
+  don't need a sandbox (like clojail) for slacker.
+
+#### cons
+
+* Eval approach provides full features of clojure, you can use
+  high-order functions and lazy arguments. Due to the limitation of
+  serialization, slacker has its difficulty to support these features.
+
 ## Usage
 
 ### Leiningen
