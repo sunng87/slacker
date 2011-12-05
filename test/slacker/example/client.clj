@@ -3,16 +3,17 @@
   (:import [slacker SlackerException]))
 
 (def conn (slackerc "localhost" 2104))
+(def conn2 (slackerc "localhost" 2104 :content-type :json))
 (defremote conn timestamp)
 (defremote conn inc-m)
 (defremote conn get-m :async true)
-(defremote conn show-m :remote-name "get-m")
+(defremote conn2 show-m :remote-name "get-m")
 (defremote conn get-m2
   :remote-name "get-m"
   :callback #(prn "Async get-m ==> " %))
 (defremote conn rand-ints)
 (defremote conn make-error)
-(defremote conn first-arg)
+
 
 (defn -main [& args]
   (println (timestamp))

@@ -2,7 +2,8 @@
   (:use gloss.core)
   (:require [carbonite.api :as carb])
   (:require [clj-json.core :as json])
-  (:import [java.nio ByteBuffer]))
+  (:import [java.nio ByteBuffer])
+  (:import [java.nio.charset Charset]))
 
 (defcodec slacker-request-codec
   [:byte ;; protocol version
@@ -27,8 +28,8 @@
 (def version (short 2))
 (def type-request (short 0))
 (def type-response (short 1))
-(def content-type-carb (short 0))
-(def content-type-json (short 1))
+(def content-type-carb 0)
+(def content-type-json 1)
 
 (def result-code-success (short 0))
 (def result-code-notfound (short 11))
@@ -64,10 +65,25 @@
   "Deserialize clojure data structure from bytebuffer with
   jackson"
   [data]
-  (json/parse-string (String. (.array data) "UTF-8") true))
+  (let [jsonstr (.toString (.decode (Charset/forName "UTF-8") data))]
+    (json/parse-string jsonstr true)))
 
 (defn write-json
   "Serialize clojure data structure to ByteBuffer with jackson"
   [data]
-  (ByteBuffer/wrap (.getBytes (json/generate-string data) "UTF-8")))
+  (.encode (Charset/forName "UTF-8") (json/generate-string data)))
+
+(defn deserializer
+  "Find certain deserializer by content-type code:
+  * 0-carbonite,
+  * 1-json"
+  [type]
+  ([read-carb read-json] (int type)))
+
+(defn serializer
+  "Find certain serializer by content-type code:
+  * 0-carbonite,
+  * 1-json"
+  [type]
+  ([write-carb write-json] (int type)))
 

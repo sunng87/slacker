@@ -4,12 +4,16 @@
   (:use [aleph.tcp])
   (:import [slacker SlackerException]))
 
-(defn- handle-response [code data]
+(defn- handle-response [content-type code data]
   (cond
-   (= code result-code-success) (read-carb (first data))
+   (= code result-code-success) ((deserializer content-type) (first data))
    (= code result-code-notfound) (throw (SlackerException. "not found"))
    (= code result-code-exception) (throw (SlackerException. (read-carb (first data))))
    :else (throw (SlackerException. (str "invalid result code: " code)))))
+
+(defn- make-request [content-type func-name params]
+  (let [serialized-params ((serializer content-type) params)]
+    [version type-request content-type func-name serialized-params]))
 
 (defprotocol SlackerClientProtocol
   (sync-call-remote [this func-name params])
@@ -18,16 +22,16 @@
 (deftype SlackerClient [host port conn content-type]
   SlackerClientProtocol
   (sync-call-remote [this func-name params]
-    (let [request [version type-request content-type func-name (write-carb params)]
+    (let [request (make-request content-type func-name params)
           response (wait-for-result (conn request) *timeout*)]
       (when-let [[_ _ _ code data] response]
-        (handle-response code data))))
+        (handle-response content-type code data))))
   (async-call-remote [this func-name params cb]
     (let [result-promise (promise)]
       (run-pipeline
-       (conn [version type-request content-type func-name (write-carb params)])
+       (conn (make-request content-type func-name params))
        #(if-let [[_ _ _ code data] %]
-          (let [result (handle-response code data)]
+          (let [result (handle-response content-type code data)]
             (deliver result-promise result)
             (if-not (nil? cb) (cb result)))))
       result-promise)))
@@ -36,12 +40,15 @@
   "Create connection to a slacker server."
   [host port
    & {:keys [content-type]
-      :or {content-type content-type-carb}}]
+      :or {content-type :carb}}]
   (let [conn (client #(tcp-client {:host host
                                    :port port
                                    :encoder slacker-request-codec
-                                   :decoder slacker-response-codec}))]
-    (SlackerClient. host port conn content-type)))
+                                   :decoder slacker-response-codec}))
+        content-type-code (case content-type
+                            :carb content-type-carb
+                            :json content-type-json)]
+    (SlackerClient. host port conn content-type-code)))
 
 (defn close-slackerc
   "Close the connection"

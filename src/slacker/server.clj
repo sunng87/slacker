@@ -20,7 +20,9 @@
 
 (defn- deserialize-params [req]
   (if (nil? (:code req))
-    (assoc req :params (read-carb (first (:data req))))
+    (let [data (first (:data req))]
+      (assoc req :params
+             ((deserializer (:content-type req)) data)))
     req))
 
 (defn- do-invoke [req]
@@ -35,7 +37,7 @@
 
 (defn- serialize-result [req]
   (if-not (nil? (:result req))
-    (assoc req :result (write-carb (:result req)))
+    (assoc req :result ((serializer (:content-type req)) (:result req)))
     req))
 
 (defn- map-response-fields [req]
