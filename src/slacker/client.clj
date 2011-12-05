@@ -12,16 +12,16 @@
    :else (throw (SlackerException. (str "invalid result code: " code)))))
 
 (defn- sync-call-remote [conn func-name params]
-  (let [request [version type-request func-name (write-carb params)]
+  (let [request [version type-request content-type-carb func-name (write-carb params)]
         response (wait-for-result (conn request))]
-    (when-let [[_ _ code data] response]
+    (when-let [[_ _ _ code data] response]
       (handle-response code data))))
 
 (defn- async-call-remote [conn func-name params cb]
   (let [result-promise (promise)]
     (run-pipeline
-     (conn [version type-request func-name (write-carb params)])
-     #(if-let [[_ _ code data] %]
+     (conn [version type-request content-type-carb func-name (write-carb params)])
+     #(if-let [[_ _ _ code data] %]
         (let [result (handle-response code data)]
           (deliver result-promise result)
           (if-not (nil? cb)

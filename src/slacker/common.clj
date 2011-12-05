@@ -4,39 +4,31 @@
   (:require [clj-json.core :as json])
   (:import [java.nio ByteBuffer]))
 
-;; slacker protocol: request
-;;
-;; | version | packettype | <-- string length -->|
-;; | <---- ..func.. ---->                        |
-;; | <--- byte length --->| <---- ..body.. ----> |
-;; 
-;;
 (defcodec slacker-request-codec
-  [:byte
-   :byte
-   (finite-frame :int16 (string :utf8))
-   (finite-block :int16)])
+  [:byte ;; protocol version
+   :byte ;; packet-type
+   :byte ;; content-type
+   (finite-frame :int16 (string :utf8)) ;; function name
+   (finite-block :int16) ;; arguments
+   ])
 
-;; slacker protocol: response
-;;
-;; | version | packettype | response-code | <--  |
-;; | byte len| <-- body -->                      |
-;;
-;;
-;;
 (defcodec slacker-response-codec
-  [:byte
-   :byte
-   :byte
-   (finite-block :int16)])
+  [:byte ;; protocol version
+   :byte ;; packet-type
+   :byte ;; content-type
+   :byte ;; result code
+   (finite-block :int16) ;; result data
+   ])
 
 (def carb-registry (atom (carb/default-registry)))
 
 (def *debug* false)
 (def *timeout* 10000)
-(def version (short 1))
+(def version (short 2))
 (def type-request (short 0))
 (def type-response (short 1))
+(def content-type-carb (short 0))
+(def content-type-json (short 1))
 
 (def result-code-success (short 0))
 (def result-code-notfound (short 11))

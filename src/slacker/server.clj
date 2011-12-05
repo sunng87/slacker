@@ -4,7 +4,7 @@
   (:use [aleph.tcp]))
 
 (defn- map-req-fields [req]
-  (zipmap [:version :type :fname :data] req))
+  (zipmap [:version :packet-type :content-type :fname :data] req))
 
 (defn- check-version [req]
   (if (= version (:version req))
@@ -40,7 +40,7 @@
 
 (defn- map-response-fields [req]
   (map (assoc req :type type-response)
-       [:version :type :code :result]))
+       [:version :type :content-type :code :result]))
 
 (defn- create-server-handler [funcs]
   (let [find-func (partial look-up-function funcs)]
