@@ -34,7 +34,9 @@
           (let [result (handle-response content-type code data)]
             (deliver result-promise result)
             (if-not (nil? cb) (cb result)))))
-      result-promise)))
+      result-promise))
+  (close [this]
+    (close-connection conn)))
 
 (defn slackerc
   "Create connection to a slacker server."
@@ -49,11 +51,6 @@
                             :carb content-type-carb
                             :json content-type-json)]
     (SlackerClient. host port conn content-type-code)))
-
-(defn close-slackerc
-  "Close the connection"
-  [sc]
-  (close-connection sc))
 
 (defn with-slackerc
   "Invoke remote function with given slacker connection.
