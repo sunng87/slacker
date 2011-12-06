@@ -17,7 +17,8 @@
 
 (defprotocol SlackerClientProtocol
   (sync-call-remote [this func-name params])
-  (async-call-remote [this func-name params cb]))
+  (async-call-remote [this func-name params cb])
+  (close-slackerc [this]))
 
 (deftype SlackerClient [host port conn content-type]
   SlackerClientProtocol
@@ -35,7 +36,7 @@
             (deliver result-promise result)
             (if-not (nil? cb) (cb result)))))
       result-promise))
-  (close [this]
+  (close-slackerc [this]
     (close-connection conn)))
 
 (defn slackerc
