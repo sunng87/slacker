@@ -25,4 +25,9 @@
   (println (rand-ints 10))
   (try
     (make-error)
-    (catch SlackerException e (println (.getMessage e)))))
+    (catch SlackerException e (println (.getMessage e))))
+  ;; shutdown
+  (close-slackerc conn)
+  (close-slackerc conn2)
+
+  (System/exit 0))
