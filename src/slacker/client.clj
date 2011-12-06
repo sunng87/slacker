@@ -1,5 +1,5 @@
 (ns slacker.client
-  (:use [slacker.common])
+  (:use [slacker common serialization protocol])
   (:use [lamina core connections])
   (:use [aleph.tcp])
   (:import [slacker SlackerException]))

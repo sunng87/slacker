@@ -1,5 +1,5 @@
 (ns slacker.server
-  (:use [slacker.common])
+  (:use [slacker common serialization protocol])
   (:use [lamina.core])
   (:use [aleph.tcp]))
 

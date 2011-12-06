@@ -1,5 +1,5 @@
-(ns slacker.test.common
-  (:use slacker.common)
+(ns slacker.test.serialization
+  (:use slacker.serialization)
   (:use clojure.test))
 
 (deftest test-serialization
