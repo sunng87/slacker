@@ -5,7 +5,7 @@
 (def conn (slackerc "localhost" 2104))
 (def conn2 (slackerc "localhost" 2104 :content-type :json))
 (defremote conn timestamp)
-(defremote conn inc-m)
+(defremote conn2 inc-m)
 (defremote conn get-m :async true)
 (defremote conn2 show-m :remote-name "get-m")
 (defremote conn get-m2
@@ -17,7 +17,8 @@
 
 (defn -main [& args]
   (println (timestamp))
-  (println (inc-m 100))
+  (binding [slacker.common/*debug* true]
+    (println (inc-m 100)))
   (println (show-m))
   (println @(get-m))
   (get-m2)

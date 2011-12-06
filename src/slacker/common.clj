@@ -66,12 +66,15 @@
   jackson"
   [data]
   (let [jsonstr (.toString (.decode (Charset/forName "UTF-8") data))]
+    (if *debug* (println (str "dbg:: " jsonstr)))
     (json/parse-string jsonstr true)))
 
 (defn write-json
   "Serialize clojure data structure to ByteBuffer with jackson"
   [data]
-  (.encode (Charset/forName "UTF-8") (json/generate-string data)))
+  (let [jsonstr (json/generate-string data)]
+    (if *debug* (println (str "dbg:: " jsonstr)))
+    (.encode (Charset/forName "UTF-8") jsonstr)))
 
 (defn deserializer
   "Find certain deserializer by content-type code:
