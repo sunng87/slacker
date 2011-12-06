@@ -5,15 +5,18 @@
   (:import [slacker SlackerException]))
 
 (defn- handle-response [content-type code data]
-  (cond
-   (= code result-code-success) ((deserializer content-type) (first data))
-   (= code result-code-notfound) (throw (SlackerException. "not found"))
-   (= code result-code-exception) (throw (SlackerException. (read-carb (first data))))
+  (case code
+   :success ((deserializer content-type) (first data))
+   :not-found (throw (SlackerException. "function not found."))
+   :exception (throw (SlackerException.
+                      ((deserializer content-type) (first data))))
+   :protocol-mismatch (throw (SlackerException.
+                              "client-server version mismatch."))
    :else (throw (SlackerException. (str "invalid result code: " code)))))
 
 (defn- make-request [content-type func-name params]
   (let [serialized-params ((serializer content-type) params)]
-    [version type-request content-type func-name serialized-params]))
+    [version :type-request content-type func-name serialized-params]))
 
 (defprotocol SlackerClientProtocol
   (sync-call-remote [this func-name params])
@@ -47,11 +50,8 @@
   (let [conn (client #(tcp-client {:host host
                                    :port port
                                    :encoder slacker-request-codec
-                                   :decoder slacker-response-codec}))
-        content-type-code (case content-type
-                            :carb content-type-carb
-                            :json content-type-json)]
-    (SlackerClient. host port conn content-type-code)))
+                                   :decoder slacker-response-codec}))]
+    (SlackerClient. host port conn content-type)))
 
 (defn with-slackerc
   "Invoke remote function with given slacker connection.

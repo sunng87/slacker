@@ -5,19 +5,34 @@
   (:import [java.nio ByteBuffer])
   (:import [java.nio.charset Charset]))
 
+(defcodec packet-type
+  (enum :byte {:type-request 0
+               :type-response 1
+               :type-ping 2
+               :type-pong 3}))
+
+(defcodec content-type
+  (enum :byte {:carb 0 :json 1}))
+
+(defcodec result-codes
+  (enum :byte {:success 0
+               :not-found 11
+               :exception 12
+               :protocol-mismatch 13}))
+
 (defcodec slacker-request-codec
   [:byte ;; protocol version
-   :byte ;; packet-type
-   :byte ;; content-type
+   packet-type ;; packet-type
+   content-type ;; content-type
    (finite-frame :int16 (string :utf8)) ;; function name
    (finite-block :int16) ;; arguments
    ])
 
 (defcodec slacker-response-codec
   [:byte ;; protocol version
-   :byte ;; packet-type
-   :byte ;; content-type
-   :byte ;; result code
+   packet-type ;; packet-type
+   content-type ;; content-type
+   result-codes ;; result code
    (finite-block :int16) ;; result data
    ])
 
@@ -26,15 +41,6 @@
 (def *debug* false)
 (def *timeout* 10000)
 (def version (short 2))
-(def type-request (short 0))
-(def type-response (short 1))
-(def content-type-carb 0)
-(def content-type-json 1)
-
-(def result-code-success (short 0))
-(def result-code-notfound (short 11))
-(def result-code-exception (short 12))
-(def result-code-version-mismatch (short 13))
 
 (defn read-carb
   "Deserialize clojure data structure from ByteBuffer with
@@ -81,12 +87,16 @@
   * 0-carbonite,
   * 1-json"
   [type]
-  ([read-carb read-json] (int type)))
+  (case type
+    :json read-json
+    :carb read-carb))
 
 (defn serializer
   "Find certain serializer by content-type code:
   * 0-carbonite,
   * 1-json"
   [type]
-  ([write-carb write-json] (int type)))
+  (case type
+    :json write-json
+    :carb write-carb))
 

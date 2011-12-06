@@ -9,13 +9,13 @@
 (defn- check-version [req]
   (if (= version (:version req))
     req
-    (assoc req :code result-code-version-mismatch)))
+    (assoc req :code :protocol-mismatch)))
 
 (defn- look-up-function [funcs req]
   (if (nil? (:code req))
     (if-let [func (funcs (:fname req))]
       (assoc req :func func)
-      (assoc req :code result-code-notfound))
+      (assoc req :code :not-found))
     req))
 
 (defn- deserialize-params [req]
@@ -30,9 +30,9 @@
     (try
       (let [{f :func params :params} req
             r (apply f params)]
-        (assoc req :result r :code result-code-success))
+        (assoc req :result r :code :success))
       (catch Exception e
-        (assoc req :code result-code-exception :result (.toString e))))
+        (assoc req :code :exception :result (.toString e))))
     req))
 
 (defn- serialize-result [req]
@@ -41,7 +41,7 @@
     req))
 
 (defn- map-response-fields [req]
-  (map (assoc req :type type-response)
+  (map (assoc req :type :type-response)
        [:version :type :content-type :code :result]))
 
 (defn- create-server-handler [funcs]
