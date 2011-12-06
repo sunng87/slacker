@@ -31,14 +31,12 @@
       (when-let [[_ _ _ code data] response]
         (handle-response content-type code data))))
   (async-call-remote [this func-name params cb]
-    (let [result-promise (promise)]
+    (let [request (make-request content-type func-name params)]
       (run-pipeline
-       (conn (make-request content-type func-name params))
+       (conn request)
        #(if-let [[_ _ _ code data] %]
           (let [result (handle-response content-type code data)]
-            (deliver result-promise result)
-            (if-not (nil? cb) (cb result)))))
-      result-promise))
+            (if-not (nil? cb) (cb result)))))))
   (close-slackerc [this]
     (close-connection conn)))
 
