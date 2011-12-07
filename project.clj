@@ -4,7 +4,8 @@
                  [aleph "0.2.0"]
                  [info.sunng/carbonite "0.1.0"]
                  [clj-json "0.4.3"]]
-  :dev-dependencies [[codox "0.2.3"]]
+  :dev-dependencies [[codox "0.2.3"]
+                     [lein-exec "0.1"]]
   :aot [slacker.SlackerException])
 
 
