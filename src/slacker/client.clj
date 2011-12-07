@@ -1,6 +1,8 @@
 (ns slacker.client
   (:use [slacker common serialization protocol])
-  (:use [lamina core connections])
+  (:use [slacker.client pool])
+  (:use [lamina.core :exclude [close]])
+  (:use [lamina.connections])
   (:use [aleph.tcp])
   (:import [slacker SlackerException]))
 
@@ -21,9 +23,9 @@
 (defprotocol SlackerClientProtocol
   (sync-call-remote [this func-name params])
   (async-call-remote [this func-name params cb])
-  (close-slackerc [this]))
+  (close [this]))
 
-(deftype SlackerClient [host port conn content-type]
+(deftype SlackerClient [conn content-type]
   SlackerClientProtocol
   (sync-call-remote [this func-name params]
     (let [request (make-request content-type func-name params)
@@ -37,7 +39,7 @@
        #(if-let [[_ _ _ code data] %]
           (let [result (handle-response content-type code data)]
             (if-not (nil? cb) (cb result)))))))
-  (close-slackerc [this]
+  (close [this]
     (close-connection conn)))
 
 (defn slackerc
@@ -49,7 +51,37 @@
                                    :port port
                                    :encoder slacker-request-codec
                                    :decoder slacker-response-codec}))]
-    (SlackerClient. host port conn content-type)))
+    (SlackerClient. conn content-type)))
+
+(deftype PooledSlackerClient [pool content-type]
+  SlackerClientProtocol
+  (sync-call-remote [this func-name params]
+    (let [conn (.borrowObject pool)
+          request (make-request content-type func-name params)
+          response (wait-for-result (conn request) *timeout*)]
+      (.returnObject pool conn)
+      (when-let [[_ _ _ code data] response]
+        (handle-response content-type code data))))
+  (async-call-remote [this func-name params cb]
+    (let [conn (.borrowObject pool)
+          request (make-request content-type func-name params)]
+      (run-pipeline
+       (conn request)
+       #(do
+          (.returnObject pool conn)
+          (if-let [[_ _ _ code data] %]
+            (let [result (handle-response content-type code data)]
+              (if-not (nil? cb) (cb result))))))))
+  (close [this]
+    (.close pool)))
+
+(defn slackerc-pool
+  "Create a auto resizable connection pool to slacker server"
+  [host port
+   & {:keys [content-type]
+      :or {content-type :carb}}]
+  (let [pool (connection-pool host port)]
+    (PooledSlackerClient. pool content-type)))
 
 (defn with-slackerc
   "Invoke remote function with given slacker connection.

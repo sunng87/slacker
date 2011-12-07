@@ -27,7 +27,7 @@
     (make-error)
     (catch SlackerException e (println (.getMessage e))))
   ;; shutdown
-  (close-slackerc conn)
-  (close-slackerc conn2)
+  (close conn)
+  (close conn2)
 
   (System/exit 0))
