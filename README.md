@@ -126,6 +126,42 @@ this before you start server or client:
 [Carbonite](https://github.com/revelytix/carbonite "carbonite") has
 some detailed docs on how to create your own serializers.
 
+### JSON Serialization
+
+Other than binary format, you can also use JSON for
+serialization. JSON is a text based format which is more friendly to
+human beings. It may be useful for debugging, or communicating with
+external applications.
+
+Configure slacker client to use JSON:
+
+``` clojure
+(def sc (slackerc "localhost" 2104 :content-type :json))
+```
+
+Turn on the debug option, you will see all the JSON data transported
+between client and server:
+
+``` clojure
+(use 'slacker.common)
+(binding [slacker.common/*debug* true]
+  (inc-m 100))
+```
+
+shows:
+
+        dbg:: [100]
+        dbg:: 700
+        700
+
+One thing you should note is the representation of keyword in
+JSON. Keywords and strings are both encoded as JSON string in
+transport. But while decoding, all map keys will be decoded to
+keyword, and all other strings will be decoded to clojure string. This
+may lead to inconsistency of your clojure data structure between server and
+client. Try to avoid this by carefully design your data structure or
+just using carbonite(default and recommended).
+
 ## Performance
 
 Some performance tests was executed while I'm developing
