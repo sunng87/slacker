@@ -6,9 +6,10 @@
 (defremote sc rand-ints2 :remote-name "rand-ints")
 (defremote scp rand-ints)
 
-(def total-calls 10000)
-(println (str "Performing " total-calls " on the server"))
+(def total-calls (Integer/valueOf (second *command-line-args*)))
+(println (str "Performing " total-calls " requests on the server"))
 (time (dorun (pmap rand-ints (take total-calls (repeat 5)))))
 
-(time (dorun (map rand-ints (take total-calls (repeat 5)))))
+;(time (dorun (map rand-ints (take total-calls (repeat 5)))))
+(System/exit 0)
 
