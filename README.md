@@ -70,7 +70,19 @@ On the client side, define a facade for the remote function:
 Slacker also supports connection pool in client API, which enables
 high concurrent communication. 
 
-To create a connection pool, use `slackerc-pool` instead of `slackerc`.
+To create a connection pool, use `slackerc-pool` instead of
+`slackerc`.
+
+You can configure the pool with following options:
+
+* `:max-active`
+* `:exhausted-action`
+* `:max-wait`
+* `:max-idle`
+
+For the meaning of them, check the
+[javadoc](http://commons.apache.org/pool/apidocs/org/apache/commons/pool/impl/GenericObjectPool.html)
+of commons-pool.
 
 ### Options in defremote
 

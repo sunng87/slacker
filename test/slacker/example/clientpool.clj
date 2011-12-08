@@ -2,7 +2,9 @@
   (:use slacker.client)
   (:import [slacker SlackerException]))
 
-(def conn (slackerc-pool "localhost" 2104))
+(def conn (slackerc-pool "localhost" 2104
+                         :exhausted-action
+                         :grow :min-idle 1))
 
 (defremote conn timestamp)
 (defremote conn inc-m)

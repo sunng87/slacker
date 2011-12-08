@@ -76,11 +76,20 @@
     (.close pool)))
 
 (defn slackerc-pool
-  "Create a auto resizable connection pool to slacker server"
+  "Create a auto resizable connection pool to slacker server.
+  You can set arguments for the pool to control the number of
+  connection and the policy when pool is exhausted. Check commons
+  pool javadoc for the meaning of each argument:
+  http://commons.apache.org/pool/apidocs/org/apache/commons/pool/impl/GenericObjectPool.html"
   [host port
-   & {:keys [content-type]
-      :or {content-type :carb}}]
-  (let [pool (connection-pool host port)]
+   & {:keys [content-type max-active exhausted-action max-wait max-idle]
+      :or {content-type :carb
+           max-active 8
+           exhausted-action :block
+           max-wait -1
+           max-idle 8}}]
+  (let [pool (connection-pool host port
+                              max-active exhausted-action max-wait max-idle)]
     (PooledSlackerClient. pool content-type)))
 
 (defn with-slackerc

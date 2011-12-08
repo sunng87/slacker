@@ -22,8 +22,18 @@
     (passivateObject [this obj]
       )))
 
-(defn connection-pool [host port]
+(def exhausted-actions
+  {:fail GenericObjectPool/WHEN_EXHAUSTED_FAIL
+   :block GenericObjectPool/WHEN_EXHAUSTED_BLOCK
+   :grow GenericObjectPool/WHEN_EXHAUSTED_GROW})
+
+(defn connection-pool
+  [host port max-active exhausted-action max-wait max-idle]
   (let [factory (connection-pool-factory host port)]
-    (GenericObjectPool. factory)))
+    (GenericObjectPool. factory
+                        max-active
+                        (exhausted-actions exhausted-action)
+                        max-wait
+                        max-idle)))
 
 
