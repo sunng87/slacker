@@ -12,16 +12,17 @@ slacker is growing.
 ### RPC vs Remote Eval
 
 Before slacker, the clojure world uses a *remote eval* approach for
-remoting. Comparing to remote eval, RPC (especially slacker) has some
-pros and cons:
+remoting ([nREPL](https://github.com/clojure/tools.nrepl),
+[portal](https://github.com/flatland/portal)).  Comparing to remote
+eval, RPC (especially slacker) has some pros and cons:
 
 #### pros
 
 * slacker uses direct function call, which is much faster than eval
   (about *100x*)
-* with slacker, you can select a set of functions to expose, instead
-  of the whole system in eval. So it's much securer and generally you
-  don't need a sandbox (like clojail) for slacker.
+* with slacker, only selected functions are exposed, instead of the
+  whole java environment when using eval. So it's much securer and
+  generally you don't need a sandbox (like clojail) for slacker.
 
 #### cons
 
@@ -33,7 +34,7 @@ pros and cons:
 
 ### Leiningen
 
-    :dependencies [[info.sunng/slacker "0.1.0"]]
+    :dependencies [[info.sunng/slacker "0.2.0-SNAPSHOT"]]
 
 ### Getting Started
 
@@ -59,10 +60,17 @@ On the client side, define a facade for the remote function:
 
 ``` clojure
 (use 'slacker.client)
-(def sc (slackerc "localhost" 2104)
+(def sc (slackerc "localhost" 2104))
 (defremote sc timestamp)
 (timestamp)
 ```
+
+### Client Connection Pool
+
+Slacker also supports connection pool in client API, which enables
+high concurrent communication. 
+
+To create a connection pool, use `slackerc-pool` instead of `slackerc`.
 
 ### Options in defremote
 
@@ -100,11 +108,21 @@ register custom serializers on *both server side and client side*. Run
 this before you start server or client:
 
 ``` clojure
-(use '[slacker common])
+(use '[slacker.serialization])
 (register-serializers some-serializers)
 ```
 [Carbonite](https://github.com/revelytix/carbonite "carbonite") has
 some detailed docs on how to create your own serializers.
+
+## Performance
+
+Some performance tests was executed while I'm developing
+slacker. Currently, I have some rough results:
+
+* Tested on HP DL360 (dual 6 core X5650, 2.66GHz): A single slacker
+server has **10000+** TPS with cpu usage only about 35%.
+
+Some formal performance benchmarks are coming soon.
 
 ## License
 
