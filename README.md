@@ -80,7 +80,7 @@ You can configure the pool with following options:
 * `:max-wait`
 * `:max-idle`
 
-For the meaning of them, check the
+For the meaning of each option, check the
 [javadoc](http://commons.apache.org/pool/apidocs/org/apache/commons/pool/impl/GenericObjectPool.html)
 of commons-pool.
 
