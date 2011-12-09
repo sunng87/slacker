@@ -168,8 +168,8 @@ Some performance tests was executed while I'm developing slacker.
 
 A simple test client is [here](https://gist.github.com/1449860). With
 the client, as tested on HP DL360 (dual 6 core X5650, 2.66GHz), a
-single client (50 connections, 50 threads) performed 500000 calls in
-48862 msecs (TPS is about **10232**).
+single client (50 connections, 50 threads) performed 500000
+**synchronous** calls in 48862 msecs (TPS is about **10232**).
 
 Some formal performance benchmark is coming soon.
 
