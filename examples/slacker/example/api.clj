@@ -20,4 +20,6 @@
   []
   (throw (RuntimeException. "Excepted exception.")))
 
+(defn echo [x]
+  x)
 
