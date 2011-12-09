@@ -7,6 +7,7 @@
                  [commons-pool/commons-pool "1.5.6"]]
   :dev-dependencies [[codox "0.2.3"]
                      [lein-exec "0.1"]]
+  :extra-classpath-dirs ["examples"]
   :aot [slacker.SlackerException])
 
 
