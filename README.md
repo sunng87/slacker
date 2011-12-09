@@ -164,13 +164,14 @@ just using carbonite(default and recommended).
 
 ## Performance
 
-Some performance tests was executed while I'm developing
-slacker. Currently, I have some rough results:
+Some performance tests was executed while I'm developing slacker.
 
-* Tested on HP DL360 (dual 6 core X5650, 2.66GHz): A single slacker
-server has **10000+** TPS with cpu usage only about 35%.
+A simple test client is [here](https://gist.github.com/1449860). With
+the client, as tested on HP DL360 (dual 6 core X5650, 2.66GHz), a
+single client (50 connections, 50 threads) performed 500000 calls in
+48862 msecs (TPS is about **10232**).
 
-Some formal performance benchmarks are coming soon.
+Some formal performance benchmark is coming soon.
 
 ## License
 
