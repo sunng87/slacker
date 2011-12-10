@@ -8,6 +8,8 @@
   :dev-dependencies [[codox "0.2.3"]
                      [lein-exec "0.1"]]
   :extra-classpath-dirs ["examples"]
+  :run-aliases {:server "slacker.example.server"
+              :client "slacker.example.client"}
   :aot [slacker.SlackerException])
 
 

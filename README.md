@@ -30,6 +30,11 @@ eval, RPC (especially slacker) has some pros and cons:
   high-order functions and lazy arguments. Due to the limitation of
   serialization, slacker has its difficulty to support these features.
 
+## Example
+
+An pair of example server/client can be found under "examples", you
+can run the examples by `lein run :server` and `lein run :client` . 
+
 ## Usage
 
 ### Leiningen
