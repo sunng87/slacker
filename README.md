@@ -34,7 +34,7 @@ eval, RPC (especially slacker) has some pros and cons:
 
 ### Leiningen
 
-    :dependencies [[info.sunng/slacker "0.2.0-SNAPSHOT"]]
+    :dependencies [[info.sunng/slacker "0.2.0"]]
 
 ### Getting Started
 
