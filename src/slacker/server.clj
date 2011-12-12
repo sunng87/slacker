@@ -7,11 +7,6 @@
 (defn- map-req-fields [req]
   (transient (zipmap [:version :packet-type :content-type :fname :data] req)))
 
-(defn- check-version [req]
-  (if (= version (:version req))
-    req
-    (assoc! req :code :protocol-mismatch)))
-
 (defn- look-up-function [funcs req]
   (if (nil? (:code req))
     (if-let [func (funcs (:fname req))]
@@ -42,23 +37,37 @@
     req))
 
 (defn- map-response-fields [req]
-  (assoc! req :type :type-response)
   (map (persistent! req)
-       [:version :type :content-type :code :result]))
+       [:version :packet-type :content-type :code :result]))
+
+(defn build-server-pipeline [funcs]
+  (let [find-func (partial look-up-function funcs)
+        to-response #(assoc! % :packet-type :type-response)]
+    #(-> %
+         find-func
+         deserialize-params
+         do-invoke
+         serialize-result
+         to-response)))
 
 (defn- create-server-handler [funcs]
-  (let [find-func (partial look-up-function funcs)]
+  (let [server-pipeline (build-server-pipeline funcs)]
     (fn [ch client-info]
-      (receive-all ch
-                   #(if-let [req %]
-                      (enqueue ch (-> req
-                                      map-req-fields
-                                      check-version
-                                      find-func
-                                      deserialize-params
-                                      do-invoke
-                                      serialize-result
-                                      map-response-fields)))))))
+      (receive-all
+       ch
+       #(if-let [req %]
+          (enqueue ch
+                   (map-response-fields
+                    (let [req-map (map-req-fields req)]
+                      (if (= version (:version req-map))
+                        (case (:packet-type req-map)
+                          :type-request (server-pipeline req-map)
+                          (assoc! req-map
+                                  :code :invalid-packet
+                                  :packet-type :type-error))
+                        (assoc! req-map
+                                :code :protocol-mismatch
+                                :packet-type :type-error))))))))))
 
 (defn start-slacker-server
   "Starting a slacker server to expose all public functions under

@@ -5,7 +5,8 @@
   (enum :byte {:type-request 0
                :type-response 1
                :type-ping 2
-               :type-pong 3}))
+               :type-pong 3
+               :type-error 4}))
 
 (defcodec content-type
   (enum :byte {:carb 0 :json 1}))
@@ -14,7 +15,8 @@
   (enum :byte {:success 0
                :not-found 11
                :exception 12
-               :protocol-mismatch 13}))
+               :protocol-mismatch 13
+               :invalid-packet 14}))
 
 (defcodec slacker-request-codec
   [:byte ;; protocol version
