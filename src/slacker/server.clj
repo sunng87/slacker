@@ -3,25 +3,26 @@
   (:use [lamina.core])
   (:use [aleph.tcp]))
 
+;; pipeline functions for server request handling
 (defn- map-req-fields [req]
-  (zipmap [:version :packet-type :content-type :fname :data] req))
+  (transient (zipmap [:version :packet-type :content-type :fname :data] req)))
 
 (defn- check-version [req]
   (if (= version (:version req))
     req
-    (assoc req :code :protocol-mismatch)))
+    (assoc! req :code :protocol-mismatch)))
 
 (defn- look-up-function [funcs req]
   (if (nil? (:code req))
     (if-let [func (funcs (:fname req))]
-      (assoc req :func func)
-      (assoc req :code :not-found))
+      (assoc! req :func func)
+      (assoc! req :code :not-found))
     req))
 
 (defn- deserialize-params [req]
   (if (nil? (:code req))
     (let [data (first (:data req))]
-      (assoc req :params
+      (assoc! req :params
              ((deserializer (:content-type req)) data)))
     req))
 
@@ -30,18 +31,19 @@
     (try
       (let [{f :func params :params} req
             r (apply f params)]
-        (assoc req :result r :code :success))
+        (assoc! req :result r :code :success))
       (catch Exception e
-        (assoc req :code :exception :result (.toString e))))
+        (assoc! req :code :exception :result (.toString e))))
     req))
 
 (defn- serialize-result [req]
   (if-not (nil? (:result req))
-    (assoc req :result ((serializer (:content-type req)) (:result req)))
+    (assoc! req :result ((serializer (:content-type req)) (:result req)))
     req))
 
 (defn- map-response-fields [req]
-  (map (assoc req :type :type-response)
+  (assoc! req :type :type-response)
+  (map (persistent! req)
        [:version :type :content-type :code :result]))
 
 (defn- create-server-handler [funcs]
