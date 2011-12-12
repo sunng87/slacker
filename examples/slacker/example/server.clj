@@ -8,6 +8,6 @@
 
 (defn -main [& args]
   (start-slacker-server (the-ns 'slacker.example.api) 2104
-                        :before #(-> % log-function-calls))
+                        :before (interceptors log-function-calls))
   (println "Slacker example server started on port 2104."))
 

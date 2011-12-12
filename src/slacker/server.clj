@@ -40,9 +40,8 @@
   (map (persistent! req)
        [:version :packet-type :content-type :code :result]))
 
-(defn as-interceptors [interceptors]
-  #(doseq [interceptor interceptors]
-     (interceptor %)))
+(defmacro interceptors [& interceptors]
+  `#(-> % ~@interceptors))
 
 (defn- build-server-pipeline [funcs before-interceptors after-interceptors]
   (let [find-func (partial look-up-function funcs)
