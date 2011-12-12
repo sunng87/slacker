@@ -7,12 +7,12 @@
 *** TODO Client HA, load balencing                                   :client:
     configure multiple server instances for a client. the client could
     kick abnormal server instances based on some algorithms like phi failure detection.
-*** HTTP transport support                                           :server:
+*** TODO HTTP transport support                                      :server:
     Expose functions via HTTP transport, which is more
     friendly for debugging. This also enables support for
     clojurescript.
-    - TODO Build-in http server (via aleph.http)
-    - TODO Slacker as a Ring handler
+**** TODO Build-in http server (via aleph.http)
+**** TODO Slacker as a Ring handler
 *** TODO Upstream enhancement                                 :server:client:
     enhance performance of upstream libraries:
     - carbonite 
