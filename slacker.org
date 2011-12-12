@@ -2,7 +2,7 @@
 
 ** Features
 
-*** TODO Server side middleware framework                            :server:
+*** TODO Server side interceptor framework                           :server:
     allow user to add interceptors to server pipeline. 
 *** TODO Client HA, load balencing                                   :client:
     configure multiple server instances for a client. the client could
@@ -21,7 +21,7 @@
     some build-in middlewares for slacker server: 
     - function invocation stats (expose via JMX)
     - logging
-    (depends [[Server side middleware framework]])
+    (depends [[Server side interceptor framework]])
 *** TODO Browser clojurescript support                               :client:
     support clojure RPC via javascript XMLHttpRequest. provide a
     consistent client style in clojurescript.

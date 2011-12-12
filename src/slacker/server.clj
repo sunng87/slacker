@@ -40,18 +40,24 @@
   (map (persistent! req)
        [:version :packet-type :content-type :code :result]))
 
-(defn build-server-pipeline [funcs]
+(defn as-interceptors [interceptors]
+  #(doseq [interceptor interceptors]
+     (interceptor %)))
+
+(defn- build-server-pipeline [funcs before-interceptors after-interceptors]
   (let [find-func (partial look-up-function funcs)
         to-response #(assoc! % :packet-type :type-response)]
     #(-> %
          find-func
          deserialize-params
+         before-interceptors
          do-invoke
+         after-interceptors
          serialize-result
          to-response)))
 
-(defn- create-server-handler [funcs]
-  (let [server-pipeline (build-server-pipeline funcs)]
+(defn- create-server-handler [funcs before after]
+  (let [server-pipeline (build-server-pipeline funcs before after)]
     (fn [ch client-info]
       (receive-all
        ch
@@ -73,9 +79,11 @@
   "Starting a slacker server to expose all public functions under
   a namespace. If you have multiple namespace to expose, it's better
   to combine them into one."
-  [exposed-ns port]
+  [exposed-ns port
+   & {:keys [before after]
+      :or {before identity after identity}}]
   (let [funcs (into {} (for [f (ns-publics exposed-ns)] [(name (key f)) (val f)]))
-        handler (create-server-handler funcs)]
+        handler (create-server-handler funcs before after)]
     (when *debug* (doseq [f (keys funcs)] (println f)))
     (start-tcp-server handler {:port port
                                :decoder slacker-request-codec
