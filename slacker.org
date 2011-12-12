@@ -1,4 +1,4 @@
-* Roadmap for the slacker project
+* Roadmap
 
 ** Features
 
@@ -28,5 +28,9 @@
 *** TODO Keep-alive, ping/pong packet                         :server:client:
     add ping/pong packet support
 
+** Releases
 
+*** 0.2.1
+*** 0.3.0
+*** 0.4.0
 
