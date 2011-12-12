@@ -1,0 +1,32 @@
+* Roadmap for the slacker project
+
+** Features
+
+*** TODO Server side middleware framework                            :server:
+    allow user to add interceptors to server pipeline. 
+*** TODO Client HA, consistent hash                                  :client:
+    configure multiple server instances for a client. the client will
+    kick abnormal server instances based on some algorithms like phi detection.
+*** TODO HTTP transport support                                      :server:
+    allow server to expose functions via HTTP transport, which is more
+    friendly for debugging. This also enables support for
+    clojurescript.
+*** TODO Upstream enhancement                                 :server:client:
+    enhance performance of upstream libraries, carbonite and aleph
+*** TODO Build-in middlewares :server:
+    some build-in middlewares for slacker server: 
+    - function invocation stats (expose via JMX)
+    - logging
+    (depends [[Server side middleware framework]])
+*** TODO Browser clojurescript support                               :client:
+    support clojure RPC with javascript XMLHttpRequest 
+    (depends [[HTTP transport support]])
+*** TODO Nodejs clojurescript support                                :client:
+    support clojure RPC with nodejs tcp client
+*** TODO Access control layer                                 :server:client:    
+    add handshake phase before client-server communication starts
+*** TODO Keep-alive, ping/pong packet                         :server:client:
+    add ping/pong packet support
+
+
+
