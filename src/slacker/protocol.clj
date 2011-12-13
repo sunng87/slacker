@@ -22,8 +22,8 @@
   [:byte ;; protocol version
    packet-type ;; packet-type
    content-type ;; content-type
-   (finite-frame :int16 (string :utf8)) ;; function name
-   (finite-block :int16) ;; arguments
+   (finite-frame :uint16 (string :utf8)) ;; function name
+   (finite-block :uint32) ;; arguments
    ])
 
 (defcodec slacker-response-codec
@@ -31,7 +31,7 @@
    packet-type ;; packet-type
    content-type ;; content-type
    result-codes ;; result code
-   (finite-block :int16) ;; result data
+   (finite-block :uint32) ;; result data
    ])
 
 
