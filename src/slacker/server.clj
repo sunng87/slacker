@@ -12,18 +12,18 @@
     (assoc req :func func)
     (assoc req :code :not-found)))
 
-(defn- deserialize-params [req]
+(defn- deserialize-args [req]
   (if (nil? (:code req))
     (let [data (first (:data req))]
-      (assoc req :params
+      (assoc req :args
              ((deserializer (:content-type req)) data)))
     req))
 
 (defn- do-invoke [req]
   (if (nil? (:code req))
     (try
-      (let [{f :func params :params} req
-            r (apply f params)]
+      (let [{f :func args :args} req
+            r (apply f args)]
         (assoc req :result r :code :success))
       (catch Exception e
         (assoc req :code :exception :result (.toString e))))
@@ -45,7 +45,7 @@
         to-response #(assoc % :packet-type :type-response)]
     #(-> %
          find-func
-         deserialize-params
+         deserialize-args
          before-interceptors
          do-invoke
          after-interceptors
@@ -60,7 +60,7 @@
        #(if-let [req %]
           (enqueue ch
                    (map-response-fields
-                    (let [req-map (map-req-fields req)]
+                    (let [req-map (assoc (map-req-fields req) :client client-info)]
                       (if (= version (:version req-map))
                         (case (:packet-type req-map)
                           :type-request (server-pipeline req-map)

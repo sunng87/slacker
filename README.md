@@ -39,7 +39,7 @@ can run the examples by `lein run :server` and `lein run :client` .
 
 ### Leiningen
 
-    :dependencies [[info.sunng/slacker "0.2.0"]]
+    :dependencies [[info.sunng/slacker "0.3.0-SNAPSHOT"]]
 
 ### Getting Started
 
@@ -166,6 +166,33 @@ keyword, and all other strings will be decoded to clojure string. This
 may lead to inconsistency of your clojure data structure between server and
 client. Try to avoid this by carefully design your data structure or
 just using carbonite(default and recommended).
+
+### Server interceptors
+
+To add custom functions on server, you can define custom
+interceptors before and after function called.
+
+``` clojure
+(defn logging-interceptor [req]
+  (println (str "calling: " (:fname req))))
+
+(start-slacker-server (the-ns 'slapi) 2104
+                      :before (interceptors logging-interceptor))
+```
+
+You can pass multiple functions to the `interceptors` macro. 
+
+Attributes of the request object available to interceptors are :
+
+* before
+  * `:content-type` content type of the request
+  * `:fname` function name of the call, as string
+  * `:func` function of the call
+  * `:args` a vector of arguements
+  * `:client` client connection information
+* after
+  * `:result` the data returned by the function call
+  * `:code` result code. `:success`, `:exception` or `:not-found`
 
 ## Performance
 
