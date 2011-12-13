@@ -20,6 +20,10 @@
   (let [serialized-params ((serializer content-type) params)]
     [version :type-request content-type func-name serialized-params]))
 
+(def ping-packet [version :type-ping 0 nil nil])
+(defn ping [conn]
+  (wait-for-result (conn ping-packet) *timeout*))
+
 (defprotocol SlackerClientProtocol
   (sync-call-remote [this func-name params])
   (async-call-remote [this func-name params cb])

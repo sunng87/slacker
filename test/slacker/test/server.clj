@@ -1,5 +1,5 @@
 (ns slacker.test.server
-  (:use [slacker server serialization])
+  (:use [slacker server serialization common])
   (:use [clojure.test]))
 
 (def funcs {"plus" + "minus" - "prod" * "div" /})
@@ -39,4 +39,15 @@
              :fname "prod"}]
     (.rewind params)
     (is (= "0" (read-carb (:result (server-pipeline req)))))))
+
+(deftest test-ping
+  (let [request [version :type-ping :json nil nil]
+        response (handle-request nil request nil)]
+    (is (= :type-pong (nth response 1)))))
+
+(deftest test-invalid-packet
+  (let [request [version :type-unknown :json nil nil]
+        response (handle-request nil request nil)]
+    (is (= :type-error (nth response 1)))
+    (is (= :invalid-packet (nth response 3)))))
 

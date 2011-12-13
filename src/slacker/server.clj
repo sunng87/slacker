@@ -52,24 +52,23 @@
          serialize-result
          to-response)))
 
+(defn handle-request [server-pipeline req client-info]
+  (map-response-fields
+   (let [req-map (assoc (map-req-fields req) :client client-info)]
+     (if (= version (:version req-map))
+       (case (:packet-type req-map)
+         :type-request (server-pipeline req-map)
+         :type-ping (assoc req-map :packet-type :type-pong)
+         (assoc req-map :code :invalid-packet :packet-type :type-error))
+       (assoc req-map :code :protocol-mismatch :packet-type :type-error)))))
+
 (defn create-server-handler [funcs before after]
   (let [server-pipeline (build-server-pipeline funcs before after)]
     (fn [ch client-info]
       (receive-all
        ch
        #(if-let [req %]
-          (enqueue ch
-                   (map-response-fields
-                    (let [req-map (assoc (map-req-fields req) :client client-info)]
-                      (if (= version (:version req-map))
-                        (case (:packet-type req-map)
-                          :type-request (server-pipeline req-map)
-                          (assoc req-map
-                                  :code :invalid-packet
-                                  :packet-type :type-error))
-                        (assoc req-map
-                                :code :protocol-mismatch
-                                :packet-type :type-error))))))))))
+          (enqueue ch (handle-request server-pipeline req client-info)))))))
 
 (defn start-slacker-server
   "Starting a slacker server to expose all public functions under
