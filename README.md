@@ -170,7 +170,7 @@ just using carbonite(default and recommended).
 ### Server interceptors
 
 To add custom functions on server, you can define custom
-interceptors before and after function called.
+interceptors before or after function called.
 
 ``` clojure
 (defn logging-interceptor [req]
