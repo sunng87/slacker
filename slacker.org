@@ -2,7 +2,7 @@
 
 ** Features
 
-*** TODO Server side interceptor framework                           :server:
+*** DONE Server side interceptor framework                           :server:
     allow user to add interceptors to server pipeline. 
 *** TODO Client HA, load balencing                                   :client:
     configure multiple server instances for a client. the client could
