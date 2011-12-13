@@ -17,8 +17,8 @@
     enhance performance of upstream libraries:
     - carbonite 
     - aleph
-*** TODO Build-in middlewares :server:
-    some build-in middlewares for slacker server: 
+*** TODO Build-in interceptors                                       :server:
+    some build-in interceptors for slacker server: 
     - function invocation stats (expose via JMX)
     - logging
     (depends [[Server side interceptor framework]])
