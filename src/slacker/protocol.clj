@@ -21,35 +21,35 @@
                :invalid-packet 21}))
 
 (defcodec slacker-request-codec
-  [packet-type ;; packet-type
+  [:type-request ;; packet-type
    content-type ;; content-type
    (finite-frame :uint16 (string :utf8)) ;; function name
    (finite-block :uint32) ;; arguments
    ])
 
 (defcodec slacker-response-codec
-  [packet-type ;; packet-type
+  [:type-response ;; packet-type
    content-type ;; content-type
    result-codes ;; result code
    (finite-block :uint32) ;; result data
    ])
 
 (defcodec slacker-ping-codec
-  [packet-type])
+  [:type-ping])
 
 (defcodec slacker-pong-codec
-  [packet-type])
+  [:type-pong])
 
 (defcodec slacker-error-codec
-  [packet-type
+  [:type-error
    result-codes])
 
 (defcodec slacker-auth-req-codec
-  [packet-type
+  [:type-auth-req
    (finite-frame :uint16 (string :ascii))])
 
 (defcodec slacker-auth-ack-codec
-  [packet-type
+  [:type-auth-ack
    (enum :byte {:auth-ok 0
                 :auth-reject 1})])
 
