@@ -5,7 +5,7 @@
 
 ;; pipeline functions for server request handling
 (defn- map-req-fields [req]
-  (zipmap [:version :packet-type :content-type :fname :data] req))
+  (zipmap [:packet-type :content-type :fname :data] req))
 
 (defn- look-up-function [funcs req]
   (if-let [func (funcs (:fname req))]
@@ -35,7 +35,11 @@
     req))
 
 (defn- map-response-fields [req]
-  (map req [:version :packet-type :content-type :code :result]))
+  [version (map req [:packet-type :content-type :code :result])])
+
+(def pong-packet [version [:type-pong]])
+(def protocol-mismatch-packet [version [:type-error :protocol-mismatch]])
+(def invalid-type-packet [version [:type-error :invalid-packet]])
 
 (defmacro interceptors [& interceptors]
   `#(-> % ~@interceptors))
@@ -53,9 +57,18 @@
          to-response)))
 
 (defn handle-request [server-pipeline req client-info]
+  (if (= version (first req))
+    (let [req-map (assoc (map-req-fields (second req)) :client client-info)]
+      (case (:packet-type req-map)
+        :type-request (map-response-fields (server-pipeline req-map))
+        :type-ping pong-packet
+        invalid-type-packet))
+    protocol-mismatch-packet))
+
+(defn handle-request [server-pipeline req client-info]
   (map-response-fields
-   (let [req-map (assoc (map-req-fields req) :client client-info)]
-     (if (= version (:version req-map))
+   (let [req-map (assoc (map-req-fields (second req)) :client client-info)]
+     (if (= version (first req))
        (case (:packet-type req-map)
          :type-request (server-pipeline req-map)
          :type-ping (assoc req-map :packet-type :type-pong)
@@ -80,8 +93,6 @@
   (let [funcs (into {} (for [f (ns-publics exposed-ns)] [(name (key f)) (val f)]))
         handler (create-server-handler funcs before after)]
     (when *debug* (doseq [f (keys funcs)] (println f)))
-    (start-tcp-server handler {:port port
-                               :decoder slacker-request-codec
-                               :encoder slacker-response-codec})))
+    (start-tcp-server handler {:port port :frame slacker-base-codec})))
 
 
