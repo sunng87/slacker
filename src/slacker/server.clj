@@ -65,16 +65,6 @@
         invalid-type-packet))
     protocol-mismatch-packet))
 
-(defn handle-request [server-pipeline req client-info]
-  (map-response-fields
-   (let [req-map (assoc (map-req-fields (second req)) :client client-info)]
-     (if (= version (first req))
-       (case (:packet-type req-map)
-         :type-request (server-pipeline req-map)
-         :type-ping (assoc req-map :packet-type :type-pong)
-         (assoc req-map :code :invalid-packet :packet-type :type-error))
-       (assoc req-map :code :protocol-mismatch :packet-type :type-error)))))
-
 (defn create-server-handler [funcs before after]
   (let [server-pipeline (build-server-pipeline funcs before after)]
     (fn [ch client-info]

@@ -49,5 +49,5 @@
   (let [request [version [:type-unknown :json nil nil]]
         response (second (handle-request nil request nil))]
     (is (= :type-error (nth response 0)))
-    (is (= :invalid-packet (nth response 2)))))
+    (is (= :invalid-packet (nth response 1)))))
 
