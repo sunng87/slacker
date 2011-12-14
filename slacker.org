@@ -15,7 +15,7 @@
 **** TODO Slacker as a Ring handler
 *** TODO Upstream enhancement                                 :server:client:
     enhance performance of upstream libraries:
-    - carbonite 
+    - carbonite (0.1.1, keyword enhancement)
     - aleph
 *** TODO Build-in interceptors                                       :server:
     some build-in interceptors for slacker server: 
@@ -29,14 +29,16 @@
 *** TODO Nodejs clojurescript support                                :client:
     support clojure RPC with nodejs tcp client. provide a consistent
     client style in clojurescript.
+    Demo code: https://gist.github.com/1471511
 *** TODO Access control layer                                 :server:client:    
     add handshake phase before client-server communication
     starts. simple password authentication.
-*** TODO Keep-alive, ping/pong packet                         :server:client:
+*** DONE Keep-alive, ping/pong packet                         :server:client:
     add ping/pong packet
 
 ** Releases
 
-*** 0.3.0
+*** 0.3.0    
+    SCHEDULED: <2011-12-17 Sat>
 *** 0.4.0
 *** 0.5.0
