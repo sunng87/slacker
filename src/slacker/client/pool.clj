@@ -13,8 +13,7 @@
     (makeObject [this]
       (client #(tcp-client {:host host
                             :port port
-                            :encoder slacker-request-codec
-                            :decoder slacker-response-codec})))
+                            :frame slacker-base-codec})))
     (validateObject [this obj]
       true)
     (activateObject [this obj]

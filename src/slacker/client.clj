@@ -6,19 +6,26 @@
   (:use [aleph.tcp])
   (:import [slacker SlackerException]))
 
-(defn- handle-response [content-type code data]
-  (case code
-   :success ((deserializer content-type) (first data))
-   :not-found (throw (SlackerException. "function not found."))
-   :exception (throw (SlackerException.
-                      ((deserializer content-type) (first data))))
-   :protocol-mismatch (throw (SlackerException.
-                              "client-server version mismatch."))
-   :else (throw (SlackerException. (str "invalid result code: " code)))))
+(defn- handle-normal-response [response]
+  (let [[_ content-type code data] response]
+    (case code
+      :success ((deserializer content-type) (first data))
+      :not-found (throw (SlackerException. "function not found."))
+      :exception (throw (SlackerException.
+                         ((deserializer content-type) (first data))))
+      :protocol-mismatch (throw (SlackerException.
+                                 "client-server version mismatch."))
+      (throw (SlackerException. (str "invalid result code: " code))))))
+
+(defn- handle-response [response]
+  (case (first response)
+    :type-response (handle-normal-response response)
+    :type-error (throw (SlackerException. (str "fatal error: " (second response))))
+    nil))
 
 (defn- make-request [content-type func-name params]
   (let [serialized-params ((serializer content-type) params)]
-    [version :type-request content-type func-name serialized-params]))
+    [version [:type-request content-type func-name serialized-params]]))
 
 (def ping-packet [version :type-ping 0 nil nil])
 (defn ping [conn]
@@ -34,14 +41,14 @@
   (sync-call-remote [this func-name params]
     (let [request (make-request content-type func-name params)
           response (wait-for-result (conn request) *timeout*)]
-      (when-let [[_ _ _ code data] response]
-        (handle-response content-type code data))))
+      (when-let [[_ resp] response]
+        (handle-response resp))))
   (async-call-remote [this func-name params cb]
     (let [request (make-request content-type func-name params)]
       (run-pipeline
        (conn request)
-       #(if-let [[_ _ _ code data] %]
-          (let [result (handle-response content-type code data)]
+       #(if-let [[_ resp] %]
+          (let [result (handle-response resp)]
             (if-not (nil? cb) (cb result)))))))
   (close [this]
     (close-connection conn)))
@@ -53,8 +60,7 @@
       :or {content-type :carb}}]
   (let [conn (client #(tcp-client {:host host
                                    :port port
-                                   :encoder slacker-request-codec
-                                   :decoder slacker-response-codec}))]
+                                   :frame slacker-base-codec}))]
     (SlackerClient. conn content-type)))
 
 (deftype PooledSlackerClient [pool content-type]
@@ -64,8 +70,8 @@
           request (make-request content-type func-name params)
           response (wait-for-result (conn request) *timeout*)]
       (.returnObject pool conn)
-      (when-let [[_ _ _ code data] response]
-        (handle-response content-type code data))))
+      (when-let [[_ resp] response]
+        (handle-response resp))))
   (async-call-remote [this func-name params cb]
     (let [conn (.borrowObject pool)
           request (make-request content-type func-name params)]
@@ -73,8 +79,8 @@
        (conn request)
        #(do
           (.returnObject pool conn)
-          (if-let [[_ _ _ code data] %]
-            (let [result (handle-response content-type code data)]
+          (if-let [[_ resp] %]
+            (let [result (handle-response resp)]
               (if-not (nil? cb) (cb result))))))))
   (close [this]
     (.close pool)))
