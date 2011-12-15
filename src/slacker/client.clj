@@ -38,7 +38,7 @@
        (conn request)
        #(if-let [[_ _ _ code data] %]
           (let [result (handle-response content-type code data)]
-            (if-not (nil? cb) (cb result)))))))
+            (if-not (nil? cb) (cb result) result))))))
   (close [this]
     (close-connection conn)))
 
@@ -71,7 +71,7 @@
           (.returnObject pool conn)
           (if-let [[_ _ _ code data] %]
             (let [result (handle-response content-type code data)]
-              (if-not (nil? cb) (cb result))))))))
+              (if-not (nil? cb) (cb result) result)))))))
   (close [this]
     (.close pool)))
 
