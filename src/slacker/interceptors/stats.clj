@@ -23,7 +23,7 @@
 
 (def stats-bean
   (new-mbean
-   (ref {:stats (fn [] @stats-data)})))
+   (ref {:stats (fn [] (hash-map @stats-data))})))
 
 (jmx/register-mbean stats-bean "slacker.server:type=FunctionCallStats")
 
