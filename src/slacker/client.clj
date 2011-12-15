@@ -49,7 +49,7 @@
        (conn request)
        #(if-let [[_ resp] %]
           (let [result (handle-response resp)]
-            (if-not (nil? cb) (cb result)))))))
+            (if-not (nil? cb) (cb result) result))))))
   (close [this]
     (close-connection conn)))
 
@@ -81,7 +81,7 @@
           (.returnObject pool conn)
           (if-let [[_ resp] %]
             (let [result (handle-response resp)]
-              (if-not (nil? cb) (cb result))))))))
+              (if-not (nil? cb) (cb result) result)))))))
   (close [this]
     (.close pool)))
 
