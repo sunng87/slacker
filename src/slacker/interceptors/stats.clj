@@ -1,4 +1,5 @@
 (ns slacker.interceptors.stats
+  (:use [slacker.interceptor])
   (:require [clojure.contrib.jmx :as jmx])
   (:import [clojure.contrib.jmx Bean])
   (:import [javax.management DynamicMBean MBeanInfo
@@ -9,11 +10,12 @@
 (defn assoc-with-default [m k]
   (update-in m [k] #(if (nil? %) 1 (inc %))))
 
-(defn function-call-stats [req]
-  (when (nil? (:code req))
-    (let [fname (:fname req)]
-      (swap! stats-data assoc-with-default fname)))
-  req)
+(definterceptor function-call-stats
+  :before (fn [req]
+            (when (nil? (:code req))
+              (let [fname (:fname req)]
+                (swap! stats-data assoc-with-default fname)))
+            req))
 
 (def stats-bean
   (reify

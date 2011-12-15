@@ -41,9 +41,6 @@
 (def protocol-mismatch-packet [version [:type-error :protocol-mismatch]])
 (def invalid-type-packet [version [:type-error :invalid-packet]])
 
-(defmacro interceptors [& interceptors]
-  `#(-> % ~@interceptors))
-
 (defn build-server-pipeline [funcs before-interceptors after-interceptors]
   (let [find-func (partial look-up-function funcs)
         to-response #(assoc % :packet-type :type-response)]
@@ -74,13 +71,14 @@
           (enqueue ch (handle-request server-pipeline req client-info)))))))
 
 (defn start-slacker-server
-  "Starting a slacker server to expose all public functions under
+  "Start a slacker server to expose all public functions under
   a namespace. If you have multiple namespace to expose, it's better
   to combine them into one."
   [exposed-ns port
-   & {:keys [before after]
-      :or {before identity after identity}}]
+   & {:keys [interceptors]
+      :or {interceptors {:before identity :after identity}}}]
   (let [funcs (into {} (for [f (ns-publics exposed-ns)] [(name (key f)) (val f)]))
+        {before :before after :after} interceptors
         handler (create-server-handler funcs before after)]
     (when *debug* (doseq [f (keys funcs)] (println f)))
     (start-tcp-server handler {:port port :frame slacker-base-codec})))
