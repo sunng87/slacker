@@ -1,8 +1,8 @@
-(defproject info.sunng/slacker "0.2.1"
+(defproject info.sunng/slacker "0.3.0-SNAPSHOT"
   :description "Clojure RPC"
   :dependencies [[org.clojure/clojure "1.2.1"]
                  [aleph "0.2.0"]
-                 [info.sunng/carbonite "0.1.0"]
+                 [info.sunng/carbonite "0.1.1"]
                  [clj-json "0.4.3"]
                  [commons-pool/commons-pool "1.5.6"]]
   :dev-dependencies [[codox "0.2.3"]

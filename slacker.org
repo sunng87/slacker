@@ -1,0 +1,47 @@
+* Roadmap
+
+** Features
+
+*** DONE Server side interceptor framework                           :server:
+    allow user to add interceptors to server pipeline. 
+*** TODO Client HA, load balencing                                   :client:
+    configure multiple server instances for a client. the client could
+    kick abnormal server instances based on some algorithms like phi failure detection.
+*** TODO HTTP transport support                                      :server:
+    Expose functions via HTTP transport, which is more
+    friendly for debugging. This also enables support for
+    clojurescript.
+**** TODO Build-in http server (via aleph.http)
+**** TODO Slacker as a Ring handler
+*** TODO Upstream enhancement                                 :server:client:
+    enhance performance of upstream libraries:
+    - carbonite (0.1.1, keyword enhancement)
+    - aleph
+*** TODO Build-in interceptors                                       :server:
+    some build-in interceptors for slacker server: 
+    - function invocation stats (expose via JMX)
+    - logging
+    - memorize function
+    - slow watch dog
+    interceptors are better to shipped as standalone submodules
+    (depends [[Server side interceptor framework]])
+*** TODO Browser clojurescript support                               :client:
+    support clojure RPC via javascript XMLHttpRequest. provide a
+    consistent client style in clojurescript.
+    (depends [[Slacker as a Ring handler]])
+*** TODO Nodejs clojurescript support                                :client:
+    support clojure RPC with nodejs tcp client. provide a consistent
+    client style in clojurescript.
+    Demo code: https://gist.github.com/1471511
+*** TODO Access control layer                                 :server:client:    
+    add handshake phase before client-server communication
+    starts. simple password authentication.
+*** DONE Keep-alive, ping/pong packet                         :server:client:
+    add ping/pong packet
+
+** Releases
+
+*** 0.3.0    
+    SCHEDULED: <2011-12-17 Sat>
+*** 0.4.0
+*** 0.5.0
