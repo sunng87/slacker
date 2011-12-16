@@ -39,7 +39,7 @@ can run the examples by `lein run :server` and `lein run :client` .
 
 ### Leiningen
 
-    :dependencies [[info.sunng/slacker "0.3.0-SNAPSHOT"]]
+    :dependencies [[info.sunng/slacker "0.3.0"]]
 
 ### Getting Started
 
