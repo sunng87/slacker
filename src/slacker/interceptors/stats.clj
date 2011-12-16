@@ -3,12 +3,17 @@
   (:require [clojure.contrib.jmx :as jmx])
   (:import [clojure.contrib.jmx Bean])
   (:import [javax.management DynamicMBean MBeanInfo
-            MBeanAttributeInfo Attribute AttributeList]))
+            MBeanAttributeInfo Attribute AttributeList
+            MBeanOperationInfo]))
 
 (def stats-data (atom {}))
 
 (defn assoc-with-default [m k]
   (update-in m [k] #(if (nil? %) 1 (inc %))))
+
+(defn reset-stats []
+  (reset! stats-data {})
+  nil)
 
 (definterceptor function-call-stats
   :before (fn [req]
@@ -16,6 +21,10 @@
               (let [fname (:fname req)]
                 (swap! stats-data assoc-with-default fname)))
             req))
+
+(defmulti jmx-invoke (fn [a _ _ ] a))
+(defmethod jmx-invoke "reset" [action params sig]
+  (reset-stats))
 
 (def stats-bean
   (reify
@@ -38,9 +47,16 @@
                                               false)
                         (keys @stats-data)))
                   nil
-                  nil
+                  (into-array
+                   MBeanOperationInfo
+                   [(MBeanOperationInfo. "reset"
+                                         "reset all counters"
+                                         nil
+                                         "void"
+                                         MBeanOperationInfo/ACTION)])
                   nil))
-    (invoke [this action params sig])
+    (invoke [this action params sig]
+      (jmx-invoke action params sig))
     (setAttribute [this attr])
     (setAttributes [this attrs])))
 
