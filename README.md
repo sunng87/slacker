@@ -173,26 +173,15 @@ To add custom functions on server, you can define custom
 interceptors before or after function called.
 
 ``` clojure
-(defn logging-interceptor [req]
-  (println (str "calling: " (:fname req))))
+(definterceptor logging-interceptor 
+   :before (fn [req] (println (str "calling: " (:fname req))) req))
 
 (start-slacker-server (the-ns 'slapi) 2104
-                      :before (interceptors logging-interceptor))
+                      :interceptors (interceptors logging-interceptor))
 ```
 
-You can pass multiple functions to the `interceptors` macro. 
-
-Attributes of the request object available to interceptors are :
-
-* before
-  * `:content-type` content type of the request
-  * `:fname` function name of the call, as string
-  * `:func` function of the call
-  * `:args` a vector of arguements
-  * `:client` client connection information
-* after
-  * `:result` the data returned by the function call
-  * `:code` result code. `:success`, `:exception` or `:not-found`
+For more information about using interceptors and creating your own
+interceptors, query the [wiki page](https://github.com/sunng87/slacker/wiki/Interceptors).
 
 ## Performance
 
