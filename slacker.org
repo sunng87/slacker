@@ -21,6 +21,9 @@
     some build-in interceptors for slacker server: 
     - function invocation stats (expose via JMX)
     - logging
+    - memorize function
+    - slow watch dog
+    interceptors are better to shipped as standalone submodules
     (depends [[Server side interceptor framework]])
 *** TODO Browser clojurescript support                               :client:
     support clojure RPC via javascript XMLHttpRequest. provide a
