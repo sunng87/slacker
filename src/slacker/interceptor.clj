@@ -5,14 +5,12 @@
   (if (odd? (count clauses))
     `(throw IllegalArgumentException. "Invalid clause for definterceptor"))
   `(def ~interceptor-name
-     (apply hash-map '~clauses)))
+     (hash-map ~@clauses)))
 
 (defmacro interceptors
   [intercs]
-  `{:before #(-> % ~@(map (fn [x]
-                            `(fn [y#] ((get ~x :before identity) y#)))
+  `{:before #(-> % ~@(map (fn [x] `((fn [y#] ((get ~x :before identity) y#))))
                           intercs))
-    :after #(-> % ~@(map (fn [x]
-                           `(fn [y#] ((get ~x :after identity) y#)))
+    :after #(-> % ~@(map (fn [x] `((fn [y#] ((get ~x :after identity) y#))))
                          (reverse intercs)))})
 
