@@ -53,13 +53,18 @@
          serialize-result
          to-response)))
 
+(defmulti -handle-request (fn [_ p] (:packet-type p)))
+(defmethod -handle-request :type-request [server-pipeline req-map]
+  (map-response-fields (server-pipeline req-map)))
+(defmethod -handle-request :type-ping [_ _]
+  pong-packet)
+(defmethod -handle-request :default [_ _]
+  invalid-type-packet)
+
 (defn handle-request [server-pipeline req client-info]
   (if (= version (first req))
     (let [req-map (assoc (map-req-fields (second req)) :client client-info)]
-      (case (:packet-type req-map)
-        :type-request (map-response-fields (server-pipeline req-map))
-        :type-ping pong-packet
-        invalid-type-packet))
+      (-handle-request server-pipeline req-map))
     protocol-mismatch-packet))
 
 (defn create-server-handler [funcs before after]

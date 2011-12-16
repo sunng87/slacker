@@ -13,8 +13,6 @@
       :not-found (throw (SlackerException. "function not found."))
       :exception (throw (SlackerException.
                          ((deserializer content-type) (first data))))
-      :protocol-mismatch (throw (SlackerException.
-                                 "client-server version mismatch."))
       (throw (SlackerException. (str "invalid result code: " code))))))
 
 (defn- handle-response [response]
