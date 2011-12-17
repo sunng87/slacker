@@ -5,7 +5,7 @@
                  [info.sunng/carbonite "0.1.1"]
                  [clj-json "0.4.3"]
                  [commons-pool/commons-pool "1.5.6"]]
-  :dev-dependencies [[codox "0.2.3"]
+  :dev-dependencies [[codox "0.3.0"]
                      [lein-exec "0.1"]
                      [lein-sub "0.1.1"]]
   :extra-classpath-dirs ["examples"]

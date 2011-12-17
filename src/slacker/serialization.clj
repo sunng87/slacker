@@ -41,18 +41,14 @@
     (.encode (Charset/forName "UTF-8") jsonstr)))
 
 (defn deserializer
-  "Find certain deserializer by content-type code:
-  * 0-carbonite,
-  * 1-json"
+  "Find certain deserializer by content-type code"
   [type]
   (case type
     :json read-json
     :carb read-carb))
 
 (defn serializer
-  "Find certain serializer by content-type code:
-  * 0-carbonite,
-  * 1-json"
+  "Find certain serializer by content-type code:"
   [type]
   (case type
     :json write-json
