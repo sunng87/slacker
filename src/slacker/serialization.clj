@@ -40,17 +40,34 @@
     (if *debug* (println (str "dbg:: " jsonstr)))
     (.encode (Charset/forName "UTF-8") jsonstr)))
 
+(defn read-clj
+  "Deserialize clojure data structure from bytebuffer with
+  clojure read"
+  [data]
+  (let [cljstr (.toString (.decode (Charset/forName "UTF-8") data))]
+    (if *debug* (println (str "dbg:: " cljstr)))
+    (read-string cljstr)))
+
+(defn write-clj
+  "Serialize clojure data structure to ByteBuffer with clojure prn"
+  [data]
+  (let [cljstr (pr-str data)]
+    (if *debug* (println (str "dbg:: " cljstr)))
+    (.encode (Charset/forName "UTF-8") cljstr)))
+
 (defn deserializer
   "Find certain deserializer by content-type code"
   [type]
   (case type
     :json read-json
-    :carb read-carb))
+    :carb read-carb
+    :clj read-clj))
 
 (defn serializer
   "Find certain serializer by content-type code:"
   [type]
   (case type
     :json write-json
-    :carb write-carb))
+    :carb write-carb
+    :clj write-clj))
 
