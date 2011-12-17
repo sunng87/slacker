@@ -1,7 +1,6 @@
 (ns slacker.interceptors.stats
   (:use [slacker.interceptor])
   (:require [clojure.contrib.jmx :as jmx])
-  (:import [clojure.contrib.jmx Bean])
   (:import [javax.management DynamicMBean MBeanInfo
             MBeanAttributeInfo Attribute AttributeList
             MBeanOperationInfo]))
@@ -28,7 +27,7 @@
 (defmethod jmx-invoke "reset" [action params sig]
   (reset-stats))
 
-(def stats-bean
+(def ^{:private true} stats-bean
   (reify
     DynamicMBean
     (getAttribute [this key]
