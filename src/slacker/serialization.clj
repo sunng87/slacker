@@ -7,15 +7,21 @@
 
 (def carb-registry (atom (carb/default-registry)))
 
-(defn read-carb
-  "Deserialize clojure data structure from ByteBuffer with
-  carbonite."
-  [data]
+(defmulti serialize
+  "serialize clojure data structure to bytebuffer with
+  different types of serialization"
+  (fn [f _] f))
+(defmulti deserialize
+  "deserialize clojure data structure from bytebuffer using
+  matched serialization function"
+  (fn [f _] f))
+
+(defmethod deserialize :carb
+  [_ data]
   (carb/read-buffer @carb-registry data))
 
-(defn write-carb
-  "Serialize clojure data structure to ByteBuffer by carbonite"
-  [data]
+(defmethod serialize :carb
+  [_ data]
   (ByteBuffer/wrap (carb/write-buffer @carb-registry data)))
 
 (defn register-serializers
@@ -25,49 +31,28 @@
   [serializers]
   (swap! carb-registry carb/register-serializers serializers))
 
-(defn read-json
-  "Deserialize clojure data structure from bytebuffer with
-  jackson"
-  [data]
+(defmethod deserialize :json
+  [_ data]
   (let [jsonstr (.toString (.decode (Charset/forName "UTF-8") data))]
     (if *debug* (println (str "dbg:: " jsonstr)))
     (json/parse-string jsonstr true)))
 
-(defn write-json
-  "Serialize clojure data structure to ByteBuffer with jackson"
-  [data]
+(defmethod serialize :json
+  [_ data]
   (let [jsonstr (json/generate-string data)]
     (if *debug* (println (str "dbg:: " jsonstr)))
     (.encode (Charset/forName "UTF-8") jsonstr)))
 
-(defn read-clj
-  "Deserialize clojure data structure from bytebuffer with
-  clojure read"
-  [data]
+(defmethod deserialize :clj
+  [_ data]
   (let [cljstr (.toString (.decode (Charset/forName "UTF-8") data))]
     (if *debug* (println (str "dbg:: " cljstr)))
     (read-string cljstr)))
 
-(defn write-clj
-  "Serialize clojure data structure to ByteBuffer with clojure prn"
-  [data]
+(defmethod serialize :clj
+  [_ data]
   (let [cljstr (pr-str data)]
     (if *debug* (println (str "dbg:: " cljstr)))
     (.encode (Charset/forName "UTF-8") cljstr)))
 
-(defn deserializer
-  "Find certain deserializer by content-type code"
-  [type]
-  (case type
-    :json read-json
-    :carb read-carb
-    :clj read-clj))
-
-(defn serializer
-  "Find certain serializer by content-type code:"
-  [type]
-  (case type
-    :json write-json
-    :carb write-carb
-    :clj write-clj))
 

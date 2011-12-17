@@ -16,7 +16,7 @@
   (if (nil? (:code req))
     (let [data (first (:data req))]
       (assoc req :args
-             ((deserializer (:content-type req)) data)))
+             (deserialize (:content-type req) data)))
     req))
 
 (defn- do-invoke [req]
@@ -31,7 +31,7 @@
 
 (defn- serialize-result [req]
   (if-not (nil? (:result req))
-    (assoc req :result ((serializer (:content-type req)) (:result req)))
+    (assoc req :result (serialize (:content-type req) (:result req)))
     req))
 
 (defn- map-response-fields [req]

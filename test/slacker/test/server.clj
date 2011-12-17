@@ -3,7 +3,7 @@
   (:use [clojure.test]))
 
 (def funcs {"plus" + "minus" - "prod" * "div" /})
-(def params (write-carb [100 0]))
+(def params (serialize :carb [100 0]))
 
 (deftest test-server-pipeline
   (let [server-pipeline (build-server-pipeline funcs identity identity)
@@ -20,7 +20,7 @@
     (.rewind params)
     (let [result (server-pipeline req)]
       (is (= :success (:code result)))
-      (is (= 100 (read-carb (:result result)))))
+      (is (= 100 (deserialize :carb (:result result)))))
 
     (.rewind params)
     (let [result (server-pipeline req2)]
@@ -38,7 +38,7 @@
              :data [params]
              :fname "prod"}]
     (.rewind params)
-    (is (= "0" (read-carb (:result (server-pipeline req)))))))
+    (is (= "0" (deserialize :carb (:result (server-pipeline req)))))))
 
 (deftest test-ping
   (let [request [version [:type-ping :json nil nil]]

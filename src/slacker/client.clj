@@ -9,10 +9,10 @@
 (defn- handle-normal-response [response]
   (let [[_ content-type code data] response]
     (case code
-      :success ((deserializer content-type) (first data))
+      :success (deserialize content-type (first data))
       :not-found (throw (SlackerException. "function not found."))
       :exception (throw (SlackerException.
-                         ((deserializer content-type) (first data))))
+                         (deserialize content-type (first data))))
       (throw (SlackerException. (str "invalid result code: " code))))))
 
 (defn- handle-response [response]
@@ -22,7 +22,7 @@
     nil))
 
 (defn- make-request [content-type func-name params]
-  (let [serialized-params ((serializer content-type) params)]
+  (let [serialized-params (serialize content-type params)]
     [version [:type-request content-type func-name serialized-params]]))
 
 (def ping-packet [version :type-ping 0 nil nil])
