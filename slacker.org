@@ -12,7 +12,7 @@
     friendly for debugging. This also enables support for
     clojurescript.
 **** TODO Build-in http server (via aleph.http)
-**** TODO Slacker as a Ring handler
+**** Slacker as a Ring handler (out of scope, maybe in a new project)
 *** TODO Upstream enhancement                                 :server:client:
     enhance performance of upstream libraries:
     - carbonite (0.1.1, keyword enhancement)
@@ -25,23 +25,32 @@
     - slow watch dog
     interceptors are better to shipped as standalone submodules
     (depends [[Server side interceptor framework]])
-*** TODO Browser clojurescript support                               :client:
+*** Browser clojurescript support                                    :client:
     support clojure RPC via javascript XMLHttpRequest. provide a
     consistent client style in clojurescript.
     (depends [[Slacker as a Ring handler]])
+    (out of scope, maybe in a new project. "restful slacker"?)
 *** TODO Nodejs clojurescript support                                :client:
     support clojure RPC with nodejs tcp client. provide a consistent
     client style in clojurescript.
     Demo code: https://gist.github.com/1471511
+    is there any dependencies management solution for cljs? how to
+    release it as a cljs library ?
 *** TODO Access control layer                                 :server:client:    
     add handshake phase before client-server communication
     starts. simple password authentication.
 *** DONE Keep-alive, ping/pong packet                         :server:client:
     add ping/pong packet
+*** TODO Move to Clojure 1.3
+    A new branch is created for clojure 1.3. Upgrade aleph and
+    carbonite to be compatible with 1.3
 
 ** Releases
 
 *** 0.3.0    
     SCHEDULED: <2011-12-17 Sat>
+    Released.
 *** 0.4.0
+    SCHEDULED: <2012-01-01 Sun>
+    
 *** 0.5.0
