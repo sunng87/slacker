@@ -11,7 +11,7 @@
                :type-auth-ack 6}))
 
 (defcodec content-type
-  (enum :byte {:carb 0 :json 1}))
+  (enum :byte {:carb 0 :json 1 :clj 2}))
 
 (defcodec result-codes
   (enum :byte {:success 0

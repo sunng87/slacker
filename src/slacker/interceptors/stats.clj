@@ -14,7 +14,9 @@
   (reset! stats-data {})
   nil)
 
-(definterceptor function-call-stats
+(definterceptor
+  ^{:doc "an interceptor that counts function-call"}
+  function-call-stats
   :before (fn [req]
             (when (nil? (:code req))
               (let [fname (:fname req)]
@@ -25,7 +27,7 @@
 (defmethod jmx-invoke "reset" [action params sig]
   (reset-stats))
 
-(def stats-bean
+(def ^{:private true} stats-bean
   (reify
     DynamicMBean
     (getAttribute [this key]

@@ -3,4 +3,4 @@ pom.xml
 /lib/
 /doc/
 /classes/
-.lein-deps-sum
+.*

@@ -16,14 +16,15 @@
   (if (nil? (:code req))
     (let [data (first (:data req))]
       (assoc req :args
-             ((deserializer (:content-type req)) data)))
+             (deserialize (:content-type req) data)))
     req))
 
 (defn- do-invoke [req]
   (if (nil? (:code req))
     (try
       (let [{f :func args :args} req
-            r (apply f args)]
+            r0 (apply f args)
+            r (if (seq? r0) (doall r0) r0)]
         (assoc req :result r :code :success))
       (catch Exception e
         (assoc req :code :exception :result (.toString e))))
@@ -31,7 +32,7 @@
 
 (defn- serialize-result [req]
   (if-not (nil? (:result req))
-    (assoc req :result ((serializer (:content-type req)) (:result req)))
+    (assoc req :result (serialize (:content-type req) (:result req)))
     req))
 
 (defn- map-response-fields [req]

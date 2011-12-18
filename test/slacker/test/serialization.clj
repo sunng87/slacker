@@ -4,13 +4,19 @@
 
 (deftest test-serialization
   (let [data [1 2 3]]
-    (is (= data (read-carb (write-carb data)))))
+    (is (= data (deserialize :carb (serialize :carb data)))))
   (let [data {:a 1 :b 2}]
-    (is (= data (read-carb (write-carb data))))))
+    (is (= data (deserialize :carb (serialize :carb data))))))
 
 (deftest test-json-serialization
   (let [data [1 2 3]]
-    (is (= data (read-json (write-json data)))))
+    (is (= data (deserialize :json (serialize :json data)))))
   (let [data {:a 1 :b 2}]
-    (is (= data (read-json (write-json data))))))
+    (is (= data (deserialize :json (serialize :json data))))))
+
+(deftest test-clj-serialization
+  (let [data [1 2 3]]
+    (is (= data (deserialize :clj (serialize :clj data)))))
+  (let [data {:a 1 :b 2}]
+    (is (= data (deserialize :clj (serialize :clj data))))))
 

@@ -1,11 +1,11 @@
 (println "Some comparisons between remote eval and slacker.")
 (use 'slacker.serialization)
 
-(def params (write-carb [100 200 300 400 500 600 700 800 900]))
-(def params2 (write-carb [{:a 2 :b 3} 100 "tomcat"]))
+(def params (serialize :carb [100 200 300 400 500 600 700 800 900]))
+(def params2 (serialize :carb [{:a 2 :b 3} 100 "tomcat"]))
 
 (defn reenterable-read [buf]
-  (let [result (read-carb buf)]
+  (let [result (deserialize :carb buf)]
     (.rewind buf)
     result))
 

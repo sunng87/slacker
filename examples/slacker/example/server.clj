@@ -1,6 +1,8 @@
 (ns slacker.example.server
   (:use [slacker server interceptor])
   (:use slacker.interceptors.stats)
+  (:use slacker.interceptors.exectime)
+  (:use slacker.interceptors.logargs)
   (:require [slacker.example.api]))
 
 (definterceptor log-function-calls
@@ -11,6 +13,8 @@
 (defn -main [& args]
   (start-slacker-server (the-ns 'slacker.example.api) 2104
                         :interceptors (interceptors [log-function-calls
-                                                     function-call-stats]))
+                                                     function-call-stats
+                                                     (logargs :error)
+                                                     exectime-stats]))
   (println "Slacker example server started on port 2104."))
 
