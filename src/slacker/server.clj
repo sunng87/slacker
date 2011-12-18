@@ -23,7 +23,8 @@
   (if (nil? (:code req))
     (try
       (let [{f :func args :args} req
-            r (apply f args)]
+            r0 (apply f args)
+            r (if (seq? r0) (doall r0) r0)]
         (assoc req :result r :code :success))
       (catch Exception e
         (assoc req :code :exception :result (.toString e))))
