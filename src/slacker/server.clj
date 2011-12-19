@@ -1,13 +1,14 @@
 (ns slacker.server
   (:use [slacker common serialization protocol])
+  (:use [slacker.server http])
   (:use [lamina.core])
-  (:use [aleph.tcp]))
+  (:use [aleph tcp http]))
 
 ;; pipeline functions for server request handling
 (defn- map-req-fields [req]
   (zipmap [:packet-type :content-type :fname :data] req))
 
-(defn- look-up-function [funcs req]
+(defn- look-up-function [req funcs]
   (if-let [func (funcs (:fname req))]
     (assoc req :func func)
     (assoc req :code :not-found)))
@@ -43,16 +44,14 @@
 (def invalid-type-packet [version [:type-error :invalid-packet]])
 
 (defn build-server-pipeline [funcs before-interceptors after-interceptors]
-  (let [find-func (partial look-up-function funcs)
-        to-response #(assoc % :packet-type :type-response)]
-    #(-> %
-         find-func
-         deserialize-args
-         before-interceptors
-         do-invoke
-         after-interceptors
-         serialize-result
-         to-response)))
+  #(-> %
+       (look-up-function funcs)
+       deserialize-args
+       before-interceptors
+       do-invoke
+       after-interceptors
+       serialize-result
+       (assoc :packet-type :type-response)))
 
 (defmulti -handle-request (fn [_ p] (:packet-type p)))
 (defmethod -handle-request :type-request [server-pipeline req-map]
@@ -68,25 +67,33 @@
       (-handle-request server-pipeline req-map))
     protocol-mismatch-packet))
 
-(defn create-server-handler [funcs before after]
-  (let [server-pipeline (build-server-pipeline funcs before after)]
-    (fn [ch client-info]
-      (receive-all
-       ch
-       #(if-let [req %]
-          (enqueue ch (handle-request server-pipeline req client-info)))))))
+(defn create-server-handler [server-pipeline]
+  (fn [ch client-info]
+    (receive-all
+     ch
+     #(if-let [req %]
+        (enqueue ch (handle-request server-pipeline req client-info))))))
 
 (defn start-slacker-server
   "Start a slacker server to expose all public functions under
   a namespace. If you have multiple namespace to expose, it's better
-  to combine them into one."
+  to combine them into one.
+  Options:
+  * interceptors add server interceptors
+  * http http port for slacker http transport"
   [exposed-ns port
-   & {:keys [interceptors]
-      :or {interceptors {:before identity :after identity}}}]
+   & {:keys [http interceptors]
+      :or {http nil
+           interceptors {:before identity :after identity}}}]
   (let [funcs (into {} (for [f (ns-publics exposed-ns)] [(name (key f)) (val f)]))
         {before :before after :after} interceptors
-        handler (create-server-handler funcs before after)]
+        server-pipeline (build-server-pipeline funcs before after)
+        handler (create-server-handler server-pipeline)]
     (when *debug* (doseq [f (keys funcs)] (println f)))
-    (start-tcp-server handler {:port port :frame slacker-base-codec})))
+    (start-tcp-server handler {:port port :frame slacker-base-codec})
+    (when-not (nil? http)
+      (start-http-server (wrap-ring-handler
+                          (wrap-http-server-handler server-pipeline))
+                         {:port http}))))
 
 
