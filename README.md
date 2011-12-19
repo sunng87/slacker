@@ -183,6 +183,33 @@ interceptors before or after function called.
 For more information about using interceptors and creating your own
 interceptors, query the [wiki page](https://github.com/sunng87/slacker/wiki/Interceptors).
 
+### Slacker on HTTP
+
+From 0.4.0, slacker can be configured to run on HTTP protocol. To
+enable HTTP transport, just add a `:http` option to your slacker
+server:
+
+``` clojure
+(start-slacker-server ...
+                      :http 4104)
+```
+
+The HTTP url pattern is
+http://localhost:4104/*function-name*.*format*. Arguments are encoded
+in *format*, and posted to server via HTTP body. If you have multiple
+arguments, you should put them into a clojure vector (for clj format)
+or javascript array (for json format).
+
+See a curl example:
+
+``` bash
+$ curl -d "[5]" http://localhost:4104/rand-ints.clj
+(38945142 1413770549 1361247669 1899499977 1281637740)
+```
+
+Note that you can only use `json` or `clj` as format. Because HTTP is
+a test based protocol, so `carb` will not be supported.
+
 ## Performance
 
 Some performance tests was executed while I'm developing slacker.
