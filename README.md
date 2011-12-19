@@ -167,6 +167,12 @@ may lead to inconsistency of your clojure data structure between server and
 client. Try to avoid this by carefully design your data structure or
 just using carbonite(default and recommended).
 
+From slacker 0.4.0, clojure pr/read is supported. You can just
+set content-type as `:clj`. clojure pr/read has full support on
+clojure data structures and also easy for debugging. However, it's
+much slower that carbonite so you'd better not use it if you have
+critical performance requirements.
+
 ### Server interceptors
 
 To add custom functions on server, you can define custom
