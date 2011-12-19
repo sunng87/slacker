@@ -18,6 +18,7 @@
         [fname content-type] (string/split uri #"\.")
         fname (.substring fname 1)
         content-type (keyword content-type)
+        body (or body "[]")
         data [(instream-to-bb body)]] ;; gloss finite-block workaround
     {:packet-type :type-request
      :content-type content-type
@@ -27,11 +28,15 @@
 (defn- encode-http-data [req]
   (let [{ct :content-type code :code result :result} req
         content-type (str "application/" (name ct))
-        status (if (= :success code) 200 500)
-        body (bb-to-string result)]
+        status (case (:code req)
+                 :success 200
+                 :exception 500
+                 :not-found 404
+                 400)
+        body (and result (bb-to-string result))]
     {:status status
      :headers {"content-type" content-type}
-     :body body}))
+     :body (str body "\r\n")}))
 
 (defn wrap-http-server-handler [server-handler]
   (fn [req]
