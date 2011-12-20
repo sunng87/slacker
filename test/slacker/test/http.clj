@@ -1,7 +1,8 @@
 (ns slacker.test.http
   (:use clojure.test)
   (:use slacker.server.http)
-  (:require [clojure.java.io :as io]))
+  (:require [clojure.java.io :as io])
+  (:require [clojure.string :as string]))
 
 (defn fake-server-handler [req]
   (assoc req :code :success :result (first (:data req))))
@@ -15,7 +16,7 @@
         req {:uri "/echo.clj" :body (make-fake-data-stream in-data)}
         resp (handler req)]
     (is (= 200 (:status resp)))
-    (is (= in-data (:body resp)))
+    (is (= in-data (string/trimr (:body resp))))
     (is (= "application/clj" (get (:headers resp) "content-type")))))
 
 
