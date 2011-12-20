@@ -2,7 +2,8 @@
   (:use [slacker common serialization protocol])
   (:use [slacker.server http])
   (:use [lamina.core])
-  (:use [aleph tcp http]))
+  (:use [aleph tcp http])
+  (:use [slingshot.slingshot :only [try+]]))
 
 ;; pipeline functions for server request handling
 (defn- map-req-fields [req]
@@ -22,7 +23,7 @@
 
 (defn- do-invoke [req]
   (if (nil? (:code req))
-    (try
+    (try+
       (let [{f :func args :args} req
             r0 (apply f args)
             r (if (seq? r0) (doall r0) r0)]

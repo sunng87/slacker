@@ -4,21 +4,20 @@
   (:use [lamina.core :exclude [close]])
   (:use [lamina.connections])
   (:use [aleph.tcp])
-  (:import [slacker SlackerException]))
+  (:use [slingshot.slingshot :only [throw+]]))
 
 (defn- handle-normal-response [response]
   (let [[_ content-type code data] response]
     (case code
       :success (deserialize content-type (first data))
-      :not-found (throw (SlackerException. "function not found."))
-      :exception (throw (SlackerException.
-                         (deserialize content-type (first data))))
-      (throw (SlackerException. (str "invalid result code: " code))))))
+      :not-found (throw+ {:code code})
+      :exception (throw+ {:code code :error (deserialize content-type (first data))})
+      (throw+ {:code :invalid-result-code}))))
 
 (defn- handle-response [response]
   (case (first response)
     :type-response (handle-normal-response response)
-    :type-error (throw (SlackerException. (str "fatal error: " (second response))))
+    :type-error (throw+ {:code (second response)})
     nil))
 
 (defn- make-request [content-type func-name params]

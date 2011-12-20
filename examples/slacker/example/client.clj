@@ -1,6 +1,6 @@
 (ns slacker.example.client
   (:use slacker.client)
-  (:import [slacker SlackerException]))
+  (:use [slingshot.slingshot :only [try+]]))
 
 (def conn (slackerc "localhost" 2104))
 (def conn2 (slackerc "localhost" 2104 :content-type :json))
@@ -23,9 +23,9 @@
   (println @(get-m))
   (get-m2)
   (println (rand-ints 10))
-  (try
+  (try+
     (make-error)
-    (catch SlackerException e (println (.getMessage e))))
+    (catch [:code :exception] {:keys [error]} (println error)))
   ;; shutdown
   (close conn)
   (close conn2)
