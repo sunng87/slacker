@@ -38,7 +38,10 @@
      :headers {"content-type" content-type}
      :body (str body "\r\n")}))
 
-(defn wrap-http-server-handler [server-handler]
+(defn wrap-http-server-handler
+  "wrap a standard server-pipeline to support ring style
+  handler."
+  [server-handler]
   (fn [req]
     (-> req
         decode-http-data
