@@ -66,7 +66,7 @@ On the client side, define a facade for the remote function:
 ``` clojure
 (use 'slacker.client)
 (def sc (slackerc "localhost" 2104))
-(defremote sc timestamp)
+(defn-remote sc timestamp)
 (timestamp)
 ```
 
@@ -89,29 +89,29 @@ For the meaning of each option, check the
 [javadoc](http://commons.apache.org/pool/apidocs/org/apache/commons/pool/impl/GenericObjectPool.html)
 of commons-pool.
 
-### Options in defremote
+### Options in defn-remote
 
 You are specify the remote function name when the name is occupied in
 current namespace
 
 ``` clojure
-(defremote sc remote-time
+(defn-remote sc remote-time
   :remote-name "timestamp")
 ```
 
-If you add an `:async` flag to `defremote`, then the facade will be
+If you add an `:async` flag to `defn-remote`, then the facade will be
 asynchronous which returns a *promise* when you call it. You should
 deref it by yourself to get the return value.
 
 ``` clojure
-(defremote timestamp :async true)
+(defn-remote timestamp :async true)
 @(timestamp)
 ```
 
 You can also assign a callback for an async facade.
 
 ``` clojure
-(defremote timestamp :callback #(println %))
+(defn-remote timestamp :callback #(println %))
 (timestamp)
 ```
 

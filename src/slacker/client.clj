@@ -113,7 +113,7 @@
       (async-call-remote sc fname args callback)
       (sync-call-remote sc fname args))))
 
-(defmacro defremote
+(defmacro defn-remote
   "Define a facade for remote function. You have to provide the
   connection and the function name. (Argument list is not required here.)"
   [sc fname & {:keys [remote-name async callback]

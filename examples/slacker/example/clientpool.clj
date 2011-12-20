@@ -6,10 +6,10 @@
                          :exhausted-action
                          :grow :min-idle 1))
 
-(defremote conn timestamp)
-(defremote conn inc-m)
-(defremote conn get-m)
-(defremote conn rand-ints)
+(defn-remote conn timestamp)
+(defn-remote conn inc-m)
+(defn-remote conn get-m)
+(defn-remote conn rand-ints)
 
 
 (defn -main [& args]

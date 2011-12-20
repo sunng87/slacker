@@ -4,15 +4,15 @@
 
 (def conn (slackerc "localhost" 2104))
 (def conn2 (slackerc "localhost" 2104 :content-type :json))
-(defremote conn timestamp)
-(defremote conn2 inc-m)
-(defremote conn get-m :async true)
-(defremote conn2 show-m :remote-name "get-m")
-(defremote conn get-m2
+(defn-remote conn timestamp)
+(defn-remote conn2 inc-m)
+(defn-remote conn get-m :async true)
+(defn-remote conn2 show-m :remote-name "get-m")
+(defn-remote conn get-m2
   :remote-name "get-m"
   :callback #(prn "Async get-m ==> " %))
-(defremote conn rand-ints)
-(defremote conn make-error)
+(defn-remote conn rand-ints)
+(defn-remote conn make-error)
 
 
 (defn -main [& args]
