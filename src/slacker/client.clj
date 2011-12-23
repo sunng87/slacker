@@ -4,14 +4,15 @@
   (:use [lamina.core :exclude [close]])
   (:use [lamina.connections])
   (:use [aleph.tcp])
+  (:use [gloss.io :only [contiguous]])
   (:use [slingshot.slingshot :only [throw+]]))
 
 (defn- handle-normal-response [response]
   (let [[_ content-type code data] response]
     (case code
-      :success (deserialize content-type (first data))
+      :success (deserialize content-type (contiguous data))
       :not-found (throw+ {:code code})
-      :exception (throw+ {:code code :error (deserialize content-type (first data))})
+      :exception (throw+ {:code code :error (deserialize content-type (contiguous data))})
       (throw+ {:code :invalid-result-code}))))
 
 (defn- handle-response [response]

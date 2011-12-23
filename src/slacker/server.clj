@@ -3,6 +3,7 @@
   (:use [slacker.server http])
   (:use [lamina.core])
   (:use [aleph tcp http])
+  (:use [gloss.io :only [contiguous]])
   (:use [slingshot.slingshot :only [try+]]))
 
 ;; pipeline functions for server request handling
@@ -16,7 +17,7 @@
 
 (defn- deserialize-args [req]
   (if (nil? (:code req))
-    (let [data (first (:data req))]
+    (let [data (contiguous (:data req))]
       (assoc req :args
              (deserialize (:content-type req) data)))
     req))
