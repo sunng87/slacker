@@ -76,6 +76,10 @@
      #(if-let [req %]
         (enqueue ch (handle-request server-pipeline req client-info))))))
 
+(defn- ns-funcs [n]
+  (into {}
+        (for [[k v] (ns-publics n) :when (fn? @v)] [(name k) v])))
+
 (defn start-slacker-server
   "Start a slacker server to expose all public functions under
   a namespace. If you have multiple namespace to expose, it's better
@@ -87,7 +91,7 @@
    & {:keys [http interceptors]
       :or {http nil
            interceptors {:before identity :after identity}}}]
-  (let [funcs (into {} (for [f (ns-publics exposed-ns)] [(name (key f)) (val f)]))
+  (let [funcs (ns-funcs exposed-ns)
         {before :before after :after} interceptors
         server-pipeline (build-server-pipeline funcs before after)
         handler (create-server-handler server-pipeline)]
