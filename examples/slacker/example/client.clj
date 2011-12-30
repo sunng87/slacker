@@ -27,7 +27,7 @@
     (make-error)
     (catch [:code :exception] {:keys [error]} (println error)))
   ;; shutdown
-  (close conn)
-  (close conn2)
+  (close-slackerc conn)
+  (close-slackerc conn2)
 
   (System/exit 0))

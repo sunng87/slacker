@@ -20,6 +20,6 @@
   (println (rand-ints 10))
 
   ;; shutdown
-  (close conn)
+  (close-slackerc conn)
 
   (System/exit 0))

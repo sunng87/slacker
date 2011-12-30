@@ -70,6 +70,12 @@ On the client side, define a facade for the remote function:
 (timestamp)
 ```
 
+#### Closing the client
+
+``` clojure
+(close-slackerc sc)
+```
+
 ### Client Connection Pool
 
 Slacker also supports connection pool in client API, which enables
