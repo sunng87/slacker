@@ -49,6 +49,7 @@
     publish all the functions to zookeeper.
     A new slackerc-zk reads function/client from zookeeper and also
     get notified with server changes.
+    Detailed and updated design can be found here: http://lazypress.cloudfoundry.com/p/i
 
 ** Releases
 
