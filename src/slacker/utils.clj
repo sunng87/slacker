@@ -11,8 +11,7 @@
   (let [result (introspect sc :functions)]
     (split result #",")))
 
-(defn defn-remote-all [sc]
-  (doseq [fname (get-all-funcs sc)]
-    (defn-remote sc (symbol *ns* fname))))
+(defmacro defn-remote-all [sc]
+  `(do ~@(map (fn [f] `(defn-remote ~sc ~(symbol f))) `(get-all-funcs ~sc))))
 
 
