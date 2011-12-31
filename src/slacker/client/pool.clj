@@ -57,6 +57,12 @@
             (let [result (handle-response resp)]
               (if-not (nil? cb) (cb result))
               result))))))
+  (introspect [this type]
+    (let [conn (.borrowObject pool)
+          request [version [:type-introspect-req type]]
+          response (wait-for-result (conn request) *timeout*)]
+      (.returnObject pool conn)
+      (second (second response))))
   (close [this]
     (.close pool)))
 

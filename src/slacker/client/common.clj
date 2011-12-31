@@ -30,6 +30,7 @@
 (defprotocol SlackerClientProtocol
   (sync-call-remote [this func-name params])
   (async-call-remote [this func-name params cb])
+  (introspect [this type])
   (close [this]))
 
 (deftype SlackerClient [conn content-type]
@@ -47,6 +48,10 @@
           (let [result (handle-response resp)]
             (if-not (nil? cb) (cb result))
             result)))))
+  (introspect [this type]
+    (let [request [version [:type-introspect-req type]]
+          response (wait-for-result (conn request) *timeout*)]
+      (second (second response))))
   (close [this]
     (close-connection conn)))
 
