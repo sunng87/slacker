@@ -8,7 +8,9 @@
                :type-pong 3
                :type-error 4
                :type-auth-req 5
-               :type-auth-ack 6}))
+               :type-auth-ack 6
+               :type-introspect-req 7
+               :type-introspect-ack 8}))
 
 (defcodec content-type
   (enum :byte {:carb 0 :json 1 :clj 2}))
@@ -53,6 +55,14 @@
    (enum :byte {:auth-ok 0
                 :auth-reject 1})])
 
+(defcodec slacker-introspect-req-codec
+  [:type-introspect-req
+   (enum :byte {:functions 0})])
+
+(defcodec slacker-introspect-ack-codec
+  [:type-introspect-ack
+   (finite-frame :uint16 (string :ascii))])
+
 (defcodec slacker-base-codec
   [:byte ;; protocol version
    (header
@@ -61,8 +71,10 @@
      :type-response slacker-response-codec
      :type-ping slacker-ping-codec
      :type-pong slacker-pong-codec
-     :type-error slacker-error-codec ;; reuse response packet here
+     :type-error slacker-error-codec 
      :type-auth-req slacker-auth-req-codec
-     :type-auth-ack slacker-auth-ack-codec}
+     :type-auth-ack slacker-auth-ack-codec
+     :type-introspect-req slacker-introspect-req-codec
+     :type-introspect-ack slacker-introspect-ack-codec}
     first)])
 
