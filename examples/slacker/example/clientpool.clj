@@ -1,15 +1,12 @@
 (ns slacker.example.clientpool
   (:use slacker.client)
-  (:import [slacker SlackerException]))
+  (:use slacker.utils))
 
 (def conn (slackerc-pool "localhost" 2104
                          :exhausted-action
                          :grow :min-idle 1))
 
-(defn-remote conn timestamp)
-(defn-remote conn inc-m)
-(defn-remote conn get-m)
-(defn-remote conn rand-ints)
+(defn-remote-batch conn timestamp inc-m get-m rand-ints)
 
 
 (defn -main [& args]
