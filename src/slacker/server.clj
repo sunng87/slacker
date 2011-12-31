@@ -1,4 +1,5 @@
 (ns slacker.server
+  (:use [clojure.string :only [join]])
   (:use [slacker common serialization protocol])
   (:use [slacker.server http])
   (:use [lamina.core])
@@ -44,38 +45,43 @@
 (def pong-packet [version [:type-pong]])
 (def protocol-mismatch-packet [version [:type-error :protocol-mismatch]])
 (def invalid-type-packet [version [:type-error :invalid-packet]])
+(defn make-introspect-ack [data]
+  [version [:type-introspect-ack data]])
 
-(defn build-server-pipeline [funcs before-interceptors after-interceptors]
+(defn build-server-pipeline [funcs interceptors]
   #(-> %
        (look-up-function funcs)
        deserialize-args
-       before-interceptors
+       ((:before interceptors))
        do-invoke
-       after-interceptors
+       ((:after interceptors))
        serialize-result
        (assoc :packet-type :type-response)))
 
-(defmulti -handle-request (fn [_ p _] (first p)))
-(defmethod -handle-request :type-request [server-pipeline req client-info]
+(defmulti -handle-request (fn [_ p & _] (first p)))
+(defmethod -handle-request :type-request [server-pipeline req client-info _]
   (let [req-map (assoc (map-req-fields req) :client client-info)]
     (map-response-fields (server-pipeline req-map))))
-(defmethod -handle-request :type-ping [_ _ _]
+(defmethod -handle-request :type-ping [& _]
   pong-packet)
-(defmethod -handle-request :type-introspect-req [_ _ _])
-(defmethod -handle-request :default [_ _ _]
+(defmethod -handle-request :type-introspect-req [_ p _ funcs]
+  (case (second p)
+    :functions (make-introspect-ack (join "," (map name (keys funcs))))))
+(defmethod -handle-request :default [& _]
   invalid-type-packet)
 
-(defn handle-request [server-pipeline req client-info]
+(defn handle-request [server-pipeline req client-info funcs]
   (if (= version (first req))
-    (-handle-request server-pipeline (second req) client-info)
+    (-handle-request server-pipeline (second req) client-info funcs)
     protocol-mismatch-packet))
 
-(defn create-server-handler [server-pipeline]
-  (fn [ch client-info]
-    (receive-all
-     ch
-     #(if-let [req %]
-        (enqueue ch (handle-request server-pipeline req client-info))))))
+(defn- create-server-handler [funcs interceptors]
+  (let [server-pipeline (build-server-pipeline funcs interceptors)]
+    (fn [ch client-info]
+      (receive-all
+       ch
+       #(if-let [req %]
+          (enqueue ch (handle-request server-pipeline req client-info funcs)))))))
 
 (defn- ns-funcs [n]
   (into {}
@@ -93,14 +99,13 @@
       :or {http nil
            interceptors {:before identity :after identity}}}]
   (let [funcs (ns-funcs exposed-ns)
-        {before :before after :after} interceptors
-        server-pipeline (build-server-pipeline funcs before after)
-        handler (create-server-handler server-pipeline)]
+        handler (create-server-handler funcs interceptors)]
     (when *debug* (doseq [f (keys funcs)] (println f)))
     (start-tcp-server handler {:port port :frame slacker-base-codec})
     (when-not (nil? http)
       (start-http-server (wrap-ring-handler
-                          (wrap-http-server-handler server-pipeline))
+                          (wrap-http-server-handler
+                           (build-server-pipeline funcs interceptors)))
                          {:port http}))))
 
 
