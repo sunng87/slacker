@@ -1,5 +1,4 @@
 (ns slacker.server
-  (:use [clojure.string :only [join]])
   (:use [slacker common serialization protocol])
   (:use [slacker.server http])
   (:use [lamina.core])
@@ -66,7 +65,13 @@
   pong-packet)
 (defmethod -handle-request :type-introspect-req [_ p _ funcs]
   (case (second p)
-    :functions (make-introspect-ack (join "," (map name (keys funcs))))))
+    :functions
+    (make-introspect-ack (serialize :clj (map name (keys funcs))))
+    :meta
+    (make-introspect-ack
+     (let [fname (deserialize :clj (contiguous (last p)))
+           metadata (meta (funcs fname))]
+       (serialize :clj (select-keys metadata [:name :doc :arglists]))))))
 (defmethod -handle-request :default [& _]
   invalid-type-packet)
 
@@ -81,7 +86,8 @@
       (receive-all
        ch
        #(if-let [req %]
-          (enqueue ch (handle-request server-pipeline req client-info funcs)))))))
+          (enqueue ch
+                   (handle-request server-pipeline req client-info funcs)))))))
 
 (defn- ns-funcs [n]
   (into {}

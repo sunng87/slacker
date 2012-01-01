@@ -44,12 +44,16 @@
 *** TODO Move to Clojure 1.3
     A new branch is created for clojure 1.3. Upgrade aleph and
     carbonite to be compatible with 1.3
-*** TODO HA with ZooKeeper
+*** TODO HA with ZooKeeper                                    :server:client:
     Add a :zk option to start-slacker. Once server started, it will
     publish all the functions to zookeeper.
     A new slackerc-zk reads function/client from zookeeper and also
     get notified with server changes.
     Detailed and updated design can be found here: http://lazypress.cloudfoundry.com/p/i
+*** TODO server introspection
+    Add new protocol command to get metadata of slacker functions.
+**** get all functions exposed by the server
+**** get metadata of a particular function
 
 ** Releases
 

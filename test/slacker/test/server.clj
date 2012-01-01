@@ -55,7 +55,6 @@
 
 (deftest test-functions-introspect
   (let [request [version [:type-introspect-req :functions]]
-        response (second (second (handle-request nil request nil funcs)))
-        ]
-    (= (map name (keys funcs)) (split response #","))))
+        response (deserialize :clj (second (second (handle-request nil request nil funcs))))]
+    (= (map name (keys funcs)) response)))
 

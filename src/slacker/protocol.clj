@@ -57,11 +57,13 @@
 
 (defcodec slacker-introspect-req-codec
   [:type-introspect-req
-   (enum :byte {:functions 0})])
+   (enum :byte {:functions 0
+                :meta 1}) ;; introspect command code
+   (finite-block :uint16)]) ;; args
 
 (defcodec slacker-introspect-ack-codec
   [:type-introspect-ack
-   (finite-frame :uint16 (string :ascii))])
+   (finite-block :uint16)]) ;; return value
 
 (defcodec slacker-base-codec
   [:byte ;; protocol version
