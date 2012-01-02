@@ -9,8 +9,8 @@
                :type-error 4
                :type-auth-req 5
                :type-auth-ack 6
-               :type-introspect-req 7
-               :type-introspect-ack 8}))
+               :type-inspect-req 7
+               :type-inspect-ack 8}))
 
 (defcodec content-type
   (enum :byte {:carb 0 :json 1 :clj 2}))
@@ -55,14 +55,14 @@
    (enum :byte {:auth-ok 0
                 :auth-reject 1})])
 
-(defcodec slacker-introspect-req-codec
-  [:type-introspect-req
+(defcodec slacker-inspect-req-codec
+  [:type-inspect-req
    (enum :byte {:functions 0
-                :meta 1}) ;; introspect command code
+                :meta 1}) ;; inspect command code
    (finite-block :uint16)]) ;; args
 
-(defcodec slacker-introspect-ack-codec
-  [:type-introspect-ack
+(defcodec slacker-inspect-ack-codec
+  [:type-inspect-ack
    (finite-block :uint16)]) ;; return value
 
 (defcodec slacker-base-codec
@@ -76,7 +76,7 @@
      :type-error slacker-error-codec 
      :type-auth-req slacker-auth-req-codec
      :type-auth-ack slacker-auth-ack-codec
-     :type-introspect-req slacker-introspect-req-codec
-     :type-introspect-ack slacker-introspect-ack-codec}
+     :type-inspect-req slacker-inspect-req-codec
+     :type-inspect-ack slacker-inspect-ack-codec}
     first)])
 

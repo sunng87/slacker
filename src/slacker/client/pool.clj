@@ -57,12 +57,12 @@
             (let [result (handle-response resp)]
               (if-not (nil? cb) (cb result))
               result))))))
-  (introspect [this cmd args]
+  (inspect [this cmd args]
     (let [conn (.borrowObject pool)
-          request (make-introspect-request cmd args)
+          request (make-inspect-request cmd args)
           response (wait-for-result (conn request) *timeout*)]
       (.returnObject pool conn)
-      (parse-introspect-response response)))
+      (parse-inspect-response response)))
   (close [this]
     (.close pool)))
 

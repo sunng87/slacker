@@ -53,8 +53,8 @@
     (is (= :invalid-packet (nth response 1)))))
 
 
-(deftest test-functions-introspect
-  (let [request [version [:type-introspect-req :functions]]
+(deftest test-functions-inspect
+  (let [request [version [:type-inspect-req :functions]]
         response (deserialize :clj (second (second (handle-request nil request nil funcs))))]
     (= (map name (keys funcs)) response)))
 

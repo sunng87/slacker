@@ -27,16 +27,16 @@
 (defn ping [conn]
   (wait-for-result (conn ping-packet) *timeout*))
 
-(defn make-introspect-request [cmd args]
-  [version [:type-introspect-req cmd
+(defn make-inspect-request [cmd args]
+  [version [:type-inspect-req cmd
             (serialize :clj args)]])
-(defn parse-introspect-response [response]
+(defn parse-inspect-response [response]
   (deserialize :clj (contiguous (second (second response)))))
 
 (defprotocol SlackerClientProtocol
   (sync-call-remote [this func-name params])
   (async-call-remote [this func-name params cb])
-  (introspect [this cmd args])
+  (inspect [this cmd args])
   (close [this]))
 
 (deftype SlackerClient [conn content-type]
@@ -54,10 +54,10 @@
           (let [result (handle-response resp)]
             (if-not (nil? cb) (cb result))
             result)))))
-  (introspect [this cmd args]
-    (let [request (make-introspect-request cmd args)
+  (inspect [this cmd args]
+    (let [request (make-inspect-request cmd args)
           response (wait-for-result (conn request) *timeout*)]
-      (parse-introspect-response response)))
+      (parse-inspect-response response)))
   (close [this]
     (close-connection conn)))
 

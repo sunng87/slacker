@@ -1,13 +1,13 @@
 (ns slacker.utils
   (:use [slacker common serialization])
   (:use [slacker.client :only [defn-remote]])
-  (:use [slacker.client.common :only [introspect]]))
+  (:use [slacker.client.common :only [inspect]]))
 
 (defmacro defn-remote-batch [sc & fnames]
   `(do ~@(map (fn [f] `(defn-remote ~sc ~f)) fnames)))
 
 (defn get-all-funcs [sc]
-  (introspect sc :functions nil))
+  (inspect sc :functions nil))
 
 
 (defn defn-remote-all [sc]
@@ -18,6 +18,6 @@
   (let [fname (if (fn? f)
                 (name (:name (meta f)))
                 (str f))]
-    (introspect sc :meta fname)))
+    (inspect sc :meta fname)))
 
 

@@ -44,8 +44,8 @@
 (def pong-packet [version [:type-pong]])
 (def protocol-mismatch-packet [version [:type-error :protocol-mismatch]])
 (def invalid-type-packet [version [:type-error :invalid-packet]])
-(defn make-introspect-ack [data]
-  [version [:type-introspect-ack data]])
+(defn make-inspect-ack [data]
+  [version [:type-inspect-ack data]])
 
 (defn build-server-pipeline [funcs interceptors]
   #(-> %
@@ -63,12 +63,12 @@
     (map-response-fields (server-pipeline req-map))))
 (defmethod -handle-request :type-ping [& _]
   pong-packet)
-(defmethod -handle-request :type-introspect-req [_ p _ funcs]
+(defmethod -handle-request :type-inspect-req [_ p _ funcs]
   (case (second p)
     :functions
-    (make-introspect-ack (serialize :clj (map name (keys funcs))))
+    (make-inspect-ack (serialize :clj (map name (keys funcs))))
     :meta
-    (make-introspect-ack
+    (make-inspect-ack
      (let [fname (deserialize :clj (contiguous (last p)))
            metadata (meta (funcs fname))]
        (serialize :clj (select-keys metadata [:name :doc :arglists]))))))
