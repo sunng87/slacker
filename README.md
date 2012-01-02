@@ -233,7 +233,8 @@ functions are created to use this command.
 
 ``` clojure
 (use 'slacker.utils)
-(defn-remote-all sc)
+;; the symbol of your slacker client, with namespace
+(defn-remote-all 'user/sc) 
 ```
 
 #### Get metadata of a remote function

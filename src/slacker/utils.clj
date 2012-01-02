@@ -10,9 +10,9 @@
   (inspect sc :functions nil))
 
 
-(defn defn-remote-all [sc]
-  (dorun (map #(eval (list 'defn-remote 'sc (symbol %)))
-              (get-all-funcs sc))))
+(defn defn-remote-all [sc-sym]
+  (dorun (map #(eval (list 'defn-remote sc-sym (symbol %)))
+              (get-all-funcs @(find-var sc-sym)))))
 
 (defn meta-remote [sc f]
   (let [fname (if (fn? f)
