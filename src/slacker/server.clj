@@ -45,7 +45,8 @@
 (def protocol-mismatch-packet [version [:type-error :protocol-mismatch]])
 (def invalid-type-packet [version [:type-error :invalid-packet]])
 (defn make-inspect-ack [data]
-  [version [:type-inspect-ack data]])
+  [version [:type-inspect-ack
+            (serialize :clj data)]])
 
 (defn build-server-pipeline [funcs interceptors]
   #(-> %
@@ -57,37 +58,46 @@
        serialize-result
        (assoc :packet-type :type-response)))
 
+(defn build-inspect-handler [inspect-enabled? funcs]
+  #(if inspect-enabled?
+     (case (second %)
+       :functions
+       (make-inspect-ack (map name (keys funcs)))
+       :meta
+       (make-inspect-ack
+        (let [fname (deserialize :clj (contiguous (last %)))
+              metadata (meta (funcs fname))]
+          (select-keys metadata [:name :doc :arglists]))))
+     (make-inspect-ack nil)))
+
 (defmulti -handle-request (fn [_ p & _] (first p)))
 (defmethod -handle-request :type-request [server-pipeline req client-info _]
   (let [req-map (assoc (map-req-fields req) :client client-info)]
     (map-response-fields (server-pipeline req-map))))
 (defmethod -handle-request :type-ping [& _]
   pong-packet)
-(defmethod -handle-request :type-inspect-req [_ p _ funcs]
-  (case (second p)
-    :functions
-    (make-inspect-ack (serialize :clj (map name (keys funcs))))
-    :meta
-    (make-inspect-ack
-     (let [fname (deserialize :clj (contiguous (last p)))
-           metadata (meta (funcs fname))]
-       (serialize :clj (select-keys metadata [:name :doc :arglists]))))))
+(defmethod -handle-request :type-inspect-req [_ p _ inspect-handler]
+  (inspect-handler p))
 (defmethod -handle-request :default [& _]
   invalid-type-packet)
 
-(defn handle-request [server-pipeline req client-info funcs]
+(defn handle-request [server-pipeline req client-info inspect-handler]
   (if (= version (first req))
-    (-handle-request server-pipeline (second req) client-info funcs)
+    (-handle-request server-pipeline (second req)
+                     client-info inspect-handler)
     protocol-mismatch-packet))
 
-(defn- create-server-handler [funcs interceptors]
-  (let [server-pipeline (build-server-pipeline funcs interceptors)]
+(defn- create-server-handler [funcs interceptors inspect?]
+  (let [server-pipeline (build-server-pipeline funcs interceptors)
+        inspect-handler (build-inspect-handler inspect? funcs)]
     (fn [ch client-info]
       (receive-all
        ch
        #(if-let [req %]
-          (enqueue ch
-                   (handle-request server-pipeline req client-info funcs)))))))
+          (enqueue ch (handle-request server-pipeline
+                                      req
+                                      client-info
+                                      inspect-handler)))))))
 
 (defn- ns-funcs [n]
   (into {}
@@ -101,11 +111,12 @@
   * interceptors add server interceptors
   * http http port for slacker http transport"
   [exposed-ns port
-   & {:keys [http interceptors]
+   & {:keys [http interceptors inspect?]
       :or {http nil
-           interceptors {:before identity :after identity}}}]
+           interceptors {:before identity :after identity}
+           inspect? true}}]
   (let [funcs (ns-funcs exposed-ns)
-        handler (create-server-handler funcs interceptors)]
+        handler (create-server-handler funcs interceptors inspect?)]
     (when *debug* (doseq [f (keys funcs)] (println f)))
     (start-tcp-server handler {:port port :frame slacker-base-codec})
     (when-not (nil? http)

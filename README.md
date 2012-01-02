@@ -222,6 +222,26 @@ $ curl -d "[5]" http://localhost:4104/rand-ints.clj
 Note that you can only use `json` or `clj` as format. Because HTTP is
 a test based protocol, so `carb` will not be supported.
 
+### Inspect
+
+Also from 0.4.0, a new inspect command is added to the protocol. You
+can get server information such as function names, metadata of a
+particular function. In the namespace of  `slacker.utils`, some
+functions are created to use this command.
+
+#### Define facade for all functions available
+
+``` clojure
+(use 'slacker.utils)
+(defn-remote-all sc)
+```
+
+#### Get metadata of a remote function
+
+``` clojure
+(meta-remote sc timestamp)
+```
+
 ## Performance
 
 Some performance tests was executed while I'm developing slacker.

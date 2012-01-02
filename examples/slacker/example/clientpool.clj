@@ -6,7 +6,7 @@
                          :exhausted-action
                          :grow :min-idle 1))
 
-(defn-remote-batch conn timestamp inc-m get-m rand-ints)
+(defn-remote-all conn)
 
 
 (defn -main [& args]
