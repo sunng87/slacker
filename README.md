@@ -243,6 +243,10 @@ functions are created to use this command.
 (meta-remote sc timestamp)
 ```
 
+However, for security concern, you can disable inspect by adding an
+option `:inspect? false` to `start-slacker-server`. By default, server
+inspect is enabled.
+
 ## Performance
 
 Some performance tests was executed while I'm developing slacker.
