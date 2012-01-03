@@ -109,7 +109,8 @@
   to combine them into one.
   Options:
   * interceptors add server interceptors
-  * http http port for slacker http transport"
+  * http http port for slacker http transport
+  * inspect? enable inspect interface, default true"
   [exposed-ns port
    & {:keys [http interceptors inspect?]
       :or {http nil
