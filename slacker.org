@@ -12,24 +12,18 @@
     friendly for debugging. This also enables support for
     clojurescript.
 **** DONE Build-in http server (via aleph.http)
-**** Slacker as a Ring handler (out of scope, maybe in a new project)
 *** TODO Upstream enhancement                                 :server:client:
     enhance performance of upstream libraries:
     - carbonite (0.1.1, keyword enhancement)
-    - aleph
+    - aleph (Zach Tellman is working on lamina performance improvement)
 *** DONE Build-in interceptors                                       :server:
     some build-in interceptors for slacker server: 
     - function invocation stats (expose via JMX)
     - logging
-    - memorize function
+    - memorize function (discard)
     - slow watch dog
     interceptors are better to shipped as standalone submodules
     (depends [[Server side interceptor framework]])
-*** Browser clojurescript support                                    :client:
-    support clojure RPC via javascript XMLHttpRequest. provide a
-    consistent client style in clojurescript.
-    (depends [[Slacker as a Ring handler]])
-    (out of scope, maybe in a new project. "restful slacker"?)
 *** TODO Nodejs clojurescript support                                :client:
     support clojure RPC with nodejs tcp client. provide a consistent
     client style in clojurescript.
@@ -50,10 +44,18 @@
     A new slackerc-zk reads function/client from zookeeper and also
     get notified with server changes.
     Detailed and updated design can be found here: http://lazypress.cloudfoundry.com/p/i
-*** TODO server introspection
+*** DONE server introspection
     Add new protocol command to get metadata of slacker functions.
 **** get all functions exposed by the server
 **** get metadata of a particular function
+
+** Lower Priority Features
+*** Browser clojurescript support                                    :client:
+    support clojure RPC via javascript XMLHttpRequest. provide a
+    consistent client style in clojurescript.
+    (depends [[Slacker as a Ring handler]])
+    (out of scope, maybe in a new project. "restful slacker"?)
+**** Slacker as a Ring handler (out of scope, maybe in a new project)
 
 ** Releases
 

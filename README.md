@@ -9,7 +9,7 @@ because slacker requires it to work on clojure 1.2.
 
 slacker is growing.
 
-### RPC vs Remote Eval
+### Slacker VS. Remote Eval
 
 Before slacker, the clojure world uses a *remote eval* approach for
 remoting ([nREPL](https://github.com/clojure/tools.nrepl),
@@ -29,6 +29,25 @@ eval, RPC (especially slacker) has some pros and cons:
 * Eval approach provides full features of clojure, you can use
   high-order functions and lazy arguments. Due to the limitation of
   serialization, slacker has its difficulty to support these features.
+
+### Slacker VS. Thrift, Protobuf
+
+Since clojure is also hosted on Java virtual machine, you can use
+existed Java RPC framework in clojure, like protobuf and thrift. 
+
+#### pros
+
+* No schema needed
+* No additional code generation
+* Transparent, non-invasive API
+* Pure clojure way
+* Highly customizable (interceptor framework)
+
+#### cons
+
+* Currently, there is no cross language support. Slacker is only for
+  clojure. I am planning to add nodejs support via clojurescript. 
+* Potential performance improvements.
 
 ## Example
 
