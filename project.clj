@@ -1,4 +1,4 @@
-(defproject slacker "0.4.0-SNAPSHOT"
+(defproject slacker "0.4.0"
   :description "Clojure RPC based on serialization and TCP"
   :dependencies [[org.clojure/clojure "1.2.1"]
                  [aleph "0.2.0"]
