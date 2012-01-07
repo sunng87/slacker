@@ -38,17 +38,6 @@
 (defn close-slackerc [client]
   (close client))
 
-(defn with-slackerc
-  "Invoke remote function with given slacker connection.
-  A call-info tuple should be passed in. Usually you don't use this
-  function directly. You should define remote call facade with defremote"
-  [sc remote-call-info
-   & {:keys [async? callback]
-      :or {async? false callback nil}}]
-  (let [[fname args] remote-call-info]
-    (if (or async? (not (nil? callback)))
-      (async-call-remote sc fname args callback)
-      (sync-call-remote sc fname args))))
 
 (defmacro defn-remote
   "Define a facade for remote function. You have to provide the
