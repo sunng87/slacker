@@ -65,11 +65,11 @@
     (let [node-path (str "/" cluster-name "/servers" )
           servers (zk/children zk-conn node-path
                                :watch (clients-callback this))]
-      (doseq [server servers]
-        (when-not (contains? @slacker-clients server)
-          (swap! slacker-clients
-                 assoc server (create-slackerc server content-type))))
+      (ref-set! slacker-clients
+                (map #(or (@slacker-clients %)
+                          (create-slackerc % content-type)) servers))
       @slacker-clients))
+  
   SlackerClientProtocol
   (sync-call-remote [this func-name params]
     (sync-call-remote (find-sc func-name) func-name params)) 
