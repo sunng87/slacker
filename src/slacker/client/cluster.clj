@@ -68,7 +68,8 @@
       (doseq [server servers]
         (when-not (contains? @slacker-clients server)
           (swap! slacker-clients
-                 assoc server (create-slackerc server content-type))))))
+                 assoc server (create-slackerc server content-type))))
+      @slacker-clients))
   SlackerClientProtocol
   (sync-call-remote [this func-name params]
     (sync-call-remote (find-sc func-name) func-name params)) 
