@@ -1,6 +1,6 @@
 (ns slacker.client.cluster
   (:require [zookeeper :as zk])
-  (:use [slacker.client :only [slackerc]])
+  (:use [slacker.client :only [slackerc defn-remote]])
   (:use [slacker.client.common])
   (:use [clojure.string :only [split]])
   (:use [slingshot.slingshot :only [throw+]]))
@@ -18,12 +18,11 @@
                :or {remote-name nil async? false callback nil?}}]
   `(do
      (get-associated-servers ~sc (or ~remote-name (name '~fname)))
-     (defn ~fname [& args#]
-       (with-slackerc ~sc
-         [(or ~remote-name (name '~fname))
-          (into [] args#)]
-         :async? ~async?
-         :callback ~callback))))
+     (slacker.client/defn-remote
+       sc fname
+       :remote-name remote-name
+       :async? async?
+       :callback callback)))
 
 (defn- create-slackerc [server content-type]
   (let [host (first (split server #":"))
