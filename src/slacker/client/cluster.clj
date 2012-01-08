@@ -35,12 +35,26 @@
     (rand-nth servers)
     (throw+ {:code :not-found})))
 
+(defn- functions-callback [sc fname]
+  (fn [e]
+    (case (:event-type e)
+      :NodeDeleted (swap! slacker-function-servers dissoc fname)
+      :NodeChildrenChanged (get-associated-servers sc fname)
+      nil)))
+
+(defn- clients-callback [sc]
+  (fn [e]
+    (case (:event-type e)
+      :NodeChildrenChanged (get-all-servers sc)
+      nil)))
+
 (deftype ClusterEnabledSlackerClient
     [cluster-name zk-conn content-type]
   CoordinatorAwareClient
   (get-associated-servers [this fname]
     (let [node-path (str "/" cluster-name "/functions/" fname)
-          servers (zk/children zk-conn node-path)]
+          servers (zk/children zk-conn node-path
+                               :watch (functions-callback this fname))]
       (if-not (empty? servers)
         (swap! slacker-function-servers
                assoc fname servers)
@@ -49,10 +63,12 @@
       servers))
   (get-all-servers [this]
     (let [node-path (str "/" cluster-name "/servers" )
-          servers (zk/children zk-conn node-path)]
+          servers (zk/children zk-conn node-path
+                               :watch (clients-callback this))]
       (doseq [server servers]
-        (swap! slacker-clients
-               assoc server (create-slackerc server content-type)))))
+        (when-not (contains? @slacker-clients server)
+          (swap! slacker-clients
+                 assoc server (create-slackerc server content-type))))))
   SlackerClientProtocol
   (sync-call-remote [this func-name params]
     (sync-call-remote (find-sc func-name) func-name params)) 
