@@ -4,6 +4,7 @@
   (:use [lamina.core])
   (:use [aleph tcp http])
   (:use [gloss.io :only [contiguous]])
+  (:require [zookeeper :as zk])
   (:use [slingshot.slingshot :only [try+]]))
 
 ;; pipeline functions for server request handling
@@ -103,6 +104,43 @@
   (into {}
         (for [[k v] (ns-publics n) :when (fn? @v)] [(name k) v])))
 
+(defn publish-cluster
+  "publish server information to zookeeper as cluster for client"
+  [cluster funcs]
+  (let [zk-conn (zk/connect (cluster :zk))
+        cluster (check_ip cluster)
+        cluster-name   (str "/" (cluster :name) "/")
+        server-node (cluster :node)]
+    (do (create-node zk-conn (str cluster-name   "servers/") :persistent? true)
+        (create-node zk-conn (str cluster-name "functions/") :persistent? true)
+        (create-node zk-conn (str cluster-name "functions/" server-node "/"))
+        (map create-node (repeat zk-conn) (for [fname funcs] (str cluster-name "functions/" fname "/")) )
+        (map create-node (repeat zk-conn) (for [fname funcs] (str cluster-name "functions/" fname "/" server-node "/")))
+        )
+      )
+)
+
+(defn check_ip
+  "TODO
+   check IP address contains?
+   if not connect to zookeeper and getLocalAddress"
+  [cluster]
+  (cluster))
+(defn create-node
+  "TOTO  should change to macro?
+   get zk connector & node  :persistent?
+   check whether exist already
+   if not create
+   "
+  [zk-conn node-name & {:keys [persistent?]
+                        :or [persistent? false]}]
+  (if-not (zk/exists node-name )
+    (zk/create node-name persistent?))
+  )
+  
+
+
+
 (defn start-slacker-server
   "Start a slacker server to expose all public functions under
   a namespace. If you have multiple namespace to expose, it's better
@@ -111,11 +149,13 @@
   * interceptors add server interceptors
   * http http port for slacker http transport
   * inspect? enable inspect interface, default true"
+  * cluster publish server information to zookeeper
   [exposed-ns port
-   & {:keys [http interceptors inspect?]
+   & {:keys [http interceptors inspect? cluster]
       :or {http nil
            interceptors {:before identity :after identity}
-           inspect? true}}]
+           inspect? true
+           cluster nil}}]
   (let [funcs (ns-funcs exposed-ns)
         handler (create-server-handler funcs interceptors inspect?)]
     (when *debug* (doseq [f (keys funcs)] (println f)))
@@ -124,6 +164,9 @@
       (start-http-server (wrap-ring-handler
                           (wrap-http-server-handler
                            (build-server-pipeline funcs interceptors)))
-                         {:port http}))))
+                         {:port http}))
+    (when-not (nil? cluster)
+      (publish-cluster cluster (keys funcs)) )
+    ))
 
 
