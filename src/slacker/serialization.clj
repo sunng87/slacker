@@ -10,7 +10,7 @@
 (defmulti serialize
   "serialize clojure data structure to bytebuffer with
   different types of serialization"
-  (fn [f _] f))
+  (fn [f _ & _] f))
 (defmulti deserialize
   "deserialize clojure data structure from bytebuffer using
   matched serialization function"
@@ -21,8 +21,11 @@
   (carb/read-buffer @carb-registry data))
 
 (defmethod serialize :carb
-  [_ data]
-  (ByteBuffer/wrap (carb/write-buffer @carb-registry data)))
+  ([_ data] (serialize :carb data :buffer))
+  ([_ data ot]
+     (if (= ot :bytes)
+       (carb/write-buffer @carb-registry data)
+       (ByteBuffer/wrap (carb/write-buffer @carb-registry data)))))
 
 (defn register-serializers
   "Register additional serializers to carbonite. This allows
@@ -38,10 +41,14 @@
     (json/parse-string jsonstr true)))
 
 (defmethod serialize :json
-  [_ data]
-  (let [jsonstr (json/generate-string data)]
-    (if *debug* (println (str "dbg:: " jsonstr)))
-    (.encode (Charset/forName "UTF-8") jsonstr)))
+  ([_ data] (serialize :json data :buffer))
+  ([_ data ot]
+     (let [jsonstr (json/generate-string data)]
+       (if *debug* (println (str "dbg:: " jsonstr)))
+       (case ot
+         :buffer (.encode (Charset/forName "UTF-8") jsonstr)
+         :string jsonstr
+         :bytes (.getBytes jsonstr "UTF-8")))))
 
 (defmethod deserialize :clj
   [_ data]
@@ -50,9 +57,13 @@
     (read-string cljstr)))
 
 (defmethod serialize :clj
-  [_ data]
-  (let [cljstr (pr-str data)]
-    (if *debug* (println (str "dbg:: " cljstr)))
-    (.encode (Charset/forName "UTF-8") cljstr)))
+  ([_ data] (serialize :clj data :buffer))
+  ([_ data ot]
+     (let [cljstr (pr-str data)]
+       (if *debug* (println (str "dbg:: " cljstr)))
+       (case ot
+         :buffer (.encode (Charset/forName "UTF-8") cljstr)
+         :string cljstr
+         :bytes (.getBytes cljstr "UTF-8")))))
 
 
