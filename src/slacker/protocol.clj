@@ -59,11 +59,11 @@
   [:type-inspect-req
    (enum :byte {:functions 0
                 :meta 1}) ;; inspect command code
-   (finite-block :uint16)]) ;; args
+   (finite-frame :uint16 (string :utf8))]) ;; args
 
 (defcodec slacker-inspect-ack-codec
   [:type-inspect-ack
-   (finite-block :uint16)]) ;; return value
+   (finite-frame :uint16 (string :utf8))]) ;; return value
 
 (defcodec slacker-base-codec
   [:byte ;; protocol version

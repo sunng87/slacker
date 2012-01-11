@@ -46,7 +46,7 @@
 (def invalid-type-packet [version [:type-error :invalid-packet]])
 (defn make-inspect-ack [data]
   [version [:type-inspect-ack
-            (serialize :clj data)]])
+            (serialize :clj data :string)]])
 
 (defn build-server-pipeline [funcs interceptors]
   #(-> %
@@ -65,7 +65,7 @@
        (make-inspect-ack (map name (keys funcs)))
        :meta
        (make-inspect-ack
-        (let [fname (deserialize :clj (contiguous (last %)))
+        (let [fname (deserialize :clj (last %) :string)
               metadata (meta (funcs fname))]
           (select-keys metadata [:name :doc :arglists]))))
      (make-inspect-ack nil)))

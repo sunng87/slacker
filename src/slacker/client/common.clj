@@ -29,9 +29,9 @@
 
 (defn make-inspect-request [cmd args]
   [version [:type-inspect-req cmd
-            (serialize :clj args)]])
+            (serialize :clj args :string)]])
 (defn parse-inspect-response [response]
-  (deserialize :clj (contiguous (second (second response)))))
+  (deserialize :clj (second (second response)) :string))
 
 (defprotocol SlackerClientProtocol
   (sync-call-remote [this func-name params])

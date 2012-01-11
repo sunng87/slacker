@@ -14,18 +14,21 @@
 (defmulti deserialize
   "deserialize clojure data structure from bytebuffer using
   matched serialization function"
-  (fn [f _] f))
+  (fn [f _ & _] f))
 
 (defmethod deserialize :carb
-  [_ data]
-  (carb/read-buffer @carb-registry data))
+  ([_ data] (deserialize :carb data :buffer))
+  ([_ data it]
+     (if (= it :buffer)
+       (carb/read-buffer @carb-registry data)
+       (deserialize :carb (ByteBuffer/wrap data) :buffer))))
 
 (defmethod serialize :carb
   ([_ data] (serialize :carb data :buffer))
   ([_ data ot]
      (if (= ot :bytes)
        (carb/write-buffer @carb-registry data)
-       (ByteBuffer/wrap (carb/write-buffer @carb-registry data)))))
+       (ByteBuffer/wrap (serialize :carb data :bytes)))))
 
 (defn register-serializers
   "Register additional serializers to carbonite. This allows
@@ -35,10 +38,15 @@
   (swap! carb-registry carb/register-serializers serializers))
 
 (defmethod deserialize :json
-  [_ data]
-  (let [jsonstr (.toString (.decode (Charset/forName "UTF-8") data))]
-    (if *debug* (println (str "dbg:: " jsonstr)))
-    (json/parse-string jsonstr true)))
+  ([_ data] (deserialize :json data :buffer))
+  ([_ data it]
+     (let [jsonstr
+           (case it
+             :buffer (.toString (.decode (Charset/forName "UTF-8") data))
+             :bytes (String. data "UTF-8")
+             :string data)]
+       (if *debug* (println (str "dbg:: " jsonstr)))
+       (json/parse-string jsonstr true))))
 
 (defmethod serialize :json
   ([_ data] (serialize :json data :buffer))
@@ -51,10 +59,15 @@
          :bytes (.getBytes jsonstr "UTF-8")))))
 
 (defmethod deserialize :clj
-  [_ data]
-  (let [cljstr (.toString (.decode (Charset/forName "UTF-8") data))]
-    (if *debug* (println (str "dbg:: " cljstr)))
-    (read-string cljstr)))
+  ([_ data] (deserialize :clj data :buffer))
+  ([_ data ot]
+     (let [cljstr
+           (case ot
+             :buffer (.toString (.decode (Charset/forName "UTF-8") data))
+             :bytes (String. data "UTF-8")
+             :string data)]
+       (if *debug* (println (str "dbg:: " cljstr)))
+       (read-string cljstr))))
 
 (defmethod serialize :clj
   ([_ data] (serialize :clj data :buffer))

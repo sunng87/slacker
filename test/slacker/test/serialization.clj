@@ -11,7 +11,8 @@
 
 (deftest test-json-serialization
   (let [data [1 2 3]]
-    (is (= data (deserialize :json (serialize :json data)))))
+    (is (= data (deserialize :json (serialize :json data))))
+    (is (= data (deserialize :json (serialize :json data :bytes) :bytes))))
   (let [data {:a 1 :b 2}]
     (is (= data (deserialize :json (serialize :json data))))))
 
