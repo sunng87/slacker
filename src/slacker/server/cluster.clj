@@ -1,12 +1,14 @@
 (ns slacker.server.cluster
   (:require [zookeeper :as zk])
-  (:use [slacker.serialization]))
+  (:use [slacker.serialization])
+  (:use [clojure.string :only [split]])
+  (:import java.net Socket))
 
 (defn publish-cluster
   "publish server information to zookeeper as cluster for client"
-  [cluster funcs-map]
+  [cluster port funcs-map]
   (let [zk-conn (zk/connect (cluster :zk))
-        cluster (check-ip cluster zk-conn)
+        cluster (check-ip cluster port)
         cluster-name   (str "/" (cluster :name) "/")
         server-node (cluster :node)
         funcs (keys funcs-map)]
@@ -25,9 +27,13 @@
   "TODO
    check IP address contains?
    if not connect to zookeeper and getLocalAddress"
-  [cluster zk-conn]
+  [cluster port]
   (if(nil? (cluster :node))
-    assoc cluster :node (.getLocalAddress zk-conn)))
+    (let [zk-address (split (cluster :zk) #":")
+          zk-ip (first zk-address)
+          zk-port (second zk-address)
+          socket (Socket zk-ip zk-port)]
+      (assoc cluster :node (str (.getLocalAddress socket) ":" port)))))
 
 (defn create-node
   "TOTO  should change to macro?
