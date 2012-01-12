@@ -13,14 +13,16 @@
         cluster-name   (str "/" (cluster :name) "/")
         server-node (cluster :node)
         funcs (keys funcs-map)]
-    (do (create-node zk-conn (str cluster-name   "servers/") :persistent? true)
+    (do 
+      (create-node zk-conn (str cluster-name   "servers/") :persistent? true)
         (create-node zk-conn (str cluster-name "functions/") :persistent? true)
         (create-node zk-conn (str cluster-name "functions/" server-node "/"))
         (doseq [fname funcs]
           (create-node zk-conn (str cluster-name "functions/" fname "/" ) (meta (funcs-map fname))))
         (doseq [fname funcs]
           (create-node zk-conn (str cluster-name "functions/" fname "/" server-node "/"))
-     )
+          )
+        (if *test* (def *zk-connection* zk-conn))
    )
     )
 )
