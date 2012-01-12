@@ -2,7 +2,8 @@
   (:require [zookeeper :as zk])
   (:use [slacker.serialization])
   (:use [clojure.string :only [split]])
-  (:import java.net Socket))
+  (:import java.net.Socket)
+  (:import java.lang.Integer))
 
 (defn publish-cluster
   "publish server information to zookeeper as cluster for client"
@@ -23,7 +24,7 @@
    )
     )
 )
-(defn check-ip
+(defn- check-ip
   "TODO
    check IP address contains?
    if not connect to zookeeper and getLocalAddress"
@@ -31,11 +32,12 @@
   (if(nil? (cluster :node))
     (let [zk-address (split (cluster :zk) #":")
           zk-ip (first zk-address)
-          zk-port (second zk-address)
-          socket (Socket zk-ip zk-port)]
-      (assoc cluster :node (str (.getLocalAddress socket) ":" port)))))
+          zk-port (Integer/parseInt (second zk-address))
+          socket (Socket. zk-ip zk-port)]
+      (do (assoc cluster :node (str (.getLocalAddress socket) ":" port))
+          (.close socket)))))
 
-(defn create-node
+(defn- create-node
   "TOTO  should change to macro?
    get zk connector & node  :persistent?
    check whether exist already

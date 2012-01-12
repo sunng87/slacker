@@ -1,10 +1,9 @@
 (ns slacker.server
   (:use [slacker common serialization protocol])
-  (:use [slacker.server http])
+  (:use [slacker.server http cluster])
   (:use [lamina.core])
   (:use [aleph tcp http])
   (:use [gloss.io :only [contiguous]])
-  (:use [slacker.server cluster])
   (:use [slingshot.slingshot :only [try+]]))
 
 ;; pipeline functions for server request handling
