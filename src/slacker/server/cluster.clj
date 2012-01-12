@@ -20,13 +20,14 @@
           (create-node zk-conn (str cluster-name "functions/" fname "/" ) (meta (funcs-map fname))))
         (doseq [fname funcs]
           (create-node zk-conn (str cluster-name "functions/" fname "/" server-node "/"))
-     )
-   )
+        )
+        (if *test* (def *zk-conn* zk-conn))
+    )
     )
 )
+
 (defn- check-ip
-  "TODO
-   check IP address contains?
+   "check IP address contains?
    if not connect to zookeeper and getLocalAddress"
   [cluster port]
   (if(nil? (cluster :node))
@@ -38,8 +39,7 @@
           (.close socket)))))
 
 (defn- create-node
-  "TOTO  should change to macro?
-   get zk connector & node  :persistent?
+   "get zk connector & node  :persistent?
    check whether exist already
    if not ,create & set node data with func metadata
    "
