@@ -14,6 +14,7 @@
   (into {}
         (for [[k v] (ns-publics n) :when (fn? @v)] [(name k) v])))
 
+
 (deftest test-publish-cluster
   [& args]
   (let [node-list (create-data)
@@ -23,9 +24,8 @@
 		   (do
          (publish-cluster cluster-map 2104 (ns-funcs (the-ns 'slacker.test.http)))
 		     (is (false? (every? (fn[x](empty? x))(map zk/children (repeat test-conn) node-list))))
-		   )
        )
- )
+       ))
 
 (deftest test-setdown-cluster
   [& args]
