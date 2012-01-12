@@ -48,7 +48,7 @@
                              persistent? false]}]
   (if-not (zk/exists node-name )
     (do
-      (zk/create node-name persistent?)
+      (zk/create node-name :persistent? persistent?)
       (if-not (nil? fnmeta)
         (zk/set-data node-name (serialize :clj fnmeta :bytes)))))
   )
