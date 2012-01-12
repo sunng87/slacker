@@ -1,7 +1,8 @@
 (ns slacker.client.cluster
   (:require [zookeeper :as zk])
-  (:use [slacker.client :only [slackerc defn-remote]])
+  (:require [slacker.client])
   (:use [slacker.client.common])
+  (:use [slacker.serialization])
   (:use [clojure.string :only [split]])
   (:use [slingshot.slingshot :only [throw+]]))
 
@@ -9,8 +10,8 @@
 (defonce slacker-function-servers (atom {}))
 
 (defprotocol CoordinatorAwareClient
-  (get-associated-servers [fname])
-  (get-all-servers []))
+  (get-associated-servers [this fname])
+  (get-all-servers [this]))
 
 (defmacro defn-remote
   "cluster enabled defn-remote"
@@ -27,7 +28,7 @@
 (defn- create-slackerc [server content-type]
   (let [host (first (split server #":"))
         port (Integer/valueOf (second (split server #":")))]
-    (slackerc host port :content-type content-type)))
+    (slacker.client/slackerc host port :content-type content-type)))
 
 (defn- find-sc [func-name]
   (if-let [servers (@slacker-function-servers func-name)]
@@ -47,6 +48,11 @@
       :NodeChildrenChanged (get-all-servers sc)
       nil)))
 
+(defn- meta-data-from-zk [zk-conn cluster-name args]
+  (let [fnode (str "/" cluster-name "/functions/" args)]
+    (if-let [node-data (zk/data zk-conn fnode)]
+      (serialize :clj node-data :bytes))))
+
 (deftype ClusterEnabledSlackerClient
     [cluster-name zk-conn content-type]
   CoordinatorAwareClient
@@ -64,7 +70,7 @@
     (let [node-path (str "/" cluster-name "/servers" )
           servers (zk/children zk-conn node-path
                                :watch (clients-callback this))]
-      (ref-set! slacker-clients
+      (ref-set slacker-clients
                 (map #(or (@slacker-clients %)
                           (create-slackerc % content-type)) servers))
       @slacker-clients))
@@ -76,14 +82,14 @@
     (async-call-remote (find-sc func-name) func-name params cb))
   (close [this]
     (zk/close zk-conn)
-    (doseq [sc (vals @slackerc-clients)]
+    (doseq [sc (vals @slacker-clients)]
       (close sc))
-    (ref-set! slacker-clients {})
-    (ref-set! slacker-function-servers {}))
+    (ref-set slacker-clients {})
+    (ref-set slacker-function-servers {}))
   (inspect [this cmd args]
     (case cmd
       :functions (into [] (keys @slacker-function-servers))
-      :meta (inspect (find-sc args) cmd args))))
+      :meta (meta-data-from-zk zk-conn cluster-name args))))
 
 (defn clustered-slackerc
   "create a cluster enalbed slacker client"
