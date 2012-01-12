@@ -2,8 +2,7 @@
   (:require [zookeeper :as zk])
   (:use [slacker.serialization])
   (:use [clojure.string :only [split]])
-  (:import java.net.Socket)
-  (:import java.lang.Integer))
+  (:import java.net.Socket))
 
 (defn publish-cluster
   "publish server information to zookeeper as cluster for client"
