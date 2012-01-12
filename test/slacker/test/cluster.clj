@@ -21,11 +21,11 @@
         cluster-map {:name "test-cluster" :node "127.0.0.1:2104" :zk "127.0.0.1:2181"}
         test-conn *test-conn*
         ]
-		   (do
-         (publish-cluster cluster-map 2104 (ns-funcs (the-ns 'slacker.test.http)))
-		     (is (false? (every? (fn[x](empty? x))(map zk/children (repeat test-conn) node-list))))
-       )
-       ))
+    (do
+      (publish-cluster cluster-map 2104 (ns-funcs (the-ns 'slacker.test.http)))
+      (is (false? (every? (fn[x](empty? x))(map zk/children (repeat test-conn) node-list))))
+      )
+    ))
 
 (deftest test-setdown-cluster
   [& args]
