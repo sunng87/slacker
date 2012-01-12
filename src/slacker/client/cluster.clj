@@ -60,6 +60,7 @@
     (let [node-path (str "/" cluster-name "/functions/" fname)
           servers (zk/children zk-conn node-path
                                :watch (functions-callback this fname))]
+      (println servers)
       (if-not (empty? servers)
         (swap! slacker-function-servers
                assoc fname servers)
@@ -70,9 +71,11 @@
     (let [node-path (str "/" cluster-name "/servers" )
           servers (zk/children zk-conn node-path
                                :watch (clients-callback this))]
-      (ref-set slacker-clients
-                (map #(or (@slacker-clients %)
-                          (create-slackerc % content-type)) servers))
+      (swap! slacker-clients
+             (constantly
+              (doall (map #(or (@slacker-clients %)
+                               (create-slackerc % content-type))
+                          servers))))
       @slacker-clients))
   
   SlackerClientProtocol
@@ -84,8 +87,8 @@
     (zk/close zk-conn)
     (doseq [sc (vals @slacker-clients)]
       (close sc))
-    (ref-set slacker-clients {})
-    (ref-set slacker-function-servers {}))
+    (swap! slacker-clients hash-map)
+    (swap! slacker-function-servers hash-map))
   (inspect [this cmd args]
     (case cmd
       :functions (into [] (keys @slacker-function-servers))
