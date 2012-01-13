@@ -60,7 +60,6 @@
     (let [node-path (str "/" cluster-name "/functions/" fname)
           servers (zk/children zk-conn node-path
                                :watch (functions-callback this fname))]
-      (println servers)
       (if-not (empty? servers)
         (swap! slacker-function-servers
                assoc fname servers)
