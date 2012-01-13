@@ -37,6 +37,7 @@
 
 (defn- functions-callback [sc fname]
   (fn [e]
+    (println (str "#########" e))
     (case (:event-type e)
       :NodeDeleted (swap! slacker-function-servers dissoc fname)
       :NodeChildrenChanged (get-associated-servers sc fname)
@@ -70,11 +71,11 @@
     (let [node-path (str "/" cluster-name "/servers" )
           servers (zk/children zk-conn node-path
                                :watch (clients-callback this))]
-      (swap! slacker-clients
-             (constantly
-              (doall (map #(or (@slacker-clients %)
-                               (create-slackerc % content-type))
-                          servers))))
+      (reset! slacker-clients
+              (into {} (map
+                        #(vector % (or (get @slacker-clients %)
+                                       (create-slackerc % content-type)))
+                        servers)))
       @slacker-clients))
   
   SlackerClientProtocol
@@ -86,8 +87,8 @@
     (zk/close zk-conn)
     (doseq [sc (vals @slacker-clients)]
       (close sc))
-    (swap! slacker-clients hash-map)
-    (swap! slacker-function-servers hash-map))
+    (reset! slacker-clients {})
+    (reset! slacker-function-servers {}))
   (inspect [this cmd args]
     (case cmd
       :functions (into [] (keys @slacker-function-servers))
