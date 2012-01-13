@@ -1,6 +1,6 @@
 (ns slacker.test.client.cluster
   (:use [clojure.test])
-  (:use [slacker.client.cluster])
+  (:use [slacker.client common cluster])
   (:use [slacker.serialization])
   (:require [zookeeper :as zk]))
 
@@ -26,7 +26,8 @@
 
   (let [sc (clustered-slackerc cluster-name zk-server)]
     (is (= ["127.0.0.1:2104"] (get-associated-servers sc "hello")))
-    (is (= 1 (count (get-all-servers sc)))))
+    (is (= 1 (count (get-all-servers sc))))
+    (is (= {:name "world" :doc "test function"} (inspect sc :meta "world"))))
   
   (zk/delete-all zk-conn (str "/" cluster-name))
   (zk/close zk-conn))

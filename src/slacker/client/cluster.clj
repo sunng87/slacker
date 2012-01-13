@@ -51,7 +51,7 @@
 (defn- meta-data-from-zk [zk-conn cluster-name args]
   (let [fnode (str "/" cluster-name "/functions/" args)]
     (if-let [node-data (zk/data zk-conn fnode)]
-      (serialize :clj node-data :bytes))))
+      (deserialize :clj (:data node-data) :bytes))))
 
 (deftype ClusterEnabledSlackerClient
     [cluster-name zk-conn content-type]
