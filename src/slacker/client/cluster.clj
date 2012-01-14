@@ -35,19 +35,16 @@
     (rand-nth servers)
     (throw+ {:code :not-found})))
 
-(defn- functions-callback [sc fname]
-  (fn [e]
-    (println (str "#########" e))
-    (case (:event-type e)
-      :NodeDeleted (swap! slacker-function-servers dissoc fname)
-      :NodeChildrenChanged (get-associated-servers sc fname)
-      nil)))
+(defn- functions-callback [e sc fname]
+  (case (:event-type e)
+    :NodeDeleted (swap! slacker-function-servers dissoc fname)
+    :NodeChildrenChanged (get-associated-servers sc fname)
+    nil))
 
-(defn- clients-callback [sc]
-  (fn [e]
-    (case (:event-type e)
-      :NodeChildrenChanged (get-all-servers sc)
-      nil)))
+(defn- clients-callback [e sc]
+  (case (:event-type e)
+    :NodeChildrenChanged (get-all-servers sc)
+    nil))
 
 (defn- meta-data-from-zk [zk-conn cluster-name args]
   (let [fnode (str "/" cluster-name "/functions/" args)]
@@ -60,7 +57,7 @@
   (get-associated-servers [this fname]
     (let [node-path (str "/" cluster-name "/functions/" fname)
           servers (zk/children zk-conn node-path
-                               :watch (functions-callback this fname))]
+                               :watch? true)]
       (if-not (empty? servers)
         (swap! slacker-function-servers
                assoc fname servers)
@@ -70,12 +67,13 @@
   (get-all-servers [this]
     (let [node-path (str "/" cluster-name "/servers" )
           servers (zk/children zk-conn node-path
-                               :watch (clients-callback this))]
-      (reset! slacker-clients
-              (into {} (map
-                        #(vector % (or (get @slacker-clients %)
-                                       (create-slackerc % content-type)))
-                        servers)))
+                               :watch? true)]
+      (if servers
+        (reset! slacker-clients
+                (into {} (map
+                          #(vector % (or (get @slacker-clients %)
+                                         (create-slackerc % content-type)))
+                          servers))))
       @slacker-clients))
   
   SlackerClientProtocol
@@ -94,12 +92,23 @@
       :functions (into [] (keys @slacker-function-servers))
       :meta (meta-data-from-zk zk-conn cluster-name args))))
 
+(defn- on-zk-events [e sc]
+  (if (.endsWith (:path e) "servers")
+    (clients-callback e sc)
+    (let [matcher (re-matches #"/.+?/functions/?(.*)" (:path e))]
+      (if-not (nil? matcher)
+        (functions-callback e sc (second matcher))))))
+
 (defn clustered-slackerc
   "create a cluster enalbed slacker client"
   [cluster-name zk-server
    & {:keys [content-type]
       :or {content-type :carb}}]
-  (let [zk-conn (zk/connect zk-server)]
-    (ClusterEnabledSlackerClient. cluster-name zk-conn content-type)))
+  (let [zk-conn (zk/connect zk-server)
+        sc (ClusterEnabledSlackerClient.
+            cluster-name zk-conn content-type)]
+    (zk/register-watcher zk-conn (fn [e] (on-zk-events e sc)))
+    (get-all-servers sc)
+    sc))
 
 

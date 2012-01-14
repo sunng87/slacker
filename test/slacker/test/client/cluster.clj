@@ -35,7 +35,8 @@
     (zk/create zk-conn (str "/" cluster-name "/servers/" test-server2))
     (zk/create zk-conn
                (str "/" cluster-name "/functions/hello/" test-server2))
-  
+
+    (Thread/sleep 1000)
     (is (= [test-server test-server2] (@slacker-function-servers "hello")))
     (is (= 2 (count @slacker-clients)))
   
