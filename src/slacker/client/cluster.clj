@@ -8,6 +8,11 @@
 
 (defonce slacker-clients (atom {}))
 (defonce slacker-function-servers (atom {}))
+(add-watch slacker-clients :auto-close
+           (fn [_ _ old-value new-value]
+             (doseq [server-addr (keys old-value)]
+               (if-not (contains? new-value server-addr)
+                 (close (get old-value server-addr))))))
 
 (defprotocol CoordinatorAwareClient
   (get-associated-servers [this fname])
@@ -83,8 +88,6 @@
     (async-call-remote (find-sc func-name) func-name params cb))
   (close [this]
     (zk/close zk-conn)
-    (doseq [sc (vals @slacker-clients)]
-      (close sc))
     (reset! slacker-clients {})
     (reset! slacker-function-servers {}))
   (inspect [this cmd args]
