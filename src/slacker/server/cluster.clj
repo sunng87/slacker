@@ -25,11 +25,12 @@
     & {:keys [fnmeta persistent?]
        :or {fnmeta nil
             persistent? false}}]
-  (if-not (zk/exists zk-conn node-name )
-    (do
-      (zk/create zk-conn node-name :persistent? persistent?)
-      (if-not (nil? fnmeta)
-        (zk/set-data zk-conn node-name (serialize :clj fnmeta :bytes) (:version (zk/exists zk-conn node-name))))))
+   (do
+     (if-not (zk/exists zk-conn node-name )
+       (zk/create zk-conn node-name :persistent? persistent?)
+       )
+     (if-not (nil? fnmeta)
+        (zk/set-data zk-conn node-name (serialize :clj fnmeta :bytes) (:version (zk/exists zk-conn node-name)))))
   )
   
 (defn publish-cluster
