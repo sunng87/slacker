@@ -2,40 +2,44 @@
   (:use [clojure.test] )
   (:use [slacker.server cluster])
   (:use [zookeeper :as zk])
-  (:require [slacker.test.http]))
+  (:use [slacker common])
+  (:require [slacker.example.api]))
 
-(def *test* true)
-(def *test-conn* (zk/connect "127.0.0.1:2046"))
+(def *test-conn* (zk/connect "127.0.0.1:2181"))
 
-(defn- create-data [& args]
-  (map str (keys (ns-funcs (the-ns 'slakcer.test.http)))))
 
 (defn- ns-funcs [n]
   (into {}
         (for [[k v] (ns-publics n) :when (fn? @v)] [(name k) v])))
 
+(defn- create-data [cluster-map]
+  (do
+    (map str (repeat(str "/" (cluster-map :name) "/functions/")) (keys (ns-funcs (the-ns 'slacker.example.api))))))
 
 (deftest test-publish-cluster
-  [& args]
-  (let [node-list (create-data)
-        cluster-map {:name "test-cluster" :node "127.0.0.1:2104" :zk "127.0.0.1:2181"}
+  (let [cluster-map {:name "test-cluster" :node "127.0.0.1:2104" :zk "127.0.0.1:2181"}
+        node-list (create-data cluster-map)
         test-conn *test-conn*
         ]
-    (do
-      (publish-cluster cluster-map 2104 (ns-funcs (the-ns 'slacker.test.http)))
+    (binding [*test* true]
+      (do
+      (publish-cluster cluster-map 2104 (ns-funcs (the-ns 'slacker.example.api)))
       (is (false? (every? (fn[x](empty? x))(map zk/children (repeat test-conn) node-list))))
-      )
+      (zk/close *zk-conn*)
+      ))
     ))
 
 (deftest test-setdown-cluster
-  [& args]
-  (let [node-list (create-data)
+  (let [cluster-map {:name "test-cluster" :node "127.0.0.1:2104" :zk "127.0.0.1:2181"}
+        node-list (create-data cluster-map)
         test-conn *test-conn*
         ]
-    (do
+    (binding [slacker.common/*test* true]
+      (do
+      (publish-cluster cluster-map 2104 (ns-funcs (the-ns 'slacker.example.api)))
       (zk/close *zk-conn*)
-      (is (true? (every? (fn[x](false? x))(map zk/children (repeat test-conn) node-list))))
+      (is (true? (every? (fn[x](nil? x))(map zk/children (repeat test-conn) node-list))))
       (zk/close test-conn)
-      )
+      ))
    )
   )
