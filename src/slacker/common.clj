@@ -9,6 +9,3 @@
 (def
   ^{:doc "Protocol version."}
   version (short 4))
-(def
-  ^{:doc "Test flag. This flag can be override by binding if you like to test in cluster "}
-  *test* false)
