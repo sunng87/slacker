@@ -4,26 +4,24 @@
   (:use [slacker.serialization])
   (:require [zookeeper :as zk]))
 
-(def cluster-name "test-cluster")
-(def test-server "127.0.0.1:2104")
-(def test-server2 "127.0.0.1:2105")
-(def zk-server "127.0.0.1:2181")
-
-(def zk-conn (zk/connect zk-server))
-
 (deftest test-clustered-client
-  (let [sc (clustered-slackerc cluster-name zk-server)]
-    (zk/create-all zk-conn (str "/" cluster-name "/servers/" test-server))
+  (let [cluster-name "test-cluster"
+        test-server "127.0.0.1:2104"
+        test-server2 "127.0.0.1:2105"
+        zk-server "127.0.0.1:2181"
+        zk-verify-conn (zk/connect zk-server)
+        sc (clustered-slackerc cluster-name zk-server)]
+    (zk/create-all zk-verify-conn (str "/" cluster-name "/servers/" test-server))
     (doseq [f ["hello" "world"]]
-      (zk/create-all zk-conn (str "/" cluster-name "/functions/" f)
+      (zk/create-all zk-verify-conn (str "/" cluster-name "/functions/" f)
                      :persistent? true)
-      (zk/set-data zk-conn
+      (zk/set-data zk-verify-conn
                    (str "/" cluster-name "/functions/" f)
                    (serialize :clj {:name f :doc "test function"} :bytes)
                    (:version (zk/exists
-                              zk-conn
+                              zk-verify-conn
                               (str "/" cluster-name "/functions/" f))))
-      (zk/create zk-conn
+      (zk/create zk-verify-conn
                  (str "/" cluster-name "/functions/" f "/" test-server)))
 
   
@@ -32,16 +30,16 @@
     (is (= {:name "world" :doc "test function"}
            (inspect sc :meta "world")))
 
-    (zk/create zk-conn (str "/" cluster-name "/servers/" test-server2))
-    (zk/create zk-conn
+    (zk/create zk-verify-conn (str "/" cluster-name "/servers/" test-server2))
+    (zk/create zk-verify-conn
                (str "/" cluster-name "/functions/hello/" test-server2))
 
     (Thread/sleep 1000)
     (is (= [test-server test-server2] (@slacker-function-servers "hello")))
     (is (= 2 (count @slacker-clients)))
   
-    (zk/delete-all zk-conn (str "/" cluster-name))
-    (zk/close zk-conn)
+    (zk/delete-all zk-verify-conn (str "/" cluster-name))
+    (zk/close zk-verify-conn)
 
     (close sc)))
 
