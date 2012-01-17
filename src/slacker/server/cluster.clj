@@ -28,7 +28,7 @@
             persistent? false}}]
    (do
      (if-not (zk/exists zk-conn node-name )
-       (zk/create zk-conn node-name :persistent? persistent?)
+       (zk/create-all zk-conn node-name :persistent? persistent?)
        )
      (if-not (nil? fnmeta)
         (zk/set-data zk-conn node-name (serialize :clj fnmeta :bytes) (:version (zk/exists zk-conn node-name)))))
@@ -43,9 +43,7 @@
         server-node (cluster :node)
         funcs (keys funcs-map)]
     (do
-      (create-node zk-conn cluster-name :persistent? true)
       (create-node zk-conn (str cluster-name   "/servers") :persistent? true)
-        (create-node zk-conn (str cluster-name "/functions") :persistent? true)
         (create-node zk-conn (str cluster-name "/functions/" server-node ))
         (doseq [fname funcs]
           (create-node zk-conn (str cluster-name "/functions/" fname  ) :persistent? true :fnmeta (meta (funcs-map fname))))
