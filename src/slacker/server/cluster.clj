@@ -4,7 +4,7 @@
   (:use [clojure.string :only [split]])
   (:import java.net.Socket))
 
-(def *zk-conn* nil)
+(declare *zk-conn* )
 (defn- check-ip
    "check IP address contains?
    if not connect to zookeeper and getLocalAddress"
@@ -53,9 +53,9 @@
     )
     )
   )
-(defn with-zk
+(defmacro with-zk
   "publish server information to specifized zookeeper for client"
-  [cluster port funcs-map zk-conn]
-  (binding [*zk-conn* zk-conn]
-    (publish-cluster cluster port funcs-map)
+  [zk-conn & body]
+  `(binding [*zk-conn* ~zk-conn]
+    ~@body
    ))
