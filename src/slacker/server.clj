@@ -111,8 +111,8 @@
   Options:
   * interceptors add server interceptors
   * http http port for slacker http transport
-  * inspect? enable inspect interface, default true"
-  * cluster publish server information to zookeeper
+  * inspect? enable inspect interface, default true
+  * cluster publish server information to zookeeper"
   [exposed-ns port
    & {:keys [http interceptors inspect? cluster]
       :or {http nil
@@ -129,7 +129,6 @@
                            (build-server-pipeline funcs interceptors)))
                          {:port http}))
     (when-not (nil? cluster)
-      (publish-cluster cluster port funcs) )
-    ))
+      (publish-cluster cluster port funcs))))
 
 

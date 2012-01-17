@@ -5,8 +5,9 @@
   (:import java.net.Socket))
 
 (declare *zk-conn* )
+
 (defn- check-ip
-   "check IP address contains?
+  "check IP address contains?
    if not connect to zookeeper and getLocalAddress"
   [cluster port]
   (if(nil? (cluster :node))
@@ -15,25 +16,25 @@
           zk-port (Integer/parseInt (second zk-address))
           socket (Socket. zk-ip zk-port)
           result (.close socket)]
-       (assoc cluster :node (str (.getLocalAddress socket) ":" port)))))
+      (assoc cluster :node (str (.getLocalAddress socket) ":" port)))))
 
 (defn- create-node
-   "get zk connector & node  :persistent?
+  "get zk connector & node  :persistent?
    check whether exist already
    if not ,create & set node data with func metadata
    "
-   [zk-conn node-name
-    & {:keys [fnmeta persistent?]
-       :or {fnmeta nil
-            persistent? false}}]
-   (do
-     (if-not (zk/exists zk-conn node-name )
-       (zk/create-all zk-conn node-name :persistent? persistent?)
-       )
-     (if-not (nil? fnmeta)
-        (zk/set-data zk-conn node-name (serialize :clj fnmeta :bytes) (:version (zk/exists zk-conn node-name)))))
-  )
-  
+  [zk-conn node-name
+   & {:keys [fnmeta persistent?]
+      :or {fnmeta nil
+           persistent? false}}]
+  (do
+    (if-not (zk/exists zk-conn node-name )
+      (zk/create-all zk-conn node-name :persistent? persistent?))
+    (if-not (nil? fnmeta)
+      (zk/set-data zk-conn node-name
+                   (serialize :clj fnmeta :bytes)
+                   (:version (zk/exists zk-conn node-name))))))
+
 (defn publish-cluster
   "publish server information to zookeeper as cluster for client"
   [cluster port funcs-map]
@@ -43,19 +44,19 @@
         server-node (cluster :node)
         funcs (keys funcs-map)]
     (do
-      (create-node zk-conn (str cluster-name   "/servers") :persistent? true)
-        (create-node zk-conn (str cluster-name "/functions/" server-node ))
-        (doseq [fname funcs]
-          (create-node zk-conn (str cluster-name "/functions/" fname  ) :persistent? true :fnmeta (meta (funcs-map fname))))
-        (doseq [fname funcs]
-          (create-node zk-conn (str cluster-name "/functions/" fname "/" server-node ))
-          )
-    )
-    )
-  )
+      (create-node zk-conn (str cluster-name   "/servers")
+                   :persistent? true)
+      (create-node zk-conn (str cluster-name "/functions/" server-node ))
+      (doseq [fname funcs]
+        (create-node zk-conn (str cluster-name "/functions/" fname  )
+                     :persistent? true
+                     :fnmeta (meta (funcs-map fname))))
+      (doseq [fname funcs]
+        (create-node zk-conn (str cluster-name "/functions/" fname "/" server-node ))))))
+
 (defmacro with-zk
   "publish server information to specifized zookeeper for client"
   [zk-conn & body]
   `(binding [*zk-conn* ~zk-conn]
-    ~@body
-   ))
+     ~@body))
+

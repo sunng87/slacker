@@ -7,7 +7,8 @@
 (def params (serialize :carb [100 0]))
 
 (deftest test-server-pipeline
-  (let [server-pipeline (build-server-pipeline funcs {:before identity :after identity})
+  (let [server-pipeline (build-server-pipeline
+                         funcs {:before identity :after identity})
         req {:content-type :carb
              :data [params]
              :fname "plus"}
@@ -34,7 +35,8 @@
 (def interceptor (fn [req] (update-in req [:result] str)))
 
 (deftest test-server-pipeline-interceptors
-  (let [server-pipeline (build-server-pipeline funcs {:before identity :after interceptor})
+  (let [server-pipeline (build-server-pipeline
+                         funcs {:before identity :after interceptor})
         req {:content-type :carb
              :data [params]
              :fname "prod"}]

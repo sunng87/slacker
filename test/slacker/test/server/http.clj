@@ -1,4 +1,4 @@
-(ns slacker.test.http
+(ns slacker.test.server.http
   (:use clojure.test)
   (:use slacker.server.http)
   (:require [clojure.java.io :as io])

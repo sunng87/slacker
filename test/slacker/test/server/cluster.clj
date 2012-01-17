@@ -1,4 +1,4 @@
-(ns slacker.test.cluster
+(ns slacker.test.server.cluster
   (:use [clojure.test] )
   (:use [slacker.server cluster])
   (:use [zookeeper :as zk])
