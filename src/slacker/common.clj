@@ -9,5 +9,3 @@
 (def
   ^{:doc "Protocol version."}
   version (short 4))
-
-
