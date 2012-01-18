@@ -2,6 +2,7 @@
   (:require [zookeeper :as zk])
   (:require [slacker.client])
   (:require [slacker.utils :as utils])
+  (:use [slacker.common])
   (:use [slacker.client.common])
   (:use [slacker.serialization])
   (:use [clojure.string :only [split]])
@@ -22,21 +23,21 @@
 (defmacro defn-remote
   "cluster enabled defn-remote"
   [sc fname & {:keys [remote-name async? callback]
-               :or {remote-name nil async? false callback nil?}}]
+               :or {remote-name nil async? false callback nil}}]
   `(do
      (get-associated-servers ~sc (or ~remote-name (name '~fname)))
      (slacker.client/defn-remote
-       sc fname
-       :remote-name remote-name
-       :async? async?
-       :callback callback)))
+       ~sc ~fname
+       :remote-name ~remote-name
+       :async? ~async?
+       :callback ~callback)))
 
 (defn- create-slackerc [server content-type]
   (let [host (first (split server #":"))
         port (Integer/valueOf (second (split server #":")))]
     (slacker.client/slackerc host port :content-type content-type)))
 
-(defn- find-sc [func-name]
+(defn- find-server [func-name]
   (if-let [servers (@slacker-function-servers func-name)]
     (rand-nth servers)
     (throw+ {:code :not-found})))
@@ -84,9 +85,19 @@
   
   SlackerClientProtocol
   (sync-call-remote [this func-name params]
-    (sync-call-remote (find-sc func-name) func-name params)) 
+    (let [target-server (find-server func-name)
+          target-conn (@slacker-clients target-server)]
+      (if *debug*
+        (println (str "[dbg] calling "
+                      func-name " on " target-server)))
+      (sync-call-remote target-conn func-name params)))
   (async-call-remote [this func-name params cb]
-    (async-call-remote (find-sc func-name) func-name params cb))
+    (let [target-server (find-server func-name)
+          target-conn (@slacker-clients target-server)]
+      (if *debug*
+        (println (str "[dbg] calling "
+                      func-name " on " target-server)))
+      (async-call-remote target-conn func-name params cb)))
   (close [this]
     (zk/close zk-conn)
     (reset! slacker-clients {})
