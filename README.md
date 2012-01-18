@@ -215,53 +215,6 @@ For more information about using interceptors and creating your own
 interceptors, query the [wiki
 page](https://github.com/sunng87/slacker/wiki/Interceptors).
 
-### Slacker Cluster
-
-Leveraging on ZooKeeper, slacker now has a solution for high
-availability and load balancing. You can have several slacker servers
-in a cluster serving functions. And the clustered slacker client will
-randomly select one of these server to invoke. Once a server is added
-to or removed from the cluster, the client will automatically
-establish connection to it. 
-
-To create such a slacker cluster, make sure you have a zookeeper
-instance in your network.
-
-#### Clustered Slacker Server
-
-On the server side, add an option `:cluster`. Some information is
-required:
-
-``` clojure
-(use 'slacker.server)
-(start-slacker-server ...
-                      :cluster {:name "cluster-name"
-                                :zk "127.0.0.1:2181"})
-```
-
-Cluster information here:
-
-* `:name` the cluster name (*required*)
-* `:zk` zookeeper server address (*required*)
-* `:node` server IP (*optional*, if you don't provide the server IP
-  here, slacker will try to detect server IP by connecting to zk,
-  on which we assume that your slacker server are bound on the same
-  network with zookeeper)
-
-#### Clustered Slacker Client
-
-On the client side, you have to specify the zookeeper address instead
-of a particular slacker server. Use the `clustered-slackerc`:
-
-``` clojure
-(use 'slacker.client.cluster)
-(def sc (clustered-slackerc "cluster-name" "127.0.0.1:2181"))
-(defn-remote sc timestamp)
-```
-
-You should make sure to use the `defn-remote` from
-`slacker.client.cluster` instead of the one from `slacker.client`.
-
 ### Slacker on HTTP
 
 From 0.4.0, slacker can be configured to run on HTTP protocol. To
@@ -314,6 +267,72 @@ However, for security concern, you can disable inspect by adding an
 option `:inspect? false` to `start-slacker-server`. By default, server
 inspect is enabled.
 
+## Slacker Cluster
+
+Leveraging on ZooKeeper, slacker now has a solution for high
+availability and load balancing. You can have several slacker servers
+in a cluster serving functions. And the clustered slacker client will
+randomly select one of these server to invoke. Once a server is added
+to or removed from the cluster, the client will automatically
+establish connection to it. 
+
+To create such a slacker cluster, make sure you have a zookeeper
+instance in your network.
+
+### Clustered Slacker Server
+
+On the server side, add an option `:cluster`. Some information is    
+required:
+
+``` clojure
+(use 'slacker.server)
+(start-slacker-server ...
+                      :cluster {:name "cluster-name"
+                                :zk "127.0.0.1:2181"})
+```
+
+Cluster information here:
+
+* `:name` the cluster name (*required*)
+* `:zk` zookeeper server address (*required*)
+* `:node` server IP (*optional*, if you don't provide the server IP
+  here, slacker will try to detect server IP by connecting to zk,
+  on which we assume that your slacker server are bound on the same
+  network with zookeeper)
+
+### Clustered Slacker Client
+
+On the client side, you have to specify the zookeeper address instead
+of a particular slacker server. Use the `clustered-slackerc`:
+
+``` clojure
+(use 'slacker.client.cluster)
+(def sc (clustered-slackerc "cluster-name" "127.0.0.1:2181"))
+(defn-remote sc timestamp)
+```
+
+You should make sure to use the `defn-remote` from
+`slacker.client.cluster` instead of the one from `slacker.client`.
+
+### Examples
+
+There is a cluster example in the source code. To run the server,
+start a zookeeper on your machine (127.0.0.1:2181)
+
+Start server instance:
+
+    lein run -m slacker.example.cluster-server 2104
+
+Open a new terminal, start another server instance:
+
+    lein run -m slacker.example.cluster-server 2105
+
+On another terminal, you can run the example client:
+
+    lein run -m slacker.example.cluster-client
+
+By checking logs, you can trace the calls on each server instance.
+
 ## Performance
 
 Some performance tests was executed while I'm developing slacker.
@@ -324,6 +343,10 @@ single client (50 connections, 50 threads) performed 500000
 **synchronous** calls in 48862 msecs (TPS is about **10232**).
 
 Some formal performance benchmark is coming soon.
+
+## Contributors
+
+* [lbt05](https://github.com/lbt05)
 
 ## License
 
