@@ -4,7 +4,8 @@
   (:use [lamina.core])
   (:use [aleph tcp http])
   (:use [gloss.io :only [contiguous]])
-  (:use [slingshot.slingshot :only [try+]]))
+  (:use [slingshot.slingshot :only [try+]])
+  (:require [zookeeper :as zk]))
 
 ;; pipeline functions for server request handling
 (defn- map-req-fields [req]
@@ -129,6 +130,7 @@
                            (build-server-pipeline funcs interceptors)))
                          {:port http}))
     (when-not (nil? cluster)
-      (publish-cluster cluster port funcs))))
+      (with-zk (zk/connect (:zk cluster))
+        (publish-cluster cluster port funcs)))))
 
 
