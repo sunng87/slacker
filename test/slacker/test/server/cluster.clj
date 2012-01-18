@@ -1,6 +1,7 @@
 (ns slacker.test.server.cluster
   (:use [clojure.test] )
   (:use [slacker.server cluster])
+  (:use [slacker.utils :only [zk-path]])
   (:use [zookeeper :as zk])
   (:require [slacker.example.api]))
 
@@ -12,8 +13,10 @@
         (for [[k v] (ns-publics n) :when (fn? @v)] [(name k) v])))
 
 (defn- create-data [cluster-map]
-  (do
-    (map str (repeat(str "/" (cluster-map :name) "/functions/")) (keys (ns-funcs (the-ns 'slacker.example.api))))))
+  (doall
+   (map str
+        (repeat (str "/" (cluster-map :name) "/functions/"))
+        (keys (ns-funcs (the-ns 'slacker.example.api))))))
 
 (deftest test-publish-cluster
   (let [cluster-map {:name "test-cluster" :node "127.0.0.1:2104" :zk "127.0.0.1:2181"}
@@ -23,7 +26,7 @@
         ]
     (do
       (with-zk zk-conn (publish-cluster cluster-map 2104 (ns-funcs (the-ns 'slacker.example.api))))
-      (is (false? (every? (fn[x](empty? x))(map zk/children (repeat test-conn) node-list))))
+      (is (false? (every? (fn[x](false? x))(map zk/children (repeat test-conn) node-list))))
       )
     ))
 
@@ -34,7 +37,7 @@
         zk-conn *server-conn*
         ]
     (do
-      (zk/delete-all zk-conn (str "/" (cluster-map :name)))
+      (zk/delete-all zk-conn (zk-path (cluster-map :name)))
       (zk/close zk-conn)
       (is (true? (every? (fn[x](false? x))(map zk/children (repeat test-conn) node-list))))
       (zk/close test-conn)

@@ -2,6 +2,7 @@
   (:require [zookeeper :as zk])
   (:use [slacker common serialization])
   (:use [clojure.string :only [split]])
+  (:require [slacker.utils :as utils])
   (:import java.net.Socket))
 
 (declare *zk-conn* )
@@ -40,19 +41,19 @@
   [cluster port funcs-map]
   (let [zk-conn (if-not (nil? *zk-conn*) *zk-conn* (zk/connect (cluster :zk)))
         cluster-map (check-ip cluster port)
-        cluster-name   (str "/" (cluster :name) )
+        cluster-name (cluster :name)
         server-node (cluster :node)
         funcs (keys funcs-map)]
     (do
-      (create-node zk-conn (str cluster-name   "/servers")
+      (create-node zk-conn (utils/zk-path cluster-name "servers")
                    :persistent? true)
-      (create-node zk-conn (str cluster-name "/functions/" server-node ))
+      (create-node zk-conn (utils/zk-path cluster-name "servers" server-node ))
       (doseq [fname funcs]
-        (create-node zk-conn (str cluster-name "/functions/" fname  )
+        (create-node zk-conn (utils/zk-path cluster-name "functions" fname  )
                      :persistent? true
                      :fnmeta (meta (funcs-map fname))))
       (doseq [fname funcs]
-        (create-node zk-conn (str cluster-name "/functions/" fname "/" server-node ))))))
+        (create-node zk-conn (utils/zk-path cluster-name "functions" fname server-node ))))))
 
 (defmacro with-zk
   "publish server information to specifized zookeeper for client"

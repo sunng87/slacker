@@ -1,7 +1,8 @@
 (ns slacker.utils
   (:use [slacker common serialization])
   (:use [slacker.client :only [defn-remote]])
-  (:use [slacker.client.common :only [inspect]]))
+  (:use [slacker.client.common :only [inspect]])
+  (:require [clojure.string :as string]))
 
 (defmacro defn-remote-batch
   "a helper macro for defn-remote, allow multiple function names"
@@ -27,5 +28,10 @@
                 (name (:name (meta f)))
                 (str f))]
     (inspect sc :meta fname)))
+
+(defn zk-path
+  "concat a list of string to zookeeper path"
+  [& nodes]
+  (str "/" (string/join "/" nodes)))
 
 

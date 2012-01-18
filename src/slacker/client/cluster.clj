@@ -1,6 +1,7 @@
 (ns slacker.client.cluster
   (:require [zookeeper :as zk])
   (:require [slacker.client])
+  (:require [slacker.utils :as utils])
   (:use [slacker.client.common])
   (:use [slacker.serialization])
   (:use [clojure.string :only [split]])
@@ -52,7 +53,7 @@
     nil))
 
 (defn- meta-data-from-zk [zk-conn cluster-name args]
-  (let [fnode (str "/" cluster-name "/functions/" args)]
+  (let [fnode (utils/zk-path cluster-name "functions" args)]
     (if-let [node-data (zk/data zk-conn fnode)]
       (deserialize :clj (:data node-data) :bytes))))
 
@@ -60,7 +61,7 @@
     [cluster-name zk-conn content-type]
   CoordinatorAwareClient
   (get-associated-servers [this fname]
-    (let [node-path (str "/" cluster-name "/functions/" fname)
+    (let [node-path (utils/zk-path cluster-name "functions" fname)
           servers (zk/children zk-conn node-path
                                :watch? true)]
       (if-not (empty? servers)
@@ -70,7 +71,7 @@
                dissoc fname))
       servers))
   (get-all-servers [this]
-    (let [node-path (str "/" cluster-name "/servers" )
+    (let [node-path (utils/zk-path cluster-name "servers" )
           servers (zk/children zk-conn node-path
                                :watch? true)]
       (if servers
