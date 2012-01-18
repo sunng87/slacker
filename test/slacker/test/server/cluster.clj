@@ -25,22 +25,17 @@
         zk-conn *server-conn*
         ]
     (do
-      (with-zk zk-conn (publish-cluster cluster-map 2104 (ns-funcs (the-ns 'slacker.example.api))))
-      (is (false? (every? (fn[x](false? x))(map zk/children (repeat test-conn) node-list))))
-      )
-    ))
+      (with-zk zk-conn
+        (publish-cluster cluster-map 2104 (ns-funcs (the-ns 'slacker.example.api))))
+      (is (false? (every? (fn[x](false? x))(map zk/children (repeat test-conn) node-list)))))))
 
 (deftest test-setdown-cluster
   (let [cluster-map {:name "test-cluster" :node "127.0.0.1:2104" :zk "127.0.0.1:2181"}
         node-list (create-data cluster-map)
         test-conn *test-conn*
-        zk-conn *server-conn*
-        ]
+        zk-conn *server-conn*]
     (do
       (zk/delete-all zk-conn (zk-path (cluster-map :name)))
       (zk/close zk-conn)
       (is (true? (every? (fn[x](false? x))(map zk/children (repeat test-conn) node-list))))
-      (zk/close test-conn)
-      )
-   )
- )
+      (zk/close test-conn))))
