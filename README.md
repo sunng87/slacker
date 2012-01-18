@@ -212,7 +212,55 @@ interceptors before or after function called.
 ```
 
 For more information about using interceptors and creating your own
-interceptors, query the [wiki page](https://github.com/sunng87/slacker/wiki/Interceptors).
+interceptors, query the [wiki
+page](https://github.com/sunng87/slacker/wiki/Interceptors).
+
+### Slacker Cluster
+
+Leveraging on ZooKeeper, slacker now has a solution for high
+availability and load balancing. You can have several slacker servers
+in a cluster serving functions. And the clustered slacker client will
+randomly select one of these server to invoke. Once a server is added
+to or removed from the cluster, the client will automatically
+establish connection to it. 
+
+To create such a slacker cluster, make sure you have a zookeeper
+instance in your network.
+
+#### Clustered Slacker Server
+
+On the server side, add an option `:cluster`. Some information is
+required:
+
+``` clojure
+(use 'slacker.server)
+(start-slacker-server ...
+                      :cluster {:name "cluster-name"
+                                :zk "127.0.0.1:2181"})
+```
+
+Cluster information here:
+
+* `:name` the cluster name (*required*)
+* `:zk` zookeeper server address (*required*)
+* `:node` server IP (*optional*, if you don't provide the server IP
+  here, slacker will try to detect server IP by connecting to zk,
+  on which we assume that your slacker server are bound on the same
+  network with zookeeper)
+
+#### Clustered Slacker Client
+
+On the client side, you have to specify the zookeeper address instead
+of a particular slacker server. Use the `clustered-slackerc`:
+
+``` clojure
+(use 'slacker.client.cluster)
+(def sc (clustered-slackerc "cluster-name" "127.0.0.1:2181"))
+(defn-remote sc timestamp)
+```
+
+You should make sure to use the `defn-remote` from
+`slacker.client.cluster` instead of the one from `slacker.client`.
 
 ### Slacker on HTTP
 
