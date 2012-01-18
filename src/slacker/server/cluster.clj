@@ -10,8 +10,8 @@
 (defn- check-ip
   "check IP address contains?
    if not connect to zookeeper and getLocalAddress"
-  [cluster]
-  (let [zk-address (split (cluster :zk) #":")
+  [zk-addr]
+  (let [zk-address (split zk-addr #":")
         zk-ip (first zk-address)
         zk-port (Integer/parseInt (second zk-address))
         socket (Socket. zk-ip zk-port)
@@ -39,7 +39,7 @@
   "publish server information to zookeeper as cluster for client"
   [cluster port funcs-map]
   (let [cluster-name (cluster :name)
-        server-node (str (or (cluster :node) (check-ip cluster)) ":" port)
+        server-node (str (or (cluster :node) (check-ip (:zk cluster))) ":" port)
         funcs (keys funcs-map)]
     (create-node *zk-conn* (utils/zk-path cluster-name "servers")
                  :persistent? true)
