@@ -23,7 +23,8 @@
                               zk-verify-conn
                               (zk-path cluster-name "functions" f))))
       (zk/create zk-verify-conn
-                 (zk-path cluster-name "functions" f test-server)))
+                 (zk-path cluster-name "functions" f test-server))
+      (refresh-associated-servers sc f))
 
   
     (is (= ["127.0.0.1:2104"] (refresh-associated-servers sc "hello")))
@@ -35,9 +36,10 @@
     (zk/create zk-verify-conn
                (zk-path cluster-name "functions" "hello" test-server2))
 
-    (Thread/sleep 1000)
+    (Thread/sleep 1000) ;; wait for watchers
     (is (= [test-server test-server2] ((get-function-mappings sc) "hello")))
     (is (= 2 (count (get-connected-servers sc))))
+    (is (= 2 (count (inspect sc :functions nil))))
   
     (zk/delete-all zk-verify-conn (zk-path cluster-name))
     (zk/close zk-verify-conn)
