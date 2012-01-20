@@ -8,8 +8,8 @@
 
 (defn- create-data [cluster-map]
   (doall
-   (map str
-        (repeat (str "/" (cluster-map :name) "/functions/"))
+   (map #(zk-path %1 "functions" %2)
+        (repeat (cluster-map :name))
         (keys funcs))))
 
 (deftest test-publish-cluster
