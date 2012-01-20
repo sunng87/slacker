@@ -32,6 +32,6 @@
 (defn zk-path
   "concat a list of string to zookeeper path"
   [& nodes]
-  (str "/slacker/cluster" (string/join "/" nodes)))
+  (str "/slacker/cluster/" (string/join "/" nodes)))
 
 
