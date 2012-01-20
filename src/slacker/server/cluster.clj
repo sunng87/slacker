@@ -47,7 +47,8 @@
     (doseq [fname funcs]
       (create-node *zk-conn* (utils/zk-path cluster-name "functions" fname  )
                    :persistent? true
-                   :fnmeta (meta (funcs-map fname))))
+                   :fnmeta (select-keys (meta (funcs-map fname))
+                                        [:name :doc :arglists])))
     (doseq [fname funcs]
       (create-node *zk-conn*
                    (utils/zk-path cluster-name "functions" fname server-node)))))
