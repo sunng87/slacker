@@ -26,8 +26,8 @@
                  (zk-path cluster-name "functions" f test-server)))
 
   
-    (is (= ["127.0.0.1:2104"] (get-associated-servers sc "hello")))
-    (is (= 1 (count (get-all-servers sc))))
+    (is (= ["127.0.0.1:2104"] (refresh-associated-servers sc "hello")))
+    (is (= 1 (count (refresh-all-servers sc))))
     (is (= {:name "world" :doc "test function"}
            (inspect sc :meta "world")))
 
@@ -36,8 +36,8 @@
                (zk-path cluster-name "functions" "hello" test-server2))
 
     (Thread/sleep 1000)
-    (is (= [test-server test-server2] (@slacker-function-servers "hello")))
-    (is (= 2 (count @slacker-clients)))
+    (is (= [test-server test-server2] ((get-function-mappings sc) "hello")))
+    (is (= 2 (count (get-connected-servers sc))))
   
     (zk/delete-all zk-verify-conn (zk-path cluster-name))
     (zk/close zk-verify-conn)

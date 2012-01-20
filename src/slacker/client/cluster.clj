@@ -8,24 +8,29 @@
   (:use [clojure.string :only [split]])
   (:use [slingshot.slingshot :only [throw+]]))
 
-(defonce slacker-clients (atom {}))
 (defonce slacker-function-servers (atom {}))
-(add-watch slacker-clients :auto-close
-           (fn [_ _ old-value new-value]
-             (doseq [server-addr (keys old-value)]
-               (if-not (contains? new-value server-addr)
-                 (close (get old-value server-addr))))))
+
+(defn- make-slacker-clients-state []
+  (let [slacker-clients (atom {})]
+    (add-watch slacker-clients :auto-close
+               (fn [_ _ old-value new-value]
+                 (doseq [server-addr (keys old-value)]
+                   (if-not (contains? new-value server-addr)
+                     (close (get old-value server-addr))))))
+    slacker-clients))
 
 (defprotocol CoordinatorAwareClient
-  (get-associated-servers [this fname])
-  (get-all-servers [this]))
+  (refresh-associated-servers [this fname])
+  (refresh-all-servers [this])
+  (get-connected-servers [this])
+  (get-function-mappings [this]))
 
 (defmacro defn-remote
   "cluster enabled defn-remote"
   [sc fname & {:keys [remote-name async? callback]
                :or {remote-name nil async? false callback nil}}]
   `(do
-     (get-associated-servers ~sc (or ~remote-name (name '~fname)))
+     (refresh-associated-servers ~sc (or ~remote-name (name '~fname)))
      (slacker.client/defn-remote
        ~sc ~fname
        :remote-name ~remote-name
@@ -45,12 +50,12 @@
 (defn- functions-callback [e sc fname]
   (case (:event-type e)
     :NodeDeleted (swap! slacker-function-servers dissoc fname)
-    :NodeChildrenChanged (get-associated-servers sc fname)
+    :NodeChildrenChanged (refresh-associated-servers sc fname)
     nil))
 
 (defn- clients-callback [e sc]
   (case (:event-type e)
-    :NodeChildrenChanged (get-all-servers sc)
+    :NodeChildrenChanged (refresh-all-servers sc)
     nil))
 
 (defn- meta-data-from-zk [zk-conn cluster-name args]
@@ -59,9 +64,9 @@
       (deserialize :clj (:data node-data) :bytes))))
 
 (deftype ClusterEnabledSlackerClient
-    [cluster-name zk-conn content-type]
+    [cluster-name zk-conn slacker-clients slacker-function-servers content-type]
   CoordinatorAwareClient
-  (get-associated-servers [this fname]
+  (refresh-associated-servers [this fname]
     (let [node-path (utils/zk-path cluster-name "functions" fname)
           servers (zk/children zk-conn node-path
                                :watch? true)]
@@ -71,7 +76,7 @@
         (swap! slacker-function-servers
                dissoc fname))
       servers))
-  (get-all-servers [this]
+  (refresh-all-servers [this]
     (let [node-path (utils/zk-path cluster-name "servers" )
           servers (zk/children zk-conn node-path
                                :watch? true)]
@@ -82,6 +87,10 @@
                                          (create-slackerc % content-type)))
                           servers))))
       @slacker-clients))
+  (get-connected-servers [this]
+    (keys @slacker-clients))
+  (get-function-mappings [this]
+    @slacker-function-servers)
   
   SlackerClientProtocol
   (sync-call-remote [this func-name params]
@@ -120,10 +129,14 @@
    & {:keys [content-type]
       :or {content-type :carb}}]
   (let [zk-conn (zk/connect zk-server)
+        slacker-clients (make-slacker-clients-state)
+        slacker-function-servers (atom {})
         sc (ClusterEnabledSlackerClient.
-            cluster-name zk-conn content-type)]
+            cluster-name zk-conn
+            slacker-clients slacker-function-servers
+            content-type)]
     (zk/register-watcher zk-conn (fn [e] (on-zk-events e sc)))
-    (get-all-servers sc)
+    (refresh-all-servers sc)
     sc))
 
 
