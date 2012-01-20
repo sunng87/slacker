@@ -40,10 +40,9 @@
     (is (= [test-server test-server2] ((get-function-mappings sc) "hello")))
     (is (= 2 (count (get-connected-servers sc))))
     (is (= 2 (count (inspect sc :functions nil))))
-  
-    (zk/delete-all zk-verify-conn (zk-path cluster-name))
-    (zk/close zk-verify-conn)
 
-    (close sc)))
+    (close sc)
+    (zk/delete-all zk-verify-conn (zk-path cluster-name))
+    (zk/close zk-verify-conn)))
 
 
