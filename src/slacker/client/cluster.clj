@@ -8,8 +8,6 @@
   (:use [clojure.string :only [split]])
   (:use [slingshot.slingshot :only [throw+]]))
 
-(defonce slacker-function-servers (atom {}))
-
 (defn- make-slacker-clients-state []
   (let [slacker-clients (atom {})]
     (add-watch slacker-clients :auto-close
@@ -23,7 +21,8 @@
   (refresh-associated-servers [this fname])
   (refresh-all-servers [this])
   (get-connected-servers [this])
-  (get-function-mappings [this]))
+  (get-function-mappings [this])
+  (delete-function-mapping [this fname]))
 
 (defmacro defn-remote
   "cluster enabled defn-remote"
@@ -42,14 +41,14 @@
         port (Integer/valueOf (second (split server #":")))]
     (slacker.client/slackerc host port :content-type content-type)))
 
-(defn- find-server [func-name]
+(defn- find-server [slacker-function-servers func-name]
   (if-let [servers (@slacker-function-servers func-name)]
     (rand-nth servers)
     (throw+ {:code :not-found})))
 
 (defn- functions-callback [e sc fname]
   (case (:event-type e)
-    :NodeDeleted (swap! slacker-function-servers dissoc fname)
+    :NodeDeleted (delete-function-mapping sc fname)
     :NodeChildrenChanged (refresh-associated-servers sc fname)
     nil))
 
@@ -91,17 +90,19 @@
     (keys @slacker-clients))
   (get-function-mappings [this]
     @slacker-function-servers)
+  (delete-function-mapping [this fname]
+    (swap! slacker-function-servers dissoc fname))
   
   SlackerClientProtocol
   (sync-call-remote [this func-name params]
-    (let [target-server (find-server func-name)
+    (let [target-server (find-server slacker-function-servers func-name)
           target-conn (@slacker-clients target-server)]
       (if *debug*
         (println (str "[dbg] calling "
                       func-name " on " target-server)))
       (sync-call-remote target-conn func-name params)))
   (async-call-remote [this func-name params cb]
-    (let [target-server (find-server func-name)
+    (let [target-server (find-server slacker-function-servers func-name)
           target-conn (@slacker-clients target-server)]
       (if *debug*
         (println (str "[dbg] calling "
