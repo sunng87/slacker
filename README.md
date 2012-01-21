@@ -67,7 +67,9 @@ namespace.
 
 ``` clojure
 (ns slapi)
-(defn timestamp []
+(defn timestamp 
+  "return server time in milliseconds"
+  []
   (System/currentTimeMillis))
 
 ;; ...more functions
@@ -87,6 +89,17 @@ On the client side, define a facade for the remote function:
 (def sc (slackerc "localhost" 2104))
 (defn-remote sc timestamp)
 (timestamp)
+```
+
+By checking the metadata of `timestamp`, you can find useful
+information:
+
+``` clojure
+(meta timestamp)
+=> {:slacker-remote-name "timestamp", :slacker-remote-fn true,
+:slacker-client #<SlackerClient
+slacker.client.common.SlackerClient@575752>, :arglists ([]), :name
+timestamp :doc "return server time in milliseconds"}
 ```
 
 #### Closing the client
