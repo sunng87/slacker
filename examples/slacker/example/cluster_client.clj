@@ -6,8 +6,7 @@
 
 (def sc (clustered-slackerc "example-cluster" "127.0.0.1:2181"))
 
-(defn-remote sc timestamp)
-(defn-remote sc rand-ints)
+(defn-remote-all 'slacker.example.cluster-client/sc)
 (defn-remote sc async-timestamp
   :remote-name "timestamp"
   :async? true)

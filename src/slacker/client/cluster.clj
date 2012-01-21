@@ -62,18 +62,21 @@
     (if-let [node-data (zk/data zk-conn fnode)]
       (deserialize :clj (:data node-data) :bytes))))
 
+(defn- delete-function-from-zk [zk-conn cluster-name fname]
+  (let [fnode (utils/zk-path cluster-name "functions" fname)]
+    (zk/delete zk-conn fnode)))
+
 (deftype ClusterEnabledSlackerClient
-    [cluster-name zk-conn slacker-clients slacker-function-servers content-type]
+    [cluster-name zk-conn
+     slacker-clients slacker-function-servers content-type]
   CoordinatorAwareClient
   (refresh-associated-servers [this fname]
     (let [node-path (utils/zk-path cluster-name "functions" fname)
           servers (zk/children zk-conn node-path
                                :watch? true)]
       (if-not (empty? servers)
-        (swap! slacker-function-servers
-               assoc fname servers)
-        (swap! slacker-function-servers
-               dissoc fname))
+        (swap! slacker-function-servers assoc fname servers)
+        (delete-function-mapping this fname))
       servers))
   (refresh-all-servers [this]
     (let [node-path (utils/zk-path cluster-name "servers" )
