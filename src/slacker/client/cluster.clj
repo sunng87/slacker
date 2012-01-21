@@ -114,7 +114,7 @@
     (reset! slacker-function-servers {}))
   (inspect [this cmd args]
     (case cmd
-      :functions (into [] (for [[k v] @slacker-function-servers :when (not-empty v)] k))
+      :functions (into [] (zk/children zk-conn (utils/zk-path cluster-name "functions")))
       :meta (meta-data-from-zk zk-conn cluster-name args))))
 
 (defn- on-zk-events [e sc]
