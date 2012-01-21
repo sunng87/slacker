@@ -1,6 +1,5 @@
 (ns slacker.utils
   (:use [slacker common serialization])
-  (:use [slacker.client :only [defn-remote]])
   (:use [slacker.client.common :only [inspect]])
   (:require [clojure.string :as string]))
 
