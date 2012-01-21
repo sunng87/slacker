@@ -44,10 +44,16 @@
   connection and the function name. (Argument list is not required here.)"
   [sc fname & {:keys [remote-name async? callback]
                :or {remote-name nil async? false callback nil}}]
-  `(defn ~fname [& args#]
-     (with-slackerc ~sc
-       [(or ~remote-name (name '~fname))
-        (into [] args#)]
-       :async? ~async?
-       :callback ~callback)))
+  `(let [rname# (or ~remote-name (name '~fname))]
+     (def ~fname
+       (with-meta
+         (fn [& args#]
+           (with-slackerc ~sc
+             [rname# (into [] args#)]
+             :async? ~async?
+             :callback ~callback))
+         (merge (meta-remote ~sc rname#)
+                {:slacker-remote-fn true
+                 :slacker-client ~sc
+                 :slacker-remote-name rname#})))))
 

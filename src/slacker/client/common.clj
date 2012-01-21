@@ -73,4 +73,12 @@
       (async-call-remote sc fname args callback)
       (sync-call-remote sc fname args))))
 
+(defn meta-remote
+  "get metadata of a remote function by inspect api"
+  [sc f]
+  (let [fname (if (fn? f)
+                (name (:name (meta f)))
+                (str f))]
+    (inspect sc :meta fname)))
+
 

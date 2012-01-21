@@ -21,13 +21,6 @@
   (dorun (map #(eval (list 'defn-remote sc-sym (symbol %)))
               (get-all-funcs @(find-var sc-sym)))))
 
-(defn meta-remote
-  "get metadata of a remote function by inspect api"
-  [sc f]
-  (let [fname (if (fn? f)
-                (name (:name (meta f)))
-                (str f))]
-    (inspect sc :meta fname)))
 
 (defn zk-path
   "concat a list of string to zookeeper path"
