@@ -50,6 +50,10 @@
     Add new protocol command to get metadata of slacker functions.
 **** get all functions exposed by the server
 **** get metadata of a particular function
+*** TODO expose multiple namespace in a server                :server:client:
+    Allow server to expose multiple namespaces. 
+    Namespace is also added as prefix of function name between client 
+    and server communication.
      
 ** Lower Priority Features
 *** Browser clojurescript support                                    :client:
@@ -68,5 +72,7 @@
     SCHEDULED: <2012-01-01 Sun>
     
 *** 0.5.0
-    SCHEDULED: <2012-01-23 Mon>
+    SCHEDULED: <2012-01-07 Sat>
+
+    
     
