@@ -3,8 +3,8 @@
   (:use slacker.utils))
 
 (def conn (slackerc-pool "localhost" 2104
-                         :exhausted-action
-                         :grow :min-idle 1))
+                         :exhausted-action :grow
+                         :min-idle 1))
 
 (defn-remote-all 'slacker.example.clientpool/conn)
 
