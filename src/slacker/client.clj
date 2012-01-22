@@ -43,7 +43,8 @@
   "Define a facade for remote function. You have to provide the
   connection and the function name. (Argument list is not required here.)"
   ([sc fname & {:keys [remote-ns remote-name async? callback]
-                :or {remote-ns *ns* remote-name nil async? false callback nil}}]
+                :or {remote-ns (ns-name *ns*)
+                     remote-name nil async? false callback nil}}]
      `(let [rname# (str ~remote-ns "/"
                         (or ~remote-name (name '~fname)))]
         (def ~fname

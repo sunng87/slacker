@@ -26,12 +26,16 @@
 
 (defmacro defn-remote
   "cluster enabled defn-remote"
-  [sc fname & {:keys [remote-name async? callback]
-               :or {remote-name nil async? false callback nil}}]
+  [sc fname & {:keys [remote-ns remote-name async? callback]
+               :or {remote-ns (ns-name *ns*)
+                    remote-name nil async? false callback nil}}]
   `(do
-     (refresh-associated-servers ~sc (or ~remote-name (name '~fname)))
+     (refresh-associated-servers ~sc
+                                 (str ~remote-ns "/"
+                                      (or ~remote-name (name '~fname))))
      (slacker.client/defn-remote
        ~sc ~fname
+       :remote-ns ~remote-ns
        :remote-name ~remote-name
        :async? ~async?
        :callback ~callback)))
