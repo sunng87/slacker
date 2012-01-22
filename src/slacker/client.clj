@@ -56,5 +56,6 @@
             (merge (meta-remote ~sc rname#)
                    {:slacker-remote-fn true
                     :slacker-client ~sc
+                    :slacker-remote-ns ~remote-ns
                     :slacker-remote-name rname#}))))))
 
