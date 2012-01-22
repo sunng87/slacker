@@ -34,7 +34,7 @@
         (assoc req :code :exception :result (.toString e))))
     req))
 
-(defn- serialize-result [req]
+(defn- serialize-result [req]    
   (if-not (nil? (:result req))
     (assoc req :result (serialize (:content-type req) (:result req)))
     req))
@@ -101,8 +101,10 @@
                                       inspect-handler)))))))
 
 (defn- ns-funcs [n]
-  (into {}
-        (for [[k v] (ns-publics n) :when (fn? @v)] [(name k) v])))
+  (let [nsname (ns-name n)]
+    (into {}
+          (for [[k v] (ns-publics n) :when (fn? @v)]
+            [(str nsname "/" (name k)) v]))))
 
 
 (defn start-slacker-server
@@ -120,7 +122,9 @@
            interceptors {:before identity :after identity}
            inspect? true
            cluster nil}}]
-  (let [funcs (ns-funcs exposed-ns)
+  (let [funcs (apply merge (map ns-funcs
+                                (if (sequential? exposed-ns)
+                                  exposed-ns [exposed-ns])))
         handler (create-server-handler funcs interceptors inspect?)]
     (when *debug* (doseq [f (keys funcs)] (println f)))
     (start-tcp-server handler {:port port :frame slacker-base-codec})
