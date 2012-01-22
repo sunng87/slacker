@@ -4,15 +4,20 @@
 
 (def conn (slackerc "localhost" 2104))
 (def conn2 (slackerc "localhost" 2104 :content-type :json))
-(defn-remote conn timestamp)
-(defn-remote conn2 inc-m)
-(defn-remote conn get-m :async? true)
-(defn-remote conn2 show-m :remote-name "get-m")
+(defn-remote conn timestamp :remote-ns "slacker.example.api")
+(defn-remote conn2 inc-m :remote-ns "slacker.example.api")
+(defn-remote conn get-m :async? true :remote-ns "slacker.example.api")
+(defn-remote conn2 show-m
+  :remote-name "get-m"
+  :remote-ns "slacker.example.api")
 (defn-remote conn get-m2
   :remote-name "get-m"
-  :callback #(prn "Async get-m ==> " %))
-(defn-remote conn rand-ints)
-(defn-remote conn make-error)
+  :callback #(prn "Async get-m ==> " %)
+  :remote-ns "slacker.example.api")
+(defn-remote conn rand-ints
+  :remote-ns "slacker.example.api")
+(defn-remote conn make-error
+  :remote-ns "slacker.example.api")
 
 
 (defn -main [& args]
