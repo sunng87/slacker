@@ -61,13 +61,15 @@
     :NodeChildrenChanged (refresh-all-servers sc)
     nil))
 
-(defn- meta-data-from-zk [zk-conn cluster-name args]
-  (let [fnode (utils/zk-path cluster-name "functions" args)]
+(defn- meta-data-from-zk [zk-conn cluster-name fname]
+  (let [fnode (utils/zk-path cluster-name "functions"
+                             (utils/escape-zkpath fname))]
     (if-let [node-data (zk/data zk-conn fnode)]
       (deserialize :clj (:data node-data) :bytes))))
 
 (defn- delete-function-from-zk [zk-conn cluster-name fname]
-  (let [fnode (utils/zk-path cluster-name "functions" fname)]
+  (let [fnode (utils/zk-path cluster-name "functions"
+                             (utils/escape-zkpath fname))]
     (zk/delete zk-conn fnode)))
 
 (deftype ClusterEnabledSlackerClient
@@ -75,7 +77,8 @@
      slacker-clients slacker-function-servers content-type]
   CoordinatorAwareClient
   (refresh-associated-servers [this fname]
-    (let [node-path (utils/zk-path cluster-name "functions" fname)
+    (let [node-path (utils/zk-path cluster-name "functions"
+                                   (utils/escape-zkpath fname))
           servers (zk/children zk-conn node-path
                                :watch? true)]
       (if-not (empty? servers)
@@ -121,15 +124,20 @@
     (reset! slacker-function-servers {}))
   (inspect [this cmd args]
     (case cmd
-      :functions (into [] (zk/children zk-conn (utils/zk-path cluster-name "functions")))
+      :functions
+      (into []
+            (map utils/unescape-zkpath
+                 (zk/children zk-conn
+                              (utils/zk-path cluster-name "functions"))))
       :meta (meta-data-from-zk zk-conn cluster-name args))))
 
 (defn- on-zk-events [e sc]
   (if (.endsWith (:path e) "servers")
     (clients-callback e sc)
-    (let [matcher (re-matches #"/.+?/functions/?(.*)" (:path e))]
+    (let [matcher (re-matches #"/.+/functions/?(.*)" (:path e))]
       (if-not (nil? matcher)
-        (functions-callback e sc (second matcher))))))
+        (functions-callback e sc (utils/unescape-zkpath
+                                  (second matcher)))))))
 
 (defn clustered-slackerc
   "create a cluster enalbed slacker client"

@@ -9,6 +9,7 @@
 (defn-remote-all 'slacker.example.cluster-client/sc)
 (defn-remote sc async-timestamp
   :remote-name "timestamp"
+  :remote-ns "slacker.example.api"
   :async? true)
 
 (defn -main [& args]

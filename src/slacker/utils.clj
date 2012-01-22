@@ -1,7 +1,8 @@
 (ns slacker.utils
+  (:refer-clojure :exclude [replace])
   (:use [slacker common serialization])
   (:use [slacker.client.common :only [inspect]])
-  (:use [clojure.string :only [split join]]))
+  (:use [clojure.string :only [split join replace]]))
 
 (defn get-all-funcs
   "inspect server to get all exposed function names."
@@ -23,4 +24,9 @@
   [& nodes]
   (str "/slacker/cluster/" (join "/" nodes)))
 
+(defn escape-zkpath [fname]
+  (replace fname "/" "_slash_"))
+
+(defn unescape-zkpath [fname]
+  (replace fname "_slash_" "/"))
 
