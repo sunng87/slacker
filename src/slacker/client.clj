@@ -53,7 +53,7 @@
                 [~remote-ns rname# (into [] args#)]
                 :async? ~async?
                 :callback ~callback))
-            (merge (meta-remote ~sc rname#)
+            (merge (meta-remote ~sc (str ~remote-ns "/" rname#))
                    {:slacker-remote-fn true
                     :slacker-client ~sc
                     :slacker-remote-ns ~remote-ns
