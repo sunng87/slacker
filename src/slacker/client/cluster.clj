@@ -22,7 +22,7 @@
   (refresh-all-servers [this])
   (get-connected-servers [this])
   (get-function-mappings [this])
-  (delete-function-mapping [this fname]))
+  (delete-ns-mapping [this fname]))
 
 (defmacro defn-remote
   "cluster enabled defn-remote"
@@ -43,8 +43,8 @@
         port (Integer/valueOf (second (split server #":")))]
     (slacker.client/slackerc host port :content-type content-type)))
 
-(defn- find-server [slacker-function-servers func-name]
-  (if-let [servers (@slacker-function-servers func-name)]
+(defn- find-server [slacker-ns-servers ns-name]
+  (if-let [servers (@slacker-ns-servers ns-name)]
     (rand-nth servers)
     (throw+ {:code :not-found})))
 
@@ -95,7 +95,7 @@
   SlackerClientProtocol
   (sync-call-remote [this ns-name func-name params]
     (let [fname (str ns-name "/" func-name)
-          target-server (find-server slacker-function-servers fname)
+          target-server (find-server slacker-ns-servers ns-name)
           target-conn (@slacker-clients target-server)]
       (if *debug*
         (println (str "[dbg] calling "
@@ -103,7 +103,7 @@
       (sync-call-remote target-conn ns-name func-name params)))
   (async-call-remote [this ns-name func-name params cb]
     (let [fname (str ns-name "/" func-name)
-          target-server (find-server slacker-function-servers fname)
+          target-server (find-server slacker-ns-servers ns-name)
           target-conn (@slacker-clients target-server)]
       (if *debug*
         (println (str "[dbg] calling "
