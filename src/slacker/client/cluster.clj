@@ -8,20 +8,11 @@
   (:use [clojure.string :only [split]])
   (:use [slingshot.slingshot :only [throw+]]))
 
-(defn- make-slacker-clients-state []
-  (let [slacker-clients (atom {})]
-    (add-watch slacker-clients :auto-close
-               (fn [_ _ old-value new-value]
-                 (doseq [server-addr (keys old-value)]
-                   (if-not (contains? new-value server-addr)
-                     (close (get old-value server-addr))))))
-    slacker-clients))
-
 (defprotocol CoordinatorAwareClient
   (refresh-associated-servers [this ns])
   (refresh-all-servers [this])
   (get-connected-servers [this])
-  (get-function-mappings [this])
+  (get-ns-mappings [this])
   (delete-ns-mapping [this fname]))
 
 (defmacro defn-remote
@@ -75,6 +66,7 @@
           servers (zk/children zk-conn node-path
                                :watch? true)]
       (when-not (empty? servers)
+        ;; update servers for this namespace
         (swap! slacker-ns-servers assoc nsname servers)
         ;; establish connection if the server is not connected
         (doseq [s servers]
@@ -83,11 +75,16 @@
               (swap! slacker-clients assoc s sc)))))
       servers))
   (refresh-all-servers [this]
-    (let [node-path (utils/zk-path cluster-name "servers" )]
-      (zk/children zk-conn node-path :watch? true)))
+    (let [node-path (utils/zk-path cluster-name "servers")
+          servers (zk/children zk-conn node-path :watch? true)]
+      ;; remove connection that already closed
+      (doseq [s (keys @slacker-clients)]
+        (when-not (contains? servers s)
+          (close (get @slacker-clients s))
+          (swap! slacker-clients dissoc s)))))
   (get-connected-servers [this]
     (keys @slacker-clients))
-  (get-function-mappings [this]
+  (get-ns-mappings [this]
     @slacker-ns-servers)
   (delete-ns-mapping [this ns]
     (swap! slacker-ns-servers dissoc ns))
@@ -98,7 +95,7 @@
           target-server (find-server slacker-ns-servers ns-name)
           target-conn (@slacker-clients target-server)]
       (if *debug*
-        (println (str "[dbg] calling "
+        (println (str "[dbg] calling " ns-name "/"
                       func-name " on " target-server)))
       (sync-call-remote target-conn ns-name func-name params)))
   (async-call-remote [this ns-name func-name params cb]
@@ -106,13 +103,14 @@
           target-server (find-server slacker-ns-servers ns-name)
           target-conn (@slacker-clients target-server)]
       (if *debug*
-        (println (str "[dbg] calling "
+        (println (str "[dbg] calling " ns-name "/"
                       func-name " on " target-server)))
       (async-call-remote target-conn ns-name func-name params cb)))
   (close [this]
     (zk/close zk-conn)
+    (doseq [s (vals @slacker-clients)] (close s))
     (reset! slacker-clients {})
-    (reset! slacker-function-servers {}))
+    (reset! slacker-ns-servers {}))
   (inspect [this cmd args]
     (case cmd
       :functions
@@ -135,14 +133,13 @@
    & {:keys [content-type]
       :or {content-type :carb}}]
   (let [zk-conn (zk/connect zk-server)
-        slacker-clients (make-slacker-clients-state)
-        slacker-function-servers (atom {})
+        slacker-clients (atom {})
+        slacker-ns-servers (atom {})
         sc (ClusterEnabledSlackerClient.
             cluster-name zk-conn
-            slacker-clients slacker-function-servers
+            slacker-clients slacker-ns-servers
             content-type)]
     (zk/register-watcher zk-conn (fn [e] (on-zk-events e sc)))
-    (refresh-all-servers sc)
     sc))
 
 
