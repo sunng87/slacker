@@ -34,20 +34,22 @@
   (deserialize :clj (second (second response)) :string))
 
 (defprotocol SlackerClientProtocol
-  (sync-call-remote [this func-name params])
-  (async-call-remote [this func-name params cb])
+  (sync-call-remote [this ns-name func-name params])
+  (async-call-remote [this ns-name func-name params cb])
   (inspect [this cmd args])
   (close [this]))
 
 (deftype SlackerClient [conn content-type]
   SlackerClientProtocol
-  (sync-call-remote [this func-name params]
-    (let [request (make-request content-type func-name params)
+  (sync-call-remote [this ns-name func-name params]
+    (let [fname (str ns-name "/" func-name)
+          request (make-request content-type fname params)
           response (wait-for-result (conn request) *timeout*)]
       (when-let [[_ resp] response]
         (handle-response resp))))
-  (async-call-remote [this func-name params cb]
-    (let [request (make-request content-type func-name params)]
+  (async-call-remote [this ns-name func-name params cb]
+    (let [fname (str ns-name "/" func-name)
+          request (make-request content-type fname params)]
       (run-pipeline
        (conn request)
        #(if-let [[_ resp] %]
@@ -68,10 +70,10 @@
   [sc remote-call-info
    & {:keys [async? callback]
       :or {async? false callback nil}}]
-  (let [[fname args] remote-call-info]
+  (let [[nsname fname args] remote-call-info]
     (if (or async? (not (nil? callback)))
-      (async-call-remote sc fname args callback)
-      (sync-call-remote sc fname args))))
+      (async-call-remote sc nsname fname args callback)
+      (sync-call-remote sc nsname fname args))))
 
 (defn meta-remote
   "get metadata of a remote function by inspect api"

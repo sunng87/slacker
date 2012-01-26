@@ -104,20 +104,22 @@
     (swap! slacker-function-servers dissoc fname))
   
   SlackerClientProtocol
-  (sync-call-remote [this func-name params]
-    (let [target-server (find-server slacker-function-servers func-name)
+  (sync-call-remote [this ns-name func-name params]
+    (let [fname (str ns-name "/" func-name)
+          target-server (find-server slacker-function-servers fname)
           target-conn (@slacker-clients target-server)]
       (if *debug*
         (println (str "[dbg] calling "
                       func-name " on " target-server)))
-      (sync-call-remote target-conn func-name params)))
-  (async-call-remote [this func-name params cb]
-    (let [target-server (find-server slacker-function-servers func-name)
+      (sync-call-remote target-conn ns-name func-name params)))
+  (async-call-remote [this ns-name func-name params cb]
+    (let [fname (str ns-name "/" func-name)
+          target-server (find-server slacker-function-servers fname)
           target-conn (@slacker-clients target-server)]
       (if *debug*
         (println (str "[dbg] calling "
                       func-name " on " target-server)))
-      (async-call-remote target-conn func-name params cb)))
+      (async-call-remote target-conn ns-name func-name params cb)))
   (close [this]
     (zk/close zk-conn)
     (reset! slacker-clients {})

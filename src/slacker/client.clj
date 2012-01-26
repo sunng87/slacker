@@ -45,13 +45,12 @@
   ([sc fname & {:keys [remote-ns remote-name async? callback]
                 :or {remote-ns (ns-name *ns*)
                      remote-name nil async? false callback nil}}]
-     `(let [rname# (str ~remote-ns "/"
-                        (or ~remote-name (name '~fname)))]
+     `(let [rname# (or ~remote-name (name '~fname))]
         (def ~fname
           (with-meta
             (fn [& args#]
               (with-slackerc ~sc
-                [rname# (into [] args#)]
+                [~remote-ns rname# (into [] args#)]
                 :async? ~async?
                 :callback ~callback))
             (merge (meta-remote ~sc rname#)
