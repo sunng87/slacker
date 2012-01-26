@@ -37,21 +37,23 @@
 
 (defn publish-cluster
   "publish server information to zookeeper as cluster for client"
-  [cluster port funcs-map]
+  [cluster port ns-names funcs-map]
   (let [cluster-name (cluster :name)
         server-node (str (or (cluster :node) (check-ip (:zk cluster))) ":" port)
         funcs (map utils/escape-zkpath (keys funcs-map))]
     (create-node *zk-conn* (utils/zk-path cluster-name "servers")
                  :persistent? true)
     (create-node *zk-conn* (utils/zk-path cluster-name "servers" server-node ))
+    (doseq [nn ns-names]
+      (create-node *zk-conn* (utils/zk-path cluster-name "namespaces" nn)
+                   :persistent? true)
+      (create-node *zk-conn* (utils/zk-path cluster-name "namespaces"
+                                            nn server-node)))
     (doseq [fname funcs]
       (create-node *zk-conn* (utils/zk-path cluster-name "functions" fname  )
                    :persistent? true
                    :fnmeta (select-keys (meta (funcs-map fname))
-                                        [:name :doc :arglists])))
-    (doseq [fname funcs]
-      (create-node *zk-conn*
-                   (utils/zk-path cluster-name "functions" fname server-node)))))
+                                        [:name :doc :arglists])))))
 
 (defmacro with-zk
   "publish server information to specifized zookeeper for client"

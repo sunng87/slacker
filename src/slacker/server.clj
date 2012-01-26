@@ -122,9 +122,9 @@
            interceptors {:before identity :after identity}
            inspect? true
            cluster nil}}]
-  (let [funcs (apply merge (map ns-funcs
-                                (if (sequential? exposed-ns)
-                                  exposed-ns [exposed-ns])))
+  (let [normalized-ns (if (sequential? exposed-ns)
+                        exposed-ns [exposed-ns])
+        funcs (apply merge (map ns-funcs normalized-ns))
         handler (create-server-handler funcs interceptors inspect?)]
     (when *debug* (doseq [f (keys funcs)] (println f)))
     (start-tcp-server handler {:port port :frame slacker-base-codec})
@@ -135,6 +135,7 @@
                          {:port http}))
     (when-not (nil? cluster)
       (with-zk (zk/connect (:zk cluster))
-        (publish-cluster cluster port funcs)))))
+        (publish-cluster cluster port
+                         (map ns-name normalized-ns) funcs)))))
 
 
