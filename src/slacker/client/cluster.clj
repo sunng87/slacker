@@ -18,7 +18,7 @@
     slacker-clients))
 
 (defprotocol CoordinatorAwareClient
-  (refresh-associated-servers [this fname])
+  (refresh-associated-servers [this ns])
   (refresh-all-servers [this])
   (get-connected-servers [this])
   (get-function-mappings [this])
@@ -30,9 +30,7 @@
                :or {remote-ns (ns-name *ns*)
                     remote-name nil async? false callback nil}}]
   `(do
-     (refresh-associated-servers ~sc
-                                 (str ~remote-ns "/"
-                                      (or ~remote-name (name '~fname))))
+     (refresh-associated-servers ~sc ~remote-ns)
      (slacker.client/defn-remote
        ~sc ~fname
        :remote-ns ~remote-ns
@@ -50,15 +48,15 @@
     (rand-nth servers)
     (throw+ {:code :not-found})))
 
-(defn- functions-callback [e sc fname]
+(defn- ns-callback [e sc nsname]
   (case (:event-type e)
-    :NodeDeleted (delete-function-mapping sc fname)
-    :NodeChildrenChanged (refresh-associated-servers sc fname)
+    :NodeDeleted (delete-ns-mapping sc nsname)
+    :NodeChildrenChanged (refresh-associated-servers sc nsname)
     nil))
 
 (defn- clients-callback [e sc]
   (case (:event-type e)
-    :NodeChildrenChanged (refresh-all-servers sc)
+    :NodeChildrenChanged (refresh-all-servers sc) ;;TODO
     nil))
 
 (defn- meta-data-from-zk [zk-conn cluster-name fname]
@@ -67,41 +65,32 @@
     (if-let [node-data (zk/data zk-conn fnode)]
       (deserialize :clj (:data node-data) :bytes))))
 
-(defn- delete-function-from-zk [zk-conn cluster-name fname]
-  (let [fnode (utils/zk-path cluster-name "functions"
-                             (utils/escape-zkpath fname))]
-    (zk/delete zk-conn fnode)))
-
 (deftype ClusterEnabledSlackerClient
     [cluster-name zk-conn
-     slacker-clients slacker-function-servers content-type]
+     slacker-clients slacker-ns-servers content-type]
   CoordinatorAwareClient
-  (refresh-associated-servers [this fname]
-    (let [node-path (utils/zk-path cluster-name "functions"
-                                   (utils/escape-zkpath fname))
+  (refresh-associated-servers [this nsname]
+    (let [node-path (utils/zk-path cluster-name "namespaces"
+                                   (utils/escape-zkpath nsname))
           servers (zk/children zk-conn node-path
                                :watch? true)]
-      (if-not (empty? servers)
-        (swap! slacker-function-servers assoc fname servers)
-        (delete-function-mapping this fname))
+      (when-not (empty? servers)
+        (swap! slacker-ns-servers assoc nsname servers)
+        ;; establish connection if the server is not connected
+        (doseq [s servers]
+          (if-not (contains? slacker-clients s)
+            (let [sc (create-slackerc s content-type)]
+              (swap! slacker-clients assoc s sc)))))
       servers))
   (refresh-all-servers [this]
-    (let [node-path (utils/zk-path cluster-name "servers" )
-          servers (zk/children zk-conn node-path
-                               :watch? true)]
-      (if servers
-        (reset! slacker-clients
-                (into {} (map
-                          #(vector % (or (get @slacker-clients %)
-                                         (create-slackerc % content-type)))
-                          servers))))
-      @slacker-clients))
+    (let [node-path (utils/zk-path cluster-name "servers" )]
+      (zk/children zk-conn node-path :watch? true)))
   (get-connected-servers [this]
     (keys @slacker-clients))
   (get-function-mappings [this]
-    @slacker-function-servers)
-  (delete-function-mapping [this fname]
-    (swap! slacker-function-servers dissoc fname))
+    @slacker-ns-servers)
+  (delete-ns-mapping [this ns]
+    (swap! slacker-ns-servers dissoc ns))
   
   SlackerClientProtocol
   (sync-call-remote [this func-name params]
@@ -134,10 +123,9 @@
 (defn- on-zk-events [e sc]
   (if (.endsWith (:path e) "servers")
     (clients-callback e sc)
-    (let [matcher (re-matches #"/.+/functions/?(.*)" (:path e))]
+    (let [matcher (re-matches #"/.+/namespaces/?(.*)" (:path e))]
       (if-not (nil? matcher)
-        (functions-callback e sc (utils/unescape-zkpath
-                                  (second matcher)))))))
+        (ns-callback e sc (utils/unescape-zkpath (second matcher)))))))
 
 (defn clustered-slackerc
   "create a cluster enalbed slacker client"
