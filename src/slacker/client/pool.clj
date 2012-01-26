@@ -39,16 +39,18 @@
 
 (deftype PooledSlackerClient [pool content-type]
   SlackerClientProtocol
-  (sync-call-remote [this func-name params]
+  (sync-call-remote [this ns-name func-name params]
     (let [conn (.borrowObject pool)
-          request (make-request content-type func-name params)
+          fname (str ns-name "/" func-name)
+          request (make-request content-type fname params)
           response (wait-for-result (conn request) *timeout*)]
       (.returnObject pool conn)
       (when-let [[_ resp] response]
         (handle-response resp))))
-  (async-call-remote [this func-name params cb]
+  (async-call-remote [this ns-name func-name params cb]
     (let [conn (.borrowObject pool)
-          request (make-request content-type func-name params)]
+          fname (str ns-name "/" func-name)
+          request (make-request content-type fname params)]
       (run-pipeline
        (conn request)
        #(do
