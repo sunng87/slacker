@@ -6,7 +6,8 @@
                          :exhausted-action :grow
                          :min-idle 1))
 
-(defn-remote-all 'slacker.example.clientpool/conn)
+(use-remote 'slacker.example.clientpool/conn
+            'slacker.example.api)
 
 
 (defn -main [& args]

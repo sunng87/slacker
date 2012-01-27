@@ -63,17 +63,16 @@
   #(when inspect-enabled?
      (let [[_ cmd data] %
            data (deserialize :clj data :string)]
-       (case cmd
-         :functions
-         (make-inspect-ack
+       (make-inspect-ack
+        (case cmd
+          :functions
           (let [nsname (or data "")]
-            (filter (fn [x] (.startsWith x nsname)) (keys funcs))))
-         :meta
-         (make-inspect-ack
+            (filter (fn [x] (.startsWith x nsname)) (keys funcs)))
+          :meta
           (let [fname data
                 metadata (meta (funcs fname))]
-            (select-keys metadata [:name :doc :arglists]))))
-       (make-inspect-ack nil))))
+            (select-keys metadata [:name :doc :arglists]))
+          nil)))))
 
 (defmulti -handle-request (fn [_ p & _] (first p)))
 (defmethod -handle-request :type-request [server-pipeline req client-info _]
