@@ -127,10 +127,12 @@
   (inspect [this cmd args]
     (case cmd
       :functions
-      (into []
-            (map utils/unescape-zkpath
-                 (zk/children zk-conn
-                              (utils/zk-path cluster-name "functions"))))
+      (let [nsname (or args "")
+            functions-root (utils/zk-path cluster-name "functions")]
+        (into []
+              (filter #(.startsWith % nsname)
+                      (map utils/unescape-zkpath
+                           (zk/children zk-conn functions-root)))))
       :meta (meta-data-from-zk zk-conn cluster-name args))))
 
 (defn- on-zk-events [e sc]

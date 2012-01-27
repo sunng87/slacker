@@ -6,8 +6,8 @@
 
 (defn get-all-funcs
   "inspect server to get all exposed function names."
-  [sc]
-  (inspect sc :functions nil))
+  ([sc] (get-all-funcs sc nil))
+  ([sc n] (inspect sc :functions n)))
 
 
 (defn defn-remote-all
