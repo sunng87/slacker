@@ -6,6 +6,7 @@
   (:use [slacker.client.common])
   (:use [slacker.serialization])
   (:use [clojure.string :only [split]])
+  (:require [clojure.tools.logging :as logging])
   (:use [slingshot.slingshot :only [throw+]]))
 
 (defprotocol CoordinatorAwareClient
@@ -65,22 +66,23 @@
                                    (utils/escape-zkpath nsname))
           servers (zk/children zk-conn node-path
                                :watch? true)]
-      (when-not (empty? servers)
-        ;; update servers for this namespace
-        (swap! slacker-ns-servers assoc nsname servers)
-        ;; establish connection if the server is not connected
-        (doseq [s servers]
-          (if-not (contains? slacker-clients s)
-            (let [sc (create-slackerc s content-type)]
-              (swap! slacker-clients assoc s sc)))))
+      ;; update servers for this namespace
+      (swap! slacker-ns-servers assoc nsname servers)
+      ;; establish connection if the server is not connected
+      (doseq [s servers]
+        (if-not (contains? slacker-clients s)
+          (let [sc (create-slackerc s content-type)]
+            (logging/info (str "establishing connection to " s))
+            (swap! slacker-clients assoc s sc))))
       servers))
   (refresh-all-servers [this]
     (let [node-path (utils/zk-path cluster-name "servers")
-          servers (zk/children zk-conn node-path :watch? true)]
+          servers (into #{} (zk/children zk-conn node-path :watch? true))]
       ;; remove connection that already closed
       (doseq [s (keys @slacker-clients)]
         (when-not (contains? servers s)
-          (close (get @slacker-clients s))
+          (logging/info (str "closing connection of " s))
+          (close (@slacker-clients s))
           (swap! slacker-clients dissoc s)))))
   (get-connected-servers [this]
     (keys @slacker-clients))
@@ -140,6 +142,9 @@
             slacker-clients slacker-ns-servers
             content-type)]
     (zk/register-watcher zk-conn (fn [e] (on-zk-events e sc)))
+    ;; watch 'servers' node
+    (zk/children zk-conn
+                 (utils/zk-path cluster-name "servers") :watch? true)
     sc))
 
 
