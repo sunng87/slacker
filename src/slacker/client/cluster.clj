@@ -2,7 +2,6 @@
   (:require [zookeeper :as zk])
   (:require [slacker.client])
   (:require [slacker.utils :as utils])
-  (:use [slacker.common])
   (:use [slacker.client.common])
   (:use [slacker.serialization])
   (:use [clojure.string :only [split]])
@@ -78,7 +77,7 @@
   (refresh-all-servers [this]
     (let [node-path (utils/zk-path cluster-name "servers")
           servers (into #{} (zk/children zk-conn node-path :watch? true))]
-      ;; remove connection that already closed
+      ;; close connection to offline servers, remove from slacker-clients
       (doseq [s (keys @slacker-clients)]
         (when-not (contains? servers s)
           (logging/info (str "closing connection of " s))
@@ -96,17 +95,15 @@
     (let [fname (str ns-name "/" func-name)
           target-server (find-server slacker-ns-servers ns-name)
           target-conn (@slacker-clients target-server)]
-      (if *debug*
-        (println (str "[dbg] calling " ns-name "/"
-                      func-name " on " target-server)))
+      (logging/debug (str "calling " ns-name "/"
+                          func-name " on " target-server))
       (sync-call-remote target-conn ns-name func-name params)))
   (async-call-remote [this ns-name func-name params cb]
     (let [fname (str ns-name "/" func-name)
           target-server (find-server slacker-ns-servers ns-name)
           target-conn (@slacker-clients target-server)]
-      (if *debug*
-        (println (str "[dbg] calling " ns-name "/"
-                      func-name " on " target-server)))
+      (logging/debug (str "calling " ns-name "/"
+                          func-name " on " target-server))
       (async-call-remote target-conn ns-name func-name params cb)))
   (close [this]
     (zk/close zk-conn)
@@ -124,7 +121,9 @@
 
 (defn- on-zk-events [e sc]
   (if (.endsWith (:path e) "servers")
+    ;; event on `servers` node
     (clients-callback e sc)
+    ;; event on `namespaces` nodes
     (let [matcher (re-matches #"/.+/namespaces/?(.*)" (:path e))]
       (if-not (nil? matcher)
         (ns-callback e sc (utils/unescape-zkpath (second matcher)))))))
