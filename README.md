@@ -87,7 +87,7 @@ On the client side, define a facade for the remote function:
 ``` clojure
 (use 'slacker.client)
 (def sc (slackerc "localhost" 2104))
-(defn-remote sc timestamp)
+(defn-remote sc timestamp :remote-ns "slapi")
 (timestamp)
 ```
 
@@ -98,8 +98,9 @@ information:
 (meta timestamp)
 => {:slacker-remote-name "timestamp", :slacker-remote-fn true,
 :slacker-client #<SlackerClient
-slacker.client.common.SlackerClient@575752>, :arglists ([]), :name
-timestamp :doc "return server time in milliseconds"}
+slacker.client.common.SlackerClient@575752>, :slacker-remote-ns
+"slapi" :arglists ([]), :name timestamp 
+:doc "return server time in milliseconds"}
 ```
 
 #### Closing the client
@@ -134,6 +135,7 @@ current namespace
 
 ``` clojure
 (defn-remote sc remote-time
+  :remote-ns "slapi"
   :remote-name "timestamp")
 ```
 
@@ -142,14 +144,14 @@ asynchronous which returns a *promise* when you call it. You should
 deref it by yourself to get the return value.
 
 ``` clojure
-(defn-remote timestamp :async true)
+(defn-remote timestamp :async true :remote-ns "slapi")
 @(timestamp)
 ```
 
 You can also assign a callback for an async facade.
 
 ``` clojure
-(defn-remote timestamp :callback #(println %))
+(defn-remote timestamp :remote-ns "slapi" :callback #(println %))
 (timestamp)
 ```
 
@@ -270,10 +272,10 @@ functions are created to use this command.
 (defn-remote-all 'user/sc) 
 ```
 
-#### Get metadata of a remote function
+And there is a remote version of `use` for your convenience:
 
 ``` clojure
-(meta-remote sc timestamp)
+(use-remote 'user/sc 'slapi)
 ```
 
 However, for security concern, you can disable inspect by adding an
