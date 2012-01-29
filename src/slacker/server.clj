@@ -125,9 +125,8 @@
            interceptors {:before identity :after identity}
            inspect? true
            cluster nil}}]
-  (let [funcs (apply merge (map ns-funcs
-                                (if (sequential? exposed-ns)
-                                  exposed-ns [exposed-ns])))
+  (let [exposed-ns (if (coll? exposed-ns) exposed-ns [exposed-ns])
+        funcs (apply merge (map ns-funcs exposed-ns))
         handler (create-server-handler funcs interceptors inspect?)]
     (when *debug* (doseq [f (keys funcs)] (println f)))
     (start-tcp-server handler {:port port :frame slacker-base-codec})
