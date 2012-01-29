@@ -15,8 +15,8 @@
 
 (defn- decode-http-data [req]
   (let [{uri :uri body :body} req
-        [fname content-type] (string/split uri #"\.")
-        fname (.substring fname 1)
+        content-type (last (string/split uri #"\."))
+        fname (.substring uri 1 (dec (.lastIndexOf uri content-type)))
         content-type (keyword content-type)
         body (or body "[]")
         data [(instream-to-bb body)]] ;; gloss finite-block workaround
