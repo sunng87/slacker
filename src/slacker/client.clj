@@ -4,6 +4,7 @@
   (:use [lamina.connections])
   (:use [aleph.tcp])
   (:use [gloss.io :only [contiguous]])
+  (:use [clojure.string :only [split]])
   (:import [slacker.client.common SlackerClient])
   (:import [slacker.client.pool PooledSlackerClient]))
 
@@ -58,4 +59,17 @@
                     :slacker-client ~sc
                     :slacker-remote-ns ~remote-ns
                     :slacker-remote-name rname#}))))))
+
+(defn- defn-remote*
+  [sc-sym fname]
+  (eval (list 'defn-remote sc-sym
+              (symbol (second (split fname #"/")))
+              :remote-ns (first (split fname #"/")))))
+
+(defn use-remote
+  "import remote functions the current namespace"
+  [sc-sym rns]
+  (dorun (map defn-remote*
+              (repeat sc-sym)
+              (inspect @(resolve sc-sym) :functions (name rns)))))
 

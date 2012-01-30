@@ -87,7 +87,7 @@ On the client side, define a facade for the remote function:
 ``` clojure
 (use 'slacker.client)
 (def sc (slackerc "localhost" 2104))
-(defn-remote sc timestamp :remote-ns "slapi")
+(use-remote 'sc 'slapi)
 (timestamp)
 ```
 
@@ -256,31 +256,6 @@ $ curl -d "[5]" http://localhost:4104/rand-ints.clj
 
 Note that you can only use `json` or `clj` as format. Because HTTP is
 a test based protocol, so `carb` will not be supported.
-
-### Inspect
-
-Also from 0.4.0, a new inspect command is added to the protocol. You
-can get server information such as function names, metadata of a
-particular function. In the namespace of  `slacker.utils`, some
-functions are created to use this command.
-
-#### Define facade for all functions available
-
-``` clojure
-(use 'slacker.utils)
-;; the symbol of your slacker client, with namespace
-(defn-remote-all 'user/sc) 
-```
-
-And there is a remote version of `use` for your convenience:
-
-``` clojure
-(use-remote 'user/sc 'slapi)
-```
-
-However, for security concern, you can disable inspect by adding an
-option `:inspect? false` to `start-slacker-server`. By default, server
-inspect is enabled.
 
 ## Slacker Cluster
 
