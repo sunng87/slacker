@@ -57,6 +57,6 @@
 
 (deftest test-functions-inspect
   (let [request [version [:type-inspect-req :functions "nil"]]
-        response (deserialize :clj (second (second (handle-request nil request nil (build-inspect-handler true funcs)))) :string)]
+        response (deserialize :clj (second (second (handle-request nil request nil (build-inspect-handler funcs)))) :string)]
     (= (map name (keys funcs)) response)))
 

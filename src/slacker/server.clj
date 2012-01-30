@@ -59,20 +59,19 @@
        serialize-result
        (assoc :packet-type :type-response)))
 
-(defn build-inspect-handler [inspect-enabled? funcs]
-  #(when inspect-enabled?
-     (let [[_ cmd data] %
-           data (deserialize :clj data :string)]
-       (make-inspect-ack
-        (case cmd
-          :functions
-          (let [nsname (or data "")]
-            (filter (fn [x] (.startsWith x nsname)) (keys funcs)))
-          :meta
-          (let [fname data
-                metadata (meta (funcs fname))]
-            (select-keys metadata [:name :doc :arglists]))
-          nil)))))
+(defn build-inspect-handler [funcs]
+  #(let [[_ cmd data] %
+         data (deserialize :clj data :string)]
+     (make-inspect-ack
+      (case cmd
+        :functions
+        (let [nsname (or data "")]
+          (filter (fn [x] (.startsWith x nsname)) (keys funcs)))
+        :meta
+        (let [fname data
+              metadata (meta (funcs fname))]
+          (select-keys metadata [:name :doc :arglists]))
+        nil))))
 
 (defmulti -handle-request (fn [_ p & _] (first p)))
 (defmethod -handle-request :type-request [server-pipeline req client-info _]
@@ -91,9 +90,9 @@
                      client-info inspect-handler)
     protocol-mismatch-packet))
 
-(defn- create-server-handler [funcs interceptors inspect?]
+(defn- create-server-handler [funcs interceptors]
   (let [server-pipeline (build-server-pipeline funcs interceptors)
-        inspect-handler (build-inspect-handler inspect? funcs)]
+        inspect-handler (build-inspect-handler funcs)]
     (fn [ch client-info]
       (receive-all
        ch
@@ -117,17 +116,15 @@
   Options:
   * interceptors add server interceptors
   * http http port for slacker http transport
-  * inspect? enable inspect interface, default true
   * cluster publish server information to zookeeper"
   [exposed-ns port
-   & {:keys [http interceptors inspect? cluster]
+   & {:keys [http interceptors cluster]
       :or {http nil
            interceptors {:before identity :after identity}
-           inspect? true
            cluster nil}}]
   (let [exposed-ns (if (coll? exposed-ns) exposed-ns [exposed-ns])
         funcs (apply merge (map ns-funcs exposed-ns))
-        handler (create-server-handler funcs interceptors inspect?)]
+        handler (create-server-handler funcs interceptors)]
     (when *debug* (doseq [f (keys funcs)] (println f)))
     (start-tcp-server handler {:port port :frame slacker-base-codec})
     (when-not (nil? http)
