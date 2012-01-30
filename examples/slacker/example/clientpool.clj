@@ -1,12 +1,11 @@
 (ns slacker.example.clientpool
-  (:use slacker.client)
-  (:use slacker.utils))
+  (:use slacker.client))
 
 (def conn (slackerc-pool "localhost" 2104
                          :exhausted-action :grow
                          :min-idle 1))
 
-(use-remote 'slacker.example.clientpool/conn
+(use-remote 'conn
             'slacker.example.api)
 
 

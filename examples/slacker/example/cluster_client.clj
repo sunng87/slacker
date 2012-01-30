@@ -1,13 +1,11 @@
 (ns slacker.example.cluster-client
   (:use [slacker.common])
   (:use [slacker.client.cluster])
-  (:use [slacker.client :only [close-slackerc]])
-  (:use [slacker.utils :only [use-remote]]))
+  (:use [slacker.client :only [close-slackerc use-remote]]))
 
 (def sc (clustered-slackerc "example-cluster" "127.0.0.1:2181"))
 
-(use-remote 'slacker.example.cluster-client/sc
-            'slacker.example.api)
+(use-remote 'sc 'slacker.example.api)
 (defn-remote sc async-timestamp
   :remote-name "timestamp"
   :remote-ns "slacker.example.api"
