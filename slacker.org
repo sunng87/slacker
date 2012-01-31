@@ -50,11 +50,11 @@
     Add new protocol command to get metadata of slacker functions.
 **** get all functions exposed by the server
 **** get metadata of a particular function
-*** TODO expose multiple namespace in a server                :server:client:
+*** DONE expose multiple namespace in a server                :server:client:
     Allow server to expose multiple namespaces. 
     Namespace is also added as prefix of function name between client 
     and server communication.
-*** TODO Namespace awared cluster                             :server:client:
+*** DONE Namespace aware cluster                              :server:client:
     Associate server to namesapces instead of functions, to adapt
     large scale cluster. We assume that namespace is the smallest
     gratuity in a cluster.
