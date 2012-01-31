@@ -311,15 +311,15 @@ start a zookeeper on your machine (127.0.0.1:2181)
 
 Start server instance:
 
-    lein run -m slacker.example.cluster-server 2104
+    lein run :cluster-server 2104
 
 Open a new terminal, start another server instance:
 
-    lein run -m slacker.example.cluster-server 2105
+    lein run :cluster-server 2105
 
 On another terminal, you can run the example client:
 
-    lein run -m slacker.example.cluster-client
+    lein run :cluster-client
 
 By checking logs, you can trace the calls on each server instance.
 

@@ -54,6 +54,10 @@
     Allow server to expose multiple namespaces. 
     Namespace is also added as prefix of function name between client 
     and server communication.
+*** TODO Namespace awared cluster                             :server:client:
+    Associate server to namesapces instead of functions, to adapt
+    large scale cluster. We assume that namespace is the smallest
+    gratuity in a cluster.
      
 ** Lower Priority Features
 *** Browser clojurescript support                                    :client:

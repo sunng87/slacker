@@ -4,6 +4,7 @@
   (:use [slacker.utils :only [zk-path]])
   (:use [zookeeper :as zk]))
 
+(def namespaces ["slacker.test.server.cluster"])
 (def funcs {"plus" + "minus" -})
 
 (defn- create-data [cluster-map]
@@ -20,8 +21,9 @@
     
     ;; make sure all functions are published 
     (with-zk zk-conn
-      (publish-cluster cluster-map 2104 funcs))
-    (is (false? (every? (fn[x](false? x))(map zk/children (repeat test-conn) node-list))))
+      (publish-cluster cluster-map 2104 namespaces funcs))
+    (is (false? (every? (fn[x](false? x))
+                        (map zk/children (repeat test-conn) node-list))))
     (is (not (nil? (zk/exists test-conn
                               (zk-path (:name cluster-map)
                                        "servers"
@@ -37,8 +39,8 @@
                                   (str "127.0.0.1:2104")))))
 
     (is (false? (zk/children test-conn (zk-path (:name cluster-map)
-                                                "functions"
-                                                "plus"
+                                                "namespaces"
+                                                (first namespaces)
                                                 "127.0.0.1:2104"))))
     
     ;; clean up

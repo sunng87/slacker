@@ -134,6 +134,7 @@
                          {:port http}))
     (when-not (nil? cluster)
       (with-zk (zk/connect (:zk cluster))
-        (publish-cluster cluster port funcs)))))
+        (publish-cluster cluster port
+                         (map ns-name normalized-ns) funcs)))))
 
 
