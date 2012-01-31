@@ -21,13 +21,23 @@
                :or {remote-ns (ns-name *ns*)
                     remote-name nil async? false callback nil}}]
   `(do
-     (refresh-associated-servers ~sc ~remote-ns)
+     (when (nil? ((get-ns-mappings ~sc) ~remote-ns))
+       (refresh-associated-servers ~sc ~remote-ns))
      (slacker.client/defn-remote
        ~sc ~fname
        :remote-ns ~remote-ns
        :remote-name ~remote-name
        :async? ~async?
        :callback ~callback)))
+
+(defn use-remote
+  "cluster enabled use-remote"
+  [sc-sym rns]
+  (let [sc @(resolve sc-sym)]
+    (do
+      (when (nil? ((get-ns-mappings sc) rns))
+        (refresh-associated-servers sc rns))
+      (slacker.client/use-remote sc-sym rns))))
 
 (defn- create-slackerc [server content-type]
   (let [host (first (split server #":"))

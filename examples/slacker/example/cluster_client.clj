@@ -1,7 +1,7 @@
 (ns slacker.example.cluster-client
   (:use [slacker.common])
   (:use [slacker.client.cluster])
-  (:use [slacker.client :only [close-slackerc use-remote]]))
+  (:use [slacker.client :only [close-slackerc]]))
 
 (def sc (clustered-slackerc "example-cluster" "127.0.0.1:2181"))
 
