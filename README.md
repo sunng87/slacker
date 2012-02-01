@@ -86,7 +86,7 @@ On the client side, define a facade for the remote function:
 
 ``` clojure
 (use 'slacker.client)
-(def sc (slackerc "localhost" 2104))
+(def sc (slackerc "localhost:2104"))
 (use-remote 'sc 'slapi)
 (timestamp)
 ```
