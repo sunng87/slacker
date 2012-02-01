@@ -39,10 +39,13 @@
         (refresh-associated-servers sc rns))
       (slacker.client/use-remote sc-sym rns))))
 
-(defn- create-slackerc [server content-type]
-  (let [host (first (split server #":"))
-        port (Integer/valueOf (second (split server #":")))]
-    (slacker.client/slackerc host port :content-type content-type)))
+(defn- create-slackerc [connection-info
+                        & {:keys [pool?]
+                           :or {pool? false}
+                           :as options}]
+  (if-not pool?
+    (apply slacker.client/slackerc connection-info options)
+    (apply slacker.client/slackerc-pool connection-info options)))
 
 (defn- find-server [slacker-ns-servers ns-name]
   (if-let [servers (@slacker-ns-servers ns-name)]
@@ -68,7 +71,8 @@
 
 (deftype ClusterEnabledSlackerClient
     [cluster-name zk-conn
-     slacker-clients slacker-ns-servers content-type]
+     slacker-clients slacker-ns-servers
+     options]
   CoordinatorAwareClient
   (refresh-associated-servers [this nsname]
     (let [node-path (utils/zk-path cluster-name "namespaces"
@@ -80,7 +84,7 @@
       ;; establish connection if the server is not connected
       (doseq [s servers]
         (if-not (contains? slacker-clients s)
-          (let [sc (create-slackerc s content-type)]
+          (let [sc (apply create-slackerc s options)]
             (logging/info (str "establishing connection to " s))
             (swap! slacker-clients assoc s sc))))
       servers))
@@ -142,16 +146,14 @@
 
 (defn clustered-slackerc
   "create a cluster enalbed slacker client"
-  [cluster-name zk-server
-   & {:keys [content-type]
-      :or {content-type :carb}}]
+  [cluster-name zk-server & options]
   (let [zk-conn (zk/connect zk-server)
         slacker-clients (atom {})
         slacker-ns-servers (atom {})
         sc (ClusterEnabledSlackerClient.
             cluster-name zk-conn
             slacker-clients slacker-ns-servers
-            content-type)]
+            options)]
     (zk/register-watcher zk-conn (fn [e] (on-zk-events e sc)))
     ;; watch 'servers' node
     (zk/children zk-conn

@@ -10,10 +10,11 @@
 
 (defn slackerc
   "Create connection to a slacker server."
-  [host port
+  [addr
    & {:keys [content-type]
       :or {content-type :carb}}]
-  (let [conn (client #(tcp-client {:host host
+  (let [[host port] (host-port addr)
+        conn (client #(tcp-client {:host host
                                    :port port
                                    :frame slacker-base-codec}))]
     (SlackerClient. conn content-type)))
@@ -25,14 +26,15 @@
   connection and the policy when pool is exhausted. Check commons
   pool javadoc for the meaning of each argument:
   http://commons.apache.org/pool/apidocs/org/apache/commons/pool/impl/GenericObjectPool.html"
-  [host port
+  [connection-string
    & {:keys [content-type max-active exhausted-action max-wait max-idle]
       :or {content-type :carb
            max-active 8
            exhausted-action :block
            max-wait -1
            max-idle 8}}]
-  (let [pool (connection-pool host port
+  (let [[host port] (host-port connection-string)
+        pool (connection-pool host port
                               max-active exhausted-action max-wait max-idle)]
     (PooledSlackerClient. pool content-type)))
 

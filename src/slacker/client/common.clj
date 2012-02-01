@@ -1,4 +1,5 @@
 (ns slacker.client.common
+  (:use [clojure.string :only [split]])
   (:use [slacker serialization common])
   (:use [lamina.core :exclude [close]])
   (:use [lamina.connections])
@@ -83,4 +84,9 @@
                 (str f))]
     (inspect sc :meta fname)))
 
+(defn host-port
+  "get host and port from connection string"
+  [connection-string]
+  (let [[host port] (split connection-string #":")]
+    [host (Integer/valueOf port)]))
 
