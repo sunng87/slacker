@@ -2,8 +2,8 @@
   (:use slacker.client)
   (:use [slingshot.slingshot :only [try+]]))
 
-(def conn (slackerc "localhost" 2104))
-(def conn2 (slackerc "localhost" 2104 :content-type :json))
+(def conn (slackerc "127.0.0.1:2104"))
+(def conn2 (slackerc "127.0.0.1:2104" :content-type :json))
 (defn-remote conn timestamp :remote-ns "slacker.example.api")
 (defn-remote conn2 inc-m :remote-ns "slacker.example.api")
 (defn-remote conn get-m :async? true :remote-ns "slacker.example.api")

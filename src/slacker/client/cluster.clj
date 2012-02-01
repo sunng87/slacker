@@ -45,7 +45,8 @@
                            :as options}]
   (if-not pool?
     (apply slacker.client/slackerc connection-info options)
-    (apply slacker.client/slackerc-pool connection-info options)))
+    (apply slacker.client/slackerc-pool connection-info
+           (into [] (dissoc (into {} options) :pool?)))))
 
 (defn- find-server [slacker-ns-servers ns-name]
   (if-let [servers (@slacker-ns-servers ns-name)]
@@ -128,11 +129,11 @@
     (case cmd
       :functions
       (let [nsname (or args "")
-            functions-root (utils/zk-path cluster-name "functions")]
+            functions-root (utils/zk-path cluster-name "functions")
+            fnames (or (zk/children zk-conn functions-root) [])]
         (into []
               (filter #(.startsWith % nsname)
-                      (map utils/unescape-zkpath
-                           (zk/children zk-conn functions-root)))))
+                      (map utils/unescape-zkpath fnames))))
       :meta (meta-data-from-zk zk-conn cluster-name args))))
 
 (defn- on-zk-events [e sc]

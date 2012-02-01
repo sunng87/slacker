@@ -1,7 +1,7 @@
 (ns slacker.example.clientpool
   (:use slacker.client))
 
-(def conn (slackerc-pool "localhost" 2104
+(def conn (slackerc-pool "127.0.0.1:2104"
                          :exhausted-action :grow
                          :min-idle 1))
 
