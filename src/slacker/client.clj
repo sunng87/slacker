@@ -12,7 +12,8 @@
   "Create connection to a slacker server."
   [addr
    & {:keys [content-type]
-      :or {content-type :carb}}]
+      :or {content-type :carb}
+      :as _}]
   (let [[host port] (host-port addr)
         conn (client #(tcp-client {:host host
                                    :port port
@@ -32,7 +33,8 @@
            max-active 8
            exhausted-action :block
            max-wait -1
-           max-idle 8}}]
+           max-idle 8}
+      :as _}]
   (let [[host port] (host-port connection-string)
         pool (connection-pool host port
                               max-active exhausted-action max-wait max-idle)]

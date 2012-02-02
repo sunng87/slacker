@@ -45,8 +45,7 @@
                            :as options}]
   (if-not pool?
     (apply slacker.client/slackerc connection-info options)
-    (apply slacker.client/slackerc-pool connection-info
-           (into [] (dissoc (into {} options) :pool?)))))
+    (apply slacker.client/slackerc-pool connection-info options)))
 
 (defn- find-server [slacker-ns-servers ns-name]
   (if-let [servers (@slacker-ns-servers ns-name)]
