@@ -72,6 +72,8 @@
     the same slacker server. (Check storm bolt API as reference)
 *** TODO remote stm                                           :server:client:
     thinking about stm in remote invocation.
+*** TODO Serilization compression                             :serialization:
+    add options to compress serialized content.
 
 ** Lower Priority Features
 *** Browser clojurescript support                                    :client:
@@ -88,9 +90,13 @@
     Released.
 *** 0.4.0
     SCHEDULED: <2012-01-01 Sun>
-    
 *** 0.5.0
-    SCHEDULED: <2012-01-07 Sat>
+    Skipped. Multiple namespaces support is combined into cluster
+    feature. 
+*** 0.6.0
+    SCHEDULED: <2012-02-03 Fri>
+*** 0.7.0
+    
 
     
     
