@@ -16,8 +16,10 @@
 **** DONE Build-in http server (via aleph.http)
 *** TODO Upstream enhancement                                 :server:client:
     enhance performance of upstream libraries:
-    - carbonite (0.1.1, keyword enhancement)
-    - aleph (Zach Tellman is working on lamina performance improvement)
+    - carbonite (0.2.1, features from sriether pulled in)
+    - aleph (Zach Tellman is working on lamina performance
+      improvement. 0.3.0 will have the performance boost as ztellman
+      said in aleph mailing list.)
 *** DONE Build-in interceptors                                       :server:
     some build-in interceptors for slacker server: 
     - function invocation stats (expose via JMX)
@@ -32,12 +34,16 @@
     Demo code: https://gist.github.com/1471511
     is there any dependencies management solution for cljs? how to
     release it as a cljs library ?
-*** TODO Access control layer                                 :server:client:    
-    add handshake phase before client-server communication
-    starts. simple password authentication.
+*** TODO ACL                                                  :server:client:   
+**** Phase 1: hostname based ACL
+     a DSL for ACL config. reference: DRuby ACL
+     (http://en.wikibooks.org/wiki/Ruby_Programming/Standard_Library/DRb#Security_concerns)
+**** Phase 2: token based    
+     add handshake phase before client-server communication
+     starts. simple password authentication.
 *** DONE Keep-alive, ping/pong packet                         :server:client:
     add ping/pong packet
-*** TODO Move to Clojure 1.3
+*** TODO Moving to Clojure 1.3
     A new branch is created for clojure 1.3. Upgrade aleph and
     carbonite to be compatible with 1.3
 *** DONE HA with ZooKeeper                                    :server:client:
@@ -58,7 +64,15 @@
     Associate server to namesapces instead of functions, to adapt
     large scale cluster. We assume that namespace is the smallest
     gratuity in a cluster.
-     
+*** TODO Copy stacktraces to client                           :server:client:
+    Add the debug option to server and we should be able to get
+    exception stacktrace from client.
+*** TODO Grouping in cluster                                         :client: 
+    Provide routing options to ensure certain calls to be routed to
+    the same slacker server. (Check storm bolt API as reference)
+*** TODO remote stm                                           :server:client:
+    thinking about stm in remote invocation.
+
 ** Lower Priority Features
 *** Browser clojurescript support                                    :client:
     support clojure RPC via javascript XMLHttpRequest. provide a
