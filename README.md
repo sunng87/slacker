@@ -68,7 +68,7 @@ can run the examples by `lein run :server` and `lein run :client` .
 
 ### Leiningen
 
-    :dependencies [[slacker "0.6.0"]]
+    :dependencies [[slacker "0.6.1"]]
 
 ### Getting Started
 

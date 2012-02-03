@@ -72,8 +72,9 @@
 
 (defn use-remote
   "import remote functions the current namespace"
-  [sc-sym rns]
-  (dorun (map defn-remote*
-              (repeat sc-sym)
-              (inspect @(resolve sc-sym) :functions (name rns)))))
+  ([sc-sym] (use-remote sc-sym (ns-name *ns*)))
+  ([sc-sym rns]
+     (dorun (map defn-remote*
+                 (repeat sc-sym)
+                 (inspect @(resolve sc-sym) :functions (str rns))))))
 

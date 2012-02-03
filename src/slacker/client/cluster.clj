@@ -26,12 +26,13 @@
 
 (defn use-remote
   "cluster enabled use-remote"
-  [sc-sym rns]
-  (let [sc @(resolve sc-sym)]
-    (do
-      (when (nil? ((get-ns-mappings sc) rns))
-        (refresh-associated-servers sc rns))
-      (slacker.client/use-remote sc-sym rns))))
+  ([sc-sym] (use-remote sc-sym (ns-name *ns*)))
+  ([sc-sym rns]
+     (let [sc @(resolve sc-sym)]
+       (do
+         (when (nil? ((get-ns-mappings sc) (str rns)))
+           (refresh-associated-servers sc (str rns)))
+         (slacker.client/use-remote sc-sym rns)))))
 
 (defn- create-slackerc [connection-info
                         & {:keys [pool?]
