@@ -9,6 +9,16 @@ because slacker requires it to work on clojure 1.2.
 
 slacker is growing.
 
+## Features
+
+* Fast serialization based on Kryo (Text based serialization is also supported)
+* Security without additional policies
+* Transparent and non-invasive API
+* Connection pool
+* Extensible server with interceptor framework
+* Cluster with Zookeeper
+* Clean code
+
 ### Slacker VS. Remote Eval
 
 Before slacker, the clojure world uses a *remote eval* approach for
@@ -30,10 +40,10 @@ eval, RPC (especially slacker) has some pros and cons:
   high-order functions and lazy arguments. Due to the limitation of
   serialization, slacker has its difficulty to support these features.
 
-### Slacker VS. Thrift, Protobuf
+### Slacker VS. Thrift
 
 Since clojure is also hosted on Java virtual machine, you can use
-existed Java RPC framework in clojure, like protobuf and thrift. 
+existed Java RPC framework in clojure, like thrift. 
 
 #### pros
 
@@ -58,7 +68,7 @@ can run the examples by `lein run :server` and `lein run :client` .
 
 ### Leiningen
 
-    :dependencies [[slacker "0.5.0-SNAPSHOT"]]
+    :dependencies [[slacker "0.6.0"]]
 
 ### Getting Started
 

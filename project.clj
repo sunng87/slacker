@@ -1,5 +1,5 @@
-(defproject slacker "0.6.0-SNAPSHOT"
-  :description "Clojure RPC based on serialization and TCP"
+(defproject slacker "0.6.0"
+  :description "Transparent, non-invasive RPC by clojure and for clojure"
   :dependencies [[org.clojure/clojure "1.2.1"]
                  [aleph "0.2.0"]
                  [info.sunng/carbonite "0.2.1"]
