@@ -13,7 +13,10 @@
                :type-inspect-ack 8}))
 
 (defcodec content-type
-  (enum :byte {:carb 0 :json 1 :clj 2}))
+  (enum :byte {:carb 0 :json 1 :clj 2
+               :deflate-carb 10
+               :deflate-json 11
+               :deflate-clj 12}))
 
 (defcodec result-codes
   (enum :byte {:success 0
