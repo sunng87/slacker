@@ -1,20 +1,25 @@
 (ns slacker.serialization
   (:use [slacker common])
+  (:use [clojure.java.io :only [copy]])
   (:require [carbonite.api :as carb])
   (:require [clj-json.core :as json])
+  (:import [java.io ByteArrayInputStream ByteArrayOutputStream])
   (:import [java.nio ByteBuffer])
-  (:import [java.nio.charset Charset]))
+  (:import [java.nio.charset Charset])
+  (:import [java.util.zip DeflaterInputStream InflaterInputStream]))
 
 (def carb-registry (atom (carb/default-registry)))
 
 (defmulti serialize
   "serialize clojure data structure to bytebuffer with
   different types of serialization"
-  (fn [f _ & _] f))
+  (fn [f _ & _] (if (.startsWith (name f) "deflate")
+                 :deflate f)))
 (defmulti deserialize
   "deserialize clojure data structure from bytebuffer using
   matched serialization function"
-  (fn [f _ & _] f))
+  (fn [f _ & _] (if (.startsWith (name f) "deflate")
+                 :deflate f)))
 
 (defmethod deserialize :carb
   ([_ data] (deserialize :carb data :buffer))
@@ -79,4 +84,36 @@
          :string cljstr
          :bytes (.getBytes cljstr "UTF-8")))))
 
+
+(defmethod serialize :deflate
+  ([dct data] (serialize dct data :buffer))
+  ([dct data ot]
+     (let [ct (keyword (subs (name dct) 8))
+           sdata (serialize ct data :bytes)
+           deflater (DeflaterInputStream.
+                      (ByteArrayInputStream. sdata))
+           out-s (ByteArrayOutputStream.)
+           out-bytes (do
+                       (copy deflater out-s)
+                       (.toByteArray out-s))]
+       (case ot
+         :buffer (ByteBuffer/wrap out-bytes)
+         :bytes out-bytes))))
+
+(defmethod deserialize :deflate
+  ([dct data] (deserialize dct data :buffer))
+  ([dct data ot]
+     (let [ct (keyword (subs (name dct) 8))
+           in-bytes (case ot
+                      :buffer (let [bs (byte-array (.remaining data))]
+                                (.get data bs)
+                                bs)
+                      :bytes data)
+           inflater (InflaterInputStream.
+                     (ByteArrayInputStream. in-bytes))
+           out-s (ByteArrayOutputStream.)
+           out-bytes (do
+                       (copy inflater out-s)
+                       (.toByteArray out-s))]
+       (deserialize ct out-bytes :bytes))))
 

@@ -72,7 +72,7 @@
     the same slacker server. (Check storm bolt API as reference)
 *** TODO remote stm                                           :server:client:
     thinking about stm in remote invocation.
-*** TODO Serilization compression                             :serialization:
+*** TODO Content compression                                  :serialization:
     add options to compress serialized content.
 
 ** Lower Priority Features
