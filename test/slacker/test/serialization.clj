@@ -4,24 +4,75 @@
   (:import [java.util Arrays]))
 
 (deftest test-serialization
-  (let [data [1 2 3]]
-    (is (= data (deserialize :carb (serialize :carb data)))))
-  (let [data {:a 1 :b 2}]
-    (is (= data (deserialize :carb (serialize :carb data))))))
+  (are [data] (is (= data (deserialize :carb
+                                       (serialize :carb data))))
+       [1 2 3]
+       {:a 1 :b 2}
+       #{1 2 3}
+       "hello"
+       :world
+       87742))
 
 (deftest test-json-serialization
-  (let [data [1 2 3]]
-    (is (= data (deserialize :json (serialize :json data))))
-    (is (= data (deserialize :json (serialize :json data :bytes) :bytes))))
-  (let [data {:a 1 :b 2}]
-    (is (= data (deserialize :json (serialize :json data))))))
+  (are [data] (is (= data (deserialize :json
+                                       (serialize :json data))))
+       [1 2 3]
+       {:a 1 :b 2}
+       "hello"
+       87742)
+  (are [data] (is (= data (deserialize :json
+                                       (serialize :json data :bytes)
+                                       :bytes)))
+       [1 2 3]
+       {:a 1 :b 2}
+       "hello"
+       87742)
+  (are [data] (is (= data (deserialize :json
+                                       (serialize :json data :string)
+                                       :string)))
+       [1 2 3]
+       {:a 1 :b 2}
+       "hello"
+       87742)
+  (is (= "[1,2,3]" (serialize :json [1 2 3] :string))))
 
 (deftest test-clj-serialization
-  (let [data [1 2 3]]
-    (is (= data (deserialize :clj (serialize :clj data))))
-    (is (= "[1 2 3]" (serialize :clj data :string)))
-    (is (Arrays/equals (.getBytes "[1 2 3]" "UTF-8") (serialize :clj data :bytes))))
-  (let [data {:a 1 :b 2}]
-    (is (= data (deserialize :clj (serialize :clj data))))))
+  (are [data] (is (= data (deserialize :clj
+                                       (serialize :clj data))))
+       [1 2 3]
+       {:a 1 :b 2}
+       #{1 2 3}
+       "hello"
+       :world
+       87742)
+  (are [data] (is (= data (deserialize :clj
+                                       (serialize :clj data :bytes)
+                                       :bytes)))
+       [1 2 3]
+       {:a 1 :b 2}
+       #{1 2 3}
+       "hello"
+       :world
+       87742)
+  (are [data] (is (= data (deserialize :clj
+                                       (serialize :clj data :string)
+                                       :string)))
+       [1 2 3]
+       {:a 1 :b 2}
+       #{1 2 3}
+       "hello"
+       :world
+       87742)
+  (is (= "[1 2 3]" (serialize :clj [1 2 3] :string))))
+
+(deftest test-compression
+  (are [data] (is (= data (deserialize :deflate-carb
+                                       (serialize :deflate-carb data))))
+       [1 2 3]
+       {:a 1 :b 2}
+       #{1 2 3}
+       "hello"
+       :world
+       87742))
 
 

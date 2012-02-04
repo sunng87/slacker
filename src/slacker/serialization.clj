@@ -10,6 +10,11 @@
 
 (def carb-registry (atom (carb/default-registry)))
 
+(defn- bytebuffer-bytes [data]
+  (let [bs (byte-array (.remaining data))]
+    (.get data bs)
+    bs))
+
 (defmulti serialize
   "serialize clojure data structure to bytebuffer with
   different types of serialization"
@@ -105,9 +110,7 @@
   ([dct data ot]
      (let [ct (keyword (subs (name dct) 8))
            in-bytes (case ot
-                      :buffer (let [bs (byte-array (.remaining data))]
-                                (.get data bs)
-                                bs)
+                      :buffer (bytebuffer-bytes data) 
                       :bytes data)
            inflater (InflaterInputStream.
                      (ByteArrayInputStream. in-bytes))
