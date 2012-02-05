@@ -1,5 +1,7 @@
 # slacker
 
+![slacker](http://i.imgur.com/Jd02f.png)
+
 **"Superman is a slacker."**
 
 slacker is a simple RPC framework for Clojure based on
