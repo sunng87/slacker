@@ -1,5 +1,6 @@
 (ns slacker.serialization
   (:use [slacker common])
+  (:use [slacker.serialization.carbonite])
   (:use [clojure.java.io :only [copy]])
   (:require [carbonite.api :as carb])
   (:require [clj-json.core :as json])
@@ -7,8 +8,6 @@
   (:import [java.nio ByteBuffer])
   (:import [java.nio.charset Charset])
   (:import [java.util.zip DeflaterInputStream InflaterInputStream]))
-
-(def carb-registry (atom (carb/default-registry)))
 
 (defn- bytebuffer-bytes [data]
   (let [bs (byte-array (.remaining data))]
@@ -40,12 +39,6 @@
        (carb/write-buffer @carb-registry data)
        (ByteBuffer/wrap (serialize :carb data :bytes)))))
 
-(defn register-serializers
-  "Register additional serializers to carbonite. This allows
-  slacker to transport custom data types. Caution: you should
-  register serializers on both server side and client side."
-  [serializers]
-  (swap! carb-registry carb/register-serializers serializers))
 
 (defmethod deserialize :json
   ([_ data] (deserialize :json data :buffer))
