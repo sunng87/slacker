@@ -1,5 +1,7 @@
 # slacker
 
+![slacker](http://i.imgur.com/Jd02f.png)
+
 **"Superman is a slacker."**
 
 slacker is a simple RPC framework for Clojure based on
@@ -176,7 +178,7 @@ this before you start server or client:
 
 ``` clojure
 (use '[slacker.serialization])
-(register-serializers some-serializers)
+(register-serializers {Class Serializer)
 ```
 [Carbonite](https://github.com/revelytix/carbonite "carbonite") has
 some detailed docs on how to create your own serializers.
@@ -252,20 +254,20 @@ server:
 ```
 
 The HTTP url pattern is
-http://localhost:4104/*function-name*.*format*. Arguments are encoded
-in *format*, and posted to server via HTTP body. If you have multiple
-arguments, you should put them into a clojure vector (for clj format)
-or javascript array (for json format).
+http://localhost:4104/*namespace*/*function-name*.*format*.  Arguments
+are encoded in *format*, and posted to server via HTTP body. If you
+have multiple arguments, you should put them into a clojure vector
+(for clj format) or javascript array (for json format).
 
 See a curl example:
 
 ``` bash
-$ curl -d "[5]" http://localhost:4104/rand-ints.clj
+$ curl -d "[5]" http://localhost:4104/slapi/rand-ints.clj
 (38945142 1413770549 1361247669 1899499977 1281637740)
 ```
 
 Note that you can only use `json` or `clj` as format. Because HTTP is
-a test based protocol, so `carb` will not be supported.
+a test based protocol, so `carb` won't be supported.
 
 ## Slacker Cluster
 
@@ -308,11 +310,11 @@ of a particular slacker server. Use the `clustered-slackerc`:
 ``` clojure
 (use 'slacker.client.cluster)
 (def sc (clustered-slackerc "cluster-name" "127.0.0.1:2181"))
-(defn-remote sc timestamp)
+(use-remote 'sc 'slapi)
 ```
 
-You should make sure to use the `defn-remote` from
-`slacker.client.cluster` instead of the one from `slacker.client`.
+You should make sure to use the `use-remote` and `defn-remote` from
+`slacker.client.cluster` instead of `slacker.client`.
 
 ### Examples
 
