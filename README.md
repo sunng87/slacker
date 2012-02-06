@@ -178,7 +178,7 @@ this before you start server or client:
 
 ``` clojure
 (use '[slacker.serialization])
-(register-serializers some-serializers)
+(register-serializers {Class Serializer)
 ```
 [Carbonite](https://github.com/revelytix/carbonite "carbonite") has
 some detailed docs on how to create your own serializers.
