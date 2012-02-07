@@ -11,7 +11,12 @@
     (case code
       :success (deserialize content-type (contiguous data))
       :not-found (throw+ {:code code})
-      :exception (throw+ {:code code :error (deserialize content-type (contiguous data))})
+      :exception (let [einfo (deserialize content-type (contiguous data))]
+                   (if-not (map? einfo)
+                     (throw+ {:code code :error einfo})
+                     (let [e (Exception. (:msg einfo))]
+                       (.setStackTrace e (:stacktrace einfo))
+                       (throw+ e))))
       (throw+ {:code :invalid-result-code}))))
 
 (defn handle-response [response]

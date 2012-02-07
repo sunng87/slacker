@@ -31,7 +31,11 @@
             r (if (seq? r0) (doall r0) r0)]
         (assoc req :result r :code :success))
       (catch Exception e
-        (assoc req :code :exception :result (.toString e))))
+        (if-not *debug*
+          (assoc req :code :exception :result (.toString e))
+          (assoc req :code :exception
+                 :result {:msg (.getMessage e)
+                          :stacktrace (.getStackTrace e)}))))
     req))
 
 (defn- serialize-result [req]    
@@ -90,17 +94,19 @@
                      client-info inspect-handler)
     protocol-mismatch-packet))
 
-(defn- create-server-handler [funcs interceptors]
+(defn- create-server-handler [funcs interceptors debug]
   (let [server-pipeline (build-server-pipeline funcs interceptors)
         inspect-handler (build-inspect-handler funcs)]
     (fn [ch client-info]
       (receive-all
        ch
        #(if-let [req %]
-          (enqueue ch (handle-request server-pipeline
-                                      req
-                                      client-info
-                                      inspect-handler)))))))
+          (enqueue ch
+                   (binding [*debug* debug]
+                     (handle-request server-pipeline
+                                     req
+                                     client-info
+                                     inspect-handler))))))))
 
 (defn- ns-funcs [n]
   (let [nsname (ns-name n)]
@@ -124,7 +130,7 @@
            cluster nil}}]
   (let [exposed-ns (if (coll? exposed-ns) exposed-ns [exposed-ns])
         funcs (apply merge (map ns-funcs exposed-ns))
-        handler (create-server-handler funcs interceptors)]
+        handler (create-server-handler funcs interceptors *debug*)]
     (when *debug* (doseq [f (keys funcs)] (println f)))
     (start-tcp-server handler {:port port :frame slacker-base-codec})
     (when-not (nil? http)
