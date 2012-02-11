@@ -1,9 +1,38 @@
-(ns slacker.aclrules)
+(ns slacker.aclrules
+  (:use clojure.test)
+  (:use midje.sweet)
+ )
 
-(declare authorize )
+(defmacro allow [rules ip-list]
+  `(assoc ~rules :allow ~ip-list))
+
+
+(defmacro deny [rules ip-list]
+  `(assoc ~rules :deny ~ip-list))
+
+
 (defmacro defrules
-  "Define an ACL rule. You can specify ACL rules for each server"
-  [req  &clauses]
-  `(if (authorize ~req) (-> ~req ~@clauses)
-      assoc req :result "Access denied due to ACL reason!"))
+  "mapping parameters into a map"
+  [rules & clauses]
+  `(def ~rules
+    (-> {} ~@clauses))
+  )
+
+
+
+(def myrules)
+
+(fact (-> {} (allow ["ip-list"]))
+      =>
+      {:allow ["ip-list"]})
+
+
+(fact (defrules myrules
+        (deny :all)
+        (allow ["192.168.10.*" "192.168.100.*"]))
+      myrules
+      =>
+      {:deny :all
+       :allow ["192.168.10.*" "192.168.100.*"]})
+
 
