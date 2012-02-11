@@ -18,8 +18,6 @@
     (-> {} ~@clauses))
   )
 
-
-
 (def myrules)
 
 (fact (-> {} (allow ["ip-list"]))
