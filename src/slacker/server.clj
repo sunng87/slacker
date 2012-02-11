@@ -118,10 +118,11 @@
   * http http port for slacker http transport
   * cluster publish server information to zookeeper"
   [exposed-ns port
-   & {:keys [http interceptors cluster]
+   & {:keys [http interceptors cluster acl]
       :or {http nil
            interceptors {:before identity :after identity}
-           cluster nil}}]
+           cluster nil
+           acl nil}}]
   (let [exposed-ns (if (coll? exposed-ns) exposed-ns [exposed-ns])
         funcs (apply merge (map ns-funcs exposed-ns))
         handler (create-server-handler funcs interceptors)]
