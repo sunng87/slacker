@@ -1,6 +1,5 @@
 (ns slacker.aclrules
   (:use clojure.test)
-  (:use midje.sweet)
  )
 
 (defmacro allow [rules ip-list]
@@ -18,19 +17,6 @@
     (-> {} ~@clauses))
   )
 
-(def myrules)
 
-(fact (-> {} (allow ["ip-list"]))
-      =>
-      {:allow ["ip-list"]})
-
-
-(fact (defrules myrules
-        (deny :all)
-        (allow ["192.168.10.*" "192.168.100.*"]))
-      myrules
-      =>
-      {:deny :all
-       :allow ["192.168.10.*" "192.168.100.*"]})
 
 
