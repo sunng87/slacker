@@ -84,13 +84,15 @@
 (defmethod -handle-request :default [& _]
   invalid-type-packet)
 
-(defn handle-request [server-pipeline req client-info inspect-handler]
-  (if (= version (first req))
-    (-handle-request server-pipeline (second req)
-                     client-info inspect-handler)
-    protocol-mismatch-packet))
+(defn handle-request [server-pipeline req client-info inspect-handler acl]
+  (cond
+       (not (authorize client-info acl)) protocol-mismatch-packet
+       (= version (first req))
+       (-handle-request server-pipeline (second req)
+                        client-info inspect-handler)
+       :else protocol-mismatch-packet))
 
-(defn- create-server-handler [funcs interceptors]
+(defn- create-server-handler [funcs interceptors acl]
   (let [server-pipeline (build-server-pipeline funcs interceptors)
         inspect-handler (build-inspect-handler funcs)]
     (fn [ch client-info]
@@ -100,7 +102,8 @@
           (enqueue ch (handle-request server-pipeline
                                       req
                                       client-info
-                                      inspect-handler)))))))
+                                      inspect-handler
+                                      acl)))))))
 
 (defn- ns-funcs [n]
   (let [nsname (ns-name n)]
@@ -125,7 +128,7 @@
            acl nil}}]
   (let [exposed-ns (if (coll? exposed-ns) exposed-ns [exposed-ns])
         funcs (apply merge (map ns-funcs exposed-ns))
-        handler (create-server-handler funcs interceptors)]
+        handler (create-server-handler funcs interceptors acl)]
     (when *debug* (doseq [f (keys funcs)] (println f)))
     (start-tcp-server handler {:port port :frame slacker-base-codec})
     (when-not (nil? http)
