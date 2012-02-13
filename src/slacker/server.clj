@@ -5,7 +5,8 @@
   (:use [aleph tcp http])
   (:use [gloss.io :only [contiguous]])
   (:use [slingshot.slingshot :only [try+]])
-  (:require [zookeeper :as zk]))
+  (:require [zookeeper :as zk])
+  (:use slacker.aclmodule.authorize))
 
 ;; pipeline functions for server request handling
 (defn- map-req-fields [req]
