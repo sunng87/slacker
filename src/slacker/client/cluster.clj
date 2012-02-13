@@ -59,8 +59,7 @@
     nil))
 
 (defn- meta-data-from-zk [zk-conn cluster-name fname]
-  (let [fnode (utils/zk-path cluster-name "functions"
-                             (utils/escape-zkpath fname))]
+  (let [fnode (utils/zk-path cluster-name "functions" fname)]
     (if-let [node-data (zk/data zk-conn fnode)]
       (deserialize :clj (:data node-data) :bytes))))
 
@@ -70,8 +69,7 @@
      options]
   CoordinatorAwareClient
   (refresh-associated-servers [this nsname]
-    (let [node-path (utils/zk-path cluster-name "namespaces"
-                                   (utils/escape-zkpath nsname))
+    (let [node-path (utils/zk-path cluster-name "namespaces" nsname)
           servers (zk/children zk-conn node-path
                                :watch? true)]
       ;; update servers for this namespace
@@ -123,11 +121,8 @@
     (case cmd
       :functions
       (let [nsname (or args "")
-            functions-root (utils/zk-path cluster-name "functions")
-            fnames (or (zk/children zk-conn functions-root) [])]
-        (into []
-              (filter #(.startsWith % nsname)
-                      (map utils/unescape-zkpath fnames))))
+            ns-root (utils/zk-path cluster-name "functions" nsname)]
+        (or (zk/children zk-conn ns-root) []))
       :meta (meta-data-from-zk zk-conn cluster-name args))))
 
 (defn- on-zk-events [e sc]
@@ -137,7 +132,7 @@
     ;; event on `namespaces` nodes
     (let [matcher (re-matches #"/.+/namespaces/?(.*)" (:path e))]
       (if-not (nil? matcher)
-        (ns-callback e sc (utils/unescape-zkpath (second matcher)))))))
+        (ns-callback e sc (second matcher))))))
 
 (defn clustered-slackerc
   "create a cluster enalbed slacker client"

@@ -41,7 +41,7 @@
   (let [cluster-name (cluster :name)
         server-node (str (or (cluster :node) (check-ip (:zk cluster)))
                          ":" port)
-        funcs (map utils/escape-zkpath (keys funcs-map))]
+        funcs (keys funcs-map)]
     (create-node *zk-conn* (utils/zk-path cluster-name "servers")
                  :persistent? true)
     (create-node *zk-conn*
