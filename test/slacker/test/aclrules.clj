@@ -54,3 +54,6 @@
 
 (fact (authorize another-client darkrules)
       => true)
+
+(fact (authorize another-client {})
+      => true)
