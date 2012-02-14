@@ -2,7 +2,8 @@
   (:use clojure.test)
   (:use midje.sweet)
   (:use slacker.aclrules)
-  (:use slacker.aclmodule.authorize))
+  (:use slacker.aclmodule.authorize)
+  (:import java.net.InetSocketAddress))
 
 
 (fact (-> {} (allow ["ip-list"]))
@@ -33,9 +34,9 @@
       {:deny ["192.168.1.10"]
        :allow ["192.168.1.10"]})
 
-(def client-info "192.168.1.1")
-(def other-client "192.168.15.1")
-(def another-client "192.168.1.10")
+(def client-info {:remote-addr (InetSocketAddress. "192.168.1.1" 9090)})
+(def other-client {:remote-addr (InetSocketAddress. "192.168.15.1" 9090)})
+(def another-client {:remote-addr (InetSocketAddress. "192.168.1.10" 9090)})
 
 (fact (authorize client-info myrules)
       => true)
