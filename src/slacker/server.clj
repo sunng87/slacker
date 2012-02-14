@@ -46,6 +46,7 @@
 (def pong-packet [version [:type-pong]])
 (def protocol-mismatch-packet [version [:type-error :protocol-mismatch]])
 (def invalid-type-packet [version [:type-error :invalid-packet]])
+(def acl-reject-packet [version [:type-error :acl-rejct]])
 (defn make-inspect-ack [data]
   [version [:type-inspect-ack
             (serialize :clj data :string)]])
@@ -87,7 +88,7 @@
 
 (defn handle-request [server-pipeline req client-info inspect-handler acl]
   (cond
-       (not (authorize client-info acl)) protocol-mismatch-packet
+       (not (authorize client-info acl)) acl-reject-packet
        (= version (first req))
        (-handle-request server-pipeline (second req)
                         client-info inspect-handler)
