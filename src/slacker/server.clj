@@ -126,7 +126,7 @@
       :or {http nil
            interceptors {:before identity :after identity}
            cluster nil
-           acl nil}}]
+           acl {}}}]
   (let [exposed-ns (if (coll? exposed-ns) exposed-ns [exposed-ns])
         funcs (apply merge (map ns-funcs exposed-ns))
         handler (create-server-handler funcs interceptors acl)]
