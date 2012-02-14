@@ -16,7 +16,7 @@
     (zk/create-all zk-verify-conn (zk-path cluster-name "servers" test-server))
     (zk/create-all zk-verify-conn
                (zk-path cluster-name "namespaces" test-ns test-server))
-    (doseq [f ["hello" "world"]]
+    (doseq [f (map #(str test-ns "/" %) ["hello" "world"])]
       (zk/create-all zk-verify-conn (zk-path cluster-name "functions" f)
                      :persistent? true)
       (zk/set-data zk-verify-conn
@@ -28,8 +28,8 @@
   
     (is (= ["127.0.0.1:2104"] (refresh-associated-servers sc test-ns)))
 
-    (is (= {:name "world" :doc "test function"}
-           (inspect sc :meta "world")))
+    (is (= {:name (str test-ns "/world") :doc "test function"}
+           (inspect sc :meta (str test-ns "/world"))))
 
     (zk/create zk-verify-conn (zk-path cluster-name "servers" test-server2))
     (zk/create zk-verify-conn
@@ -38,7 +38,7 @@
     (Thread/sleep 1000) ;; wait for watchers
     (is (= [test-server test-server2] ((get-ns-mappings sc) test-ns)))
     (is (= 2 (count (get-connected-servers sc))))
-    (is (= 2 (count (inspect sc :functions nil))))
+    (is (= 2 (count (inspect sc :functions test-ns))))
 
     (close sc)
     (zk/delete-all zk-verify-conn (zk-path cluster-name))
