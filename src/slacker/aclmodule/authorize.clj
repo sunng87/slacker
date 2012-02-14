@@ -25,7 +25,7 @@
         deny-set (rules :deny)
         flag (ip-set-contains? deny-set allow-set)]
     (cond
-        (nil? rules) true
+        (empty? rules) true
         flag (ip-set-contains? allow-set client-info)
         :else (and (ip-set-contains? allow-set client-info) (not (ip-set-contains? deny-set client-info))))  
     ))
