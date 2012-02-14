@@ -1,6 +1,4 @@
-(ns slacker.aclrules
-  (:use clojure.test)
- )
+(ns slacker.aclrules)
 
 (defmacro allow [rules ip-list]
   `(assoc ~rules :allow ~ip-list))
@@ -16,7 +14,3 @@
   `(def ~rules
     (-> {} ~@clauses))
   )
-
-
-
-
