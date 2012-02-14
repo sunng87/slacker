@@ -121,8 +121,9 @@
     (case cmd
       :functions
       (let [nsname (or args "")
-            ns-root (utils/zk-path cluster-name "functions" nsname)]
-        (or (zk/children zk-conn ns-root) []))
+            ns-root (utils/zk-path cluster-name "functions" nsname)
+            fnames (or (zk/children zk-conn ns-root) [])]
+        (map #(str nsname "/" %) fnames))
       :meta (meta-data-from-zk zk-conn cluster-name args))))
 
 (defn- on-zk-events [e sc]
