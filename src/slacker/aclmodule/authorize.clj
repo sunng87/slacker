@@ -23,11 +23,12 @@
   [client-info rules]
   (let [allow-set (rules :allow)
         deny-set (rules :deny)
-        flag (ip-set-contains? deny-set allow-set)]
+        flag (ip-set-contains? deny-set allow-set)
+        ip-address (.. (client-info :remote-addr) getAddress getHostAddress)]
     (cond
         (empty? rules) true
-        flag (ip-set-contains? allow-set client-info)
-        :else (and (ip-set-contains? allow-set client-info) (not (ip-set-contains? deny-set client-info))))  
+        flag (ip-set-contains? allow-set ip-address)
+        :else (and (ip-set-contains? allow-set ip-address) (not (ip-set-contains? deny-set ip-address))))  
     ))
 
 
