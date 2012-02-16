@@ -54,7 +54,7 @@
         (def ~fname
           (with-meta
             (fn [& args#]
-              (with-slackerc ~sc
+              (invoke-slacker ~sc
                 [~remote-ns rname# (into [] args#)]
                 :async? ~async?
                 :callback ~callback))

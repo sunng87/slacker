@@ -69,7 +69,7 @@
   (close [this]
     (close-connection conn)))
 
-(defn with-slackerc
+(defn invoke-slacker
   "Invoke remote function with given slacker connection.
   A call-info tuple should be passed in. Usually you don't use this
   function directly. You should define remote call facade with defremote"
