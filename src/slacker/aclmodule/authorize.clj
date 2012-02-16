@@ -15,8 +15,7 @@
   (cond
    (= ip-set-A :all) true
    (string? ip-set-B)  (true? (some true? (map ip-seg-contains? ip-set-A (repeat ip-set-B))))
-   (every? true? (for [x ip-set-B] (some true? (map ip-seg-contains? ip-set-A (repeat x))))) true
-   :else false))
+   (every? true? (for [x ip-set-B] (some true? (map ip-seg-contains? ip-set-A (repeat x))))) true))
 
 (defn authorize
   "authorize user to acess slacer server"
