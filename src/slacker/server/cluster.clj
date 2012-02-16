@@ -7,7 +7,7 @@
 
 (declare *zk-conn* )
 
-(defn- check-ip
+(defn- auto-detect-ip
   "check IP address contains?
    if not connect to zookeeper and getLocalAddress"
   [zk-addr]
@@ -25,21 +25,21 @@
    if not ,create & set node data with func metadata
    "
   [zk-conn node-name
-   & {:keys [fnmeta persistent?]
-      :or {fnmeta nil
+   & {:keys [data persistent?]
+      :or {data nil
            persistent? false}}]
   (if-not (zk/exists zk-conn node-name )
     (zk/create-all zk-conn node-name :persistent? persistent?))
-  (if-not (nil? fnmeta)
-    (zk/set-data zk-conn node-name
-                 (serialize :clj fnmeta :bytes)
+  (if-not (nil? data)
+    (zk/set-data zk-conn node-name data
                  (:version (zk/exists zk-conn node-name)))))
 
 (defn publish-cluster
   "publish server information to zookeeper as cluster for client"
   [cluster port ns-names funcs-map]
   (let [cluster-name (cluster :name)
-        server-node (str (or (cluster :node) (check-ip (:zk cluster)))
+        server-node (str (or (cluster :node)
+                             (auto-detect-ip (:zk cluster)))
                          ":" port)
         funcs (keys funcs-map)]
     (create-node *zk-conn* (utils/zk-path cluster-name "servers")
@@ -55,8 +55,12 @@
       (create-node *zk-conn*
                    (utils/zk-path cluster-name "functions" fname  )
                    :persistent? true
-                   :fnmeta (select-keys (meta (funcs-map fname))
-                                        [:name :doc :arglists])))))
+                   :data (serialize
+                          :clj
+                          (select-keys
+                           (meta (funcs-map fname))
+                           [:name :doc :arglists])
+                          :bytes)))))
 
 (defmacro with-zk
   "publish server information to specifized zookeeper for client"
