@@ -3,7 +3,7 @@
   (:use [slacker.serialization.carbonite])
   (:use [clojure.java.io :only [copy]])
   (:require [carbonite.api :as carb])
-  (:require [clj-json.core :as json])
+  (:require [cheshire.core :as json])
   (:import [java.io ByteArrayInputStream ByteArrayOutputStream])
   (:import [java.nio ByteBuffer])
   (:import [java.nio.charset Charset])
