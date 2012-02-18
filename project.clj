@@ -1,4 +1,4 @@
-(defproject slacker "0.6.1"
+(defproject slacker "0.6.2"
   :description "Transparent, non-invasive RPC by clojure and for clojure"
   :dependencies [[org.clojure/clojure "1.2.1"]
                  [aleph "0.2.0"]

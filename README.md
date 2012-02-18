@@ -70,7 +70,7 @@ can run the examples by `lein run :server` and `lein run :client` .
 
 ### Leiningen
 
-    :dependencies [[slacker "0.6.1"]]
+    :dependencies [[slacker "0.6.2"]]
 
 ### Getting Started
 
