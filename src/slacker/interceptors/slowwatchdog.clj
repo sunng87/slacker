@@ -18,5 +18,6 @@
                                    " "
                                    (pr-str (:args req))
                                    " "
-                                   cost "ms."))))))
+                                   cost "ms.")))
+             req)))
 

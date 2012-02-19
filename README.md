@@ -70,7 +70,11 @@ can run the examples by `lein run :server` and `lein run :client` .
 
 ### Leiningen
 
+<<<<<<< HEAD
     :dependencies [[slacker "0.7.0-SNAPSHOT"]]
+=======
+    :dependencies [[slacker "0.6.2"]]
+>>>>>>> master
 
 ### Getting Started
 
