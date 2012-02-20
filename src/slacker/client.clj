@@ -73,8 +73,20 @@
 (defn use-remote
   "import remote functions the current namespace"
   ([sc-sym] (use-remote sc-sym (ns-name *ns*)))
-  ([sc-sym rns]
-     (dorun (map defn-remote*
-                 (repeat sc-sym)
-                 (inspect @(resolve sc-sym) :functions (str rns))))))
+  ([sc-sym rns & {:keys [only exclude]
+                  :or {only [] exclude []}}]
+     (if (and (not-empty only) (not-empty exclude))
+       (throw (IllegalArgumentException.
+               "do not provide :only and :exclude both")))
+     (let [name-fn #(str rns "/" %)
+           filter-fn (cond
+                      (not-empty only)
+                      #(contains? (set (map name-fn only)) %)
+                      (not-empty exclude)
+                      #(not (contains? (set (map name-fn exclude)) %))
+                      :else identity)
+           all-functions (inspect @(resolve sc-sym) :functions (str rns))]
+       (dorun (map defn-remote*
+                   (repeat sc-sym)
+                   (filter filter-fn all-functions))))))
 
