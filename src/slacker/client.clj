@@ -84,7 +84,7 @@
                       #(contains? (set (map name-fn only)) %)
                       (not-empty exclude)
                       #(not (contains? (set (map name-fn exclude)) %))
-                      :else identity)
+                      :else (constantly true))
            all-functions (inspect @(resolve sc-sym) :functions (str rns))]
        (dorun (map defn-remote*
                    (repeat sc-sym)
