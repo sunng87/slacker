@@ -15,7 +15,7 @@
 (def cdl (CountDownLatch. total-calls))
 (defn received [_]
   (.countDown cdl))
-(defremote scp rand-ints :callback received)
+(defn-remote scp rand-ints :callback received)
 
 (time
  (do

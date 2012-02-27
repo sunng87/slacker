@@ -10,7 +10,8 @@
   [level]
   :after (fn [req]
            (when (= (:code req) :exception)
-             (log/log level (str (:fname req)
+             (log/log level (str "Exception call "
+                                 (:fname req)
                                  " "
                                  (pr-str (:args req))
                                  " "

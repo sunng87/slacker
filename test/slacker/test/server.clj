@@ -1,12 +1,14 @@
 (ns slacker.test.server
   (:use [slacker server serialization common])
-  (:use [clojure.test]))
+  (:use [clojure.test])
+  (:use [clojure.string :only [split]]))
 
 (def funcs {"plus" + "minus" - "prod" * "div" /})
 (def params (serialize :carb [100 0]))
 
 (deftest test-server-pipeline
-  (let [server-pipeline (build-server-pipeline funcs identity identity)
+  (let [server-pipeline (build-server-pipeline
+                         funcs {:before identity :after identity})
         req {:content-type :carb
              :data [params]
              :fname "plus"}
@@ -33,7 +35,8 @@
 (def interceptor (fn [req] (update-in req [:result] str)))
 
 (deftest test-server-pipeline-interceptors
-  (let [server-pipeline (build-server-pipeline funcs identity interceptor)
+  (let [server-pipeline (build-server-pipeline
+                         funcs {:before identity :after interceptor})
         req {:content-type :carb
              :data [params]
              :fname "prod"}]
@@ -42,12 +45,18 @@
 
 (deftest test-ping
   (let [request [version [:type-ping :json nil nil]]
-        response (second (handle-request nil request nil))]
+        response (second (handle-request nil request nil nil))]
     (is (= :type-pong (nth response 0)))))
 
 (deftest test-invalid-packet
   (let [request [version [:type-unknown :json nil nil]]
-        response (second (handle-request nil request nil))]
+        response (second (handle-request nil request nil nil))]
     (is (= :type-error (nth response 0)))
     (is (= :invalid-packet (nth response 1)))))
+
+
+(deftest test-functions-inspect
+  (let [request [version [:type-inspect-req :functions "nil"]]
+        response (deserialize :clj (second (second (handle-request nil request nil (build-inspect-handler funcs)))) :string)]
+    (= (map name (keys funcs)) response)))
 

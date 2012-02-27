@@ -15,6 +15,7 @@
                         :interceptors (interceptors [log-function-calls
                                                      function-call-stats
                                                      (logargs :error)
-                                                     exectime-stats]))
-  (println "Slacker example server started on port 2104."))
+                                                     exectime-stats])
+                        :http 4104)
+  (println "Slacker example server started on port 2104, http enabled on 4104"))
 

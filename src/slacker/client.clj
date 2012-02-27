@@ -1,89 +1,25 @@
 (ns slacker.client
-  (:use [slacker common serialization protocol])
-  (:use [slacker.client pool])
-  (:use [lamina.core :exclude [close]])
+  (:use [slacker common protocol])
+  (:use [slacker.client common pool])
   (:use [lamina.connections])
   (:use [aleph.tcp])
-  (:import [slacker SlackerException]))
-
-(defn- handle-normal-response [response]
-  (let [[_ content-type code data] response]
-    (case code
-      :success (deserialize content-type (first data))
-      :not-found (throw (SlackerException. "function not found."))
-      :exception (throw (SlackerException.
-                         (deserialize content-type (first data))))
-      (throw (SlackerException. (str "invalid result code: " code))))))
-
-(defn- handle-response [response]
-  (case (first response)
-    :type-response (handle-normal-response response)
-    :type-error (throw (SlackerException. (str "fatal error: " (second response))))
-    nil))
-
-(defn- make-request [content-type func-name params]
-  (let [serialized-params (serialize content-type params)]
-    [version [:type-request content-type func-name serialized-params]]))
-
-(def ping-packet [version :type-ping 0 nil nil])
-(defn ping [conn]
-  (wait-for-result (conn ping-packet) *timeout*))
-
-(defprotocol SlackerClientProtocol
-  (sync-call-remote [this func-name params])
-  (async-call-remote [this func-name params cb])
-  (close [this]))
-
-(deftype SlackerClient [conn content-type]
-  SlackerClientProtocol
-  (sync-call-remote [this func-name params]
-    (let [request (make-request content-type func-name params)
-          response (wait-for-result (conn request) *timeout*)]
-      (when-let [[_ resp] response]
-        (handle-response resp))))
-  (async-call-remote [this func-name params cb]
-    (let [request (make-request content-type func-name params)]
-      (run-pipeline
-       (conn request)
-       #(if-let [[_ resp] %]
-          (let [result (handle-response resp)]
-            (if-not (nil? cb) (cb result))
-            result)))))
-  (close [this]
-    (close-connection conn)))
+  (:use [gloss.io :only [contiguous]])
+  (:use [clojure.string :only [split]])
+  (:import [slacker.client.common SlackerClient])
+  (:import [slacker.client.pool PooledSlackerClient]))
 
 (defn slackerc
   "Create connection to a slacker server."
-  [host port
+  [addr
    & {:keys [content-type]
-      :or {content-type :carb}}]
-  (let [conn (client #(tcp-client {:host host
+      :or {content-type :carb}
+      :as _}]
+  (let [[host port] (host-port addr)
+        conn (client #(tcp-client {:host host
                                    :port port
                                    :frame slacker-base-codec}))]
     (SlackerClient. conn content-type)))
 
-(deftype PooledSlackerClient [pool content-type]
-  SlackerClientProtocol
-  (sync-call-remote [this func-name params]
-    (let [conn (.borrowObject pool)
-          request (make-request content-type func-name params)
-          response (wait-for-result (conn request) *timeout*)]
-      (.returnObject pool conn)
-      (when-let [[_ resp] response]
-        (handle-response resp))))
-  (async-call-remote [this func-name params cb]
-    (let [conn (.borrowObject pool)
-          request (make-request content-type func-name params)]
-      (run-pipeline
-       (conn request)
-       #(do
-          (.returnObject pool conn)
-          (if-let [[_ resp] %]
-            (let [result (handle-response resp)]
-              (if-not (nil? cb) (cb result))
-              result))))))
-  (close [this]
-    (.close pool)))
 
 (defn slackerc-pool
   "Create a auto resizable connection pool to slacker server.
@@ -91,38 +27,66 @@
   connection and the policy when pool is exhausted. Check commons
   pool javadoc for the meaning of each argument:
   http://commons.apache.org/pool/apidocs/org/apache/commons/pool/impl/GenericObjectPool.html"
-  [host port
+  [connection-string
    & {:keys [content-type max-active exhausted-action max-wait max-idle]
       :or {content-type :carb
            max-active 8
            exhausted-action :block
            max-wait -1
-           max-idle 8}}]
-  (let [pool (connection-pool host port
+           max-idle 8}
+      :as _}]
+  (let [[host port] (host-port connection-string)
+        pool (connection-pool host port
                               max-active exhausted-action max-wait max-idle)]
     (PooledSlackerClient. pool content-type)))
 
-(defn with-slackerc
-  "Invoke remote function with given slacker connection.
-  A call-info tuple should be passed in. Usually you don't use this
-  function directly. You should define remote call facade with defremote"
-  [sc remote-call-info
-   & {:keys [async callback]
-      :or {async false callback nil}}]
-  (let [[fname args] remote-call-info]
-    (if (or async (not (nil? callback)))
-      (async-call-remote sc fname args callback)
-      (sync-call-remote sc fname args))))
+(defn close-slackerc [client]
+  (close client))
 
-(defmacro defremote
+
+(defmacro defn-remote
   "Define a facade for remote function. You have to provide the
   connection and the function name. (Argument list is not required here.)"
-  [sc fname & {:keys [remote-name async callback]
-               :or {remote-name nil async false callback nil}}]
-  `(defn ~fname [& args#]
-     (with-slackerc ~sc
-       [(or ~remote-name (name '~fname))
-        (into [] args#)]
-       :async ~async
-       :callback ~callback)))
+  ([sc fname & {:keys [remote-ns remote-name async? callback]
+                :or {remote-ns (ns-name *ns*)
+                     remote-name nil async? false callback nil}}]
+     `(let [rname# (or ~remote-name (name '~fname))]
+        (def ~fname
+          (with-meta
+            (fn [& args#]
+              (invoke-slacker ~sc
+                [~remote-ns rname# (into [] args#)]
+                :async? ~async?
+                :callback ~callback))
+            (merge (meta-remote ~sc (str ~remote-ns "/" rname#))
+                   {:slacker-remote-fn true
+                    :slacker-client ~sc
+                    :slacker-remote-ns ~remote-ns
+                    :slacker-remote-name rname#}))))))
+
+(defn- defn-remote*
+  [sc-sym fname]
+  (eval (list 'defn-remote sc-sym
+              (symbol (second (split fname #"/")))
+              :remote-ns (first (split fname #"/")))))
+
+(defn use-remote
+  "import remote functions the current namespace"
+  ([sc-sym] (use-remote sc-sym (ns-name *ns*)))
+  ([sc-sym rns & {:keys [only exclude]
+                  :or {only [] exclude []}}]
+     (if (and (not-empty only) (not-empty exclude))
+       (throw (IllegalArgumentException.
+               "do not provide :only and :exclude both")))
+     (let [name-fn #(str rns "/" %)
+           filter-fn (cond
+                      (not-empty only)
+                      #(contains? (set (map name-fn only)) %)
+                      (not-empty exclude)
+                      #(not (contains? (set (map name-fn exclude)) %))
+                      :else (constantly true))
+           all-functions (inspect @(resolve sc-sym) :functions (str rns))]
+       (dorun (map defn-remote*
+                   (repeat sc-sym)
+                   (filter filter-fn all-functions))))))
 

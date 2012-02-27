@@ -12,7 +12,7 @@
 
 (def scp (slackerc-pool "localhost" 2104
                         :max-active total-connections))
-(defremote scp rand-ints)
+(defn-remote scp rand-ints)
 
 (def cdl (CountDownLatch. total-calls))
 (time

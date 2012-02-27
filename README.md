@@ -1,5 +1,7 @@
 # slacker
 
+![slacker](http://i.imgur.com/Jd02f.png)
+
 **"Superman is a slacker."**
 
 slacker is a simple RPC framework for Clojure based on
@@ -9,7 +11,17 @@ because slacker requires it to work on clojure 1.2.
 
 slacker is growing.
 
-### RPC vs Remote Eval
+## Features
+
+* Fast serialization based on Kryo (Text based serialization is also supported)
+* Security without additional policies
+* Transparent and non-invasive API
+* Connection pool
+* Extensible server with interceptor framework
+* Cluster with Zookeeper
+* Clean code
+
+### Slacker VS. Remote Eval
 
 Before slacker, the clojure world uses a *remote eval* approach for
 remoting ([nREPL](https://github.com/clojure/tools.nrepl),
@@ -30,6 +42,25 @@ eval, RPC (especially slacker) has some pros and cons:
   high-order functions and lazy arguments. Due to the limitation of
   serialization, slacker has its difficulty to support these features.
 
+### Slacker VS. Thrift
+
+Since clojure is also hosted on Java virtual machine, you can use
+existed Java RPC framework in clojure, like thrift. 
+
+#### pros
+
+* No schema needed
+* No additional code generation
+* Transparent, non-invasive API
+* Pure clojure way
+* Highly customizable (interceptor framework)
+
+#### cons
+
+* Currently, there is no cross language support. Slacker is only for
+  clojure. I am planning to add nodejs support via clojurescript. 
+* Potential performance improvements.
+
 ## Example
 
 An pair of example server/client can be found under "examples", you
@@ -39,7 +70,11 @@ can run the examples by `lein run :server` and `lein run :client` .
 
 ### Leiningen
 
-    :dependencies [[info.sunng/slacker "0.4.0-SNAPSHOT"]]
+<<<<<<< HEAD
+    :dependencies [[slacker "0.7.0-SNAPSHOT"]]
+=======
+    :dependencies [[slacker "0.6.2"]]
+>>>>>>> master
 
 ### Getting Started
 
@@ -48,7 +83,9 @@ namespace.
 
 ``` clojure
 (ns slapi)
-(defn timestamp []
+(defn timestamp 
+  "return server time in milliseconds"
+  []
   (System/currentTimeMillis))
 
 ;; ...more functions
@@ -65,9 +102,27 @@ On the client side, define a facade for the remote function:
 
 ``` clojure
 (use 'slacker.client)
-(def sc (slackerc "localhost" 2104))
-(defremote sc timestamp)
+(def sc (slackerc "localhost:2104"))
+(use-remote 'sc 'slapi)
 (timestamp)
+```
+
+By checking the metadata of `timestamp`, you can find useful
+information:
+
+``` clojure
+(meta timestamp)
+=> {:slacker-remote-name "timestamp", :slacker-remote-fn true,
+:slacker-client #<SlackerClient
+slacker.client.common.SlackerClient@575752>, :slacker-remote-ns
+"slapi" :arglists ([]), :name timestamp 
+:doc "return server time in milliseconds"}
+```
+
+#### Closing the client
+
+``` clojure
+(close-slackerc sc)
 ```
 
 ### Client Connection Pool
@@ -89,29 +144,30 @@ For the meaning of each option, check the
 [javadoc](http://commons.apache.org/pool/apidocs/org/apache/commons/pool/impl/GenericObjectPool.html)
 of commons-pool.
 
-### Options in defremote
+### Options in defn-remote
 
 You are specify the remote function name when the name is occupied in
 current namespace
 
 ``` clojure
-(defremote sc remote-time
+(defn-remote sc remote-time
+  :remote-ns "slapi"
   :remote-name "timestamp")
 ```
 
-If you add an `:async` flag to `defremote`, then the facade will be
+If you add an `:async` flag to `defn-remote`, then the facade will be
 asynchronous which returns a *promise* when you call it. You should
 deref it by yourself to get the return value.
 
 ``` clojure
-(defremote timestamp :async true)
+(defn-remote timestamp :async true :remote-ns "slapi")
 @(timestamp)
 ```
 
 You can also assign a callback for an async facade.
 
 ``` clojure
-(defremote timestamp :callback #(println %))
+(defn-remote timestamp :remote-ns "slapi" :callback #(println %))
 (timestamp)
 ```
 
@@ -126,7 +182,7 @@ this before you start server or client:
 
 ``` clojure
 (use '[slacker.serialization])
-(register-serializers some-serializers)
+(register-serializers {Class Serializer)
 ```
 [Carbonite](https://github.com/revelytix/carbonite "carbonite") has
 some detailed docs on how to create your own serializers.
@@ -167,6 +223,12 @@ may lead to inconsistency of your clojure data structure between server and
 client. Try to avoid this by carefully design your data structure or
 just using carbonite(default and recommended).
 
+From slacker 0.4.0, clojure pr/read is supported. You can just
+set content-type as `:clj`. clojure pr/read has full support on
+clojure data structures and also easy for debugging. However, it's
+much slower that carbonite so you'd better not use it if you have
+critical performance requirements.
+
 ### Server interceptors
 
 To add custom functions on server, you can define custom
@@ -181,7 +243,101 @@ interceptors before or after function called.
 ```
 
 For more information about using interceptors and creating your own
-interceptors, query the [wiki page](https://github.com/sunng87/slacker/wiki/Interceptors).
+interceptors, query the [wiki
+page](https://github.com/sunng87/slacker/wiki/Interceptors).
+
+### Slacker on HTTP
+
+From 0.4.0, slacker can be configured to run on HTTP protocol. To
+enable HTTP transport, just add a `:http` option to your slacker
+server:
+
+``` clojure
+(start-slacker-server ...
+                      :http 4104)
+```
+
+The HTTP url pattern is
+http://localhost:4104/*namespace*/*function-name*.*format*.  Arguments
+are encoded in *format*, and posted to server via HTTP body. If you
+have multiple arguments, you should put them into a clojure vector
+(for clj format) or javascript array (for json format).
+
+See a curl example:
+
+``` bash
+$ curl -d "[5]" http://localhost:4104/slapi/rand-ints.clj
+(38945142 1413770549 1361247669 1899499977 1281637740)
+```
+
+Note that you can only use `json` or `clj` as format. Because HTTP is
+a test based protocol, so `carb` won't be supported.
+
+## Slacker Cluster
+
+Leveraging on ZooKeeper, slacker now has a solution for high
+availability and load balancing. You can have several slacker servers
+in a cluster serving functions. And the clustered slacker client will
+randomly select one of these server to invoke. Once a server is added
+to or removed from the cluster, the client will automatically
+establish connection to it. 
+
+To create such a slacker cluster, make sure you have a zookeeper
+instance in your network.
+
+### Clustered Slacker Server
+
+On the server side, add an option `:cluster`. Some information is    
+required:
+
+``` clojure
+(use 'slacker.server)
+(start-slacker-server ...
+                      :cluster {:name "cluster-name"
+                                :zk "127.0.0.1:2181"})
+```
+
+Cluster information here:
+
+* `:name` the cluster name (*required*)
+* `:zk` zookeeper server address (*required*)
+* `:node` server IP (*optional*, if you don't provide the server IP
+  here, slacker will try to detect server IP by connecting to zk,
+  on which we assume that your slacker server are bound on the same
+  network with zookeeper)
+
+### Clustered Slacker Client
+
+On the client side, you have to specify the zookeeper address instead
+of a particular slacker server. Use the `clustered-slackerc`:
+
+``` clojure
+(use 'slacker.client.cluster)
+(def sc (clustered-slackerc "cluster-name" "127.0.0.1:2181"))
+(use-remote 'sc 'slapi)
+```
+
+You should make sure to use the `use-remote` and `defn-remote` from
+`slacker.client.cluster` instead of `slacker.client`.
+
+### Examples
+
+There is a cluster example in the source code. To run the server,
+start a zookeeper on your machine (127.0.0.1:2181)
+
+Start server instance:
+
+    lein run :cluster-server 2104
+
+Open a new terminal, start another server instance:
+
+    lein run :cluster-server 2105
+
+On another terminal, you can run the example client:
+
+    lein run :cluster-client
+
+By checking logs, you can trace the calls on each server instance.
 
 ## Performance
 
@@ -193,6 +349,10 @@ single client (50 connections, 50 threads) performed 500000
 **synchronous** calls in 48862 msecs (TPS is about **10232**).
 
 Some formal performance benchmark is coming soon.
+
+## Contributors
+
+* [lbt05](https://github.com/lbt05)
 
 ## License
 

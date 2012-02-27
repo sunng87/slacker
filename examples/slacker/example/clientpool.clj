@@ -1,15 +1,12 @@
 (ns slacker.example.clientpool
-  (:use slacker.client)
-  (:import [slacker SlackerException]))
+  (:use slacker.client))
 
-(def conn (slackerc-pool "localhost" 2104
-                         :exhausted-action
-                         :grow :min-idle 1))
+(def conn (slackerc-pool "127.0.0.1:2104"
+                         :exhausted-action :grow
+                         :min-idle 1))
 
-(defremote conn timestamp)
-(defremote conn inc-m)
-(defremote conn get-m)
-(defremote conn rand-ints)
+(use-remote 'conn
+            'slacker.example.api)
 
 
 (defn -main [& args]
@@ -20,6 +17,6 @@
   (println (rand-ints 10))
 
   ;; shutdown
-  (close conn)
+  (close-slackerc conn)
 
   (System/exit 0))
