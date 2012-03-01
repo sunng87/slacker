@@ -23,7 +23,8 @@
                :not-found 11
                :exception 12
                :protocol-mismatch 20
-               :invalid-packet 21}))
+               :invalid-packet 21
+               :acl-rejct 22}))
 
 (defcodec slacker-request-codec
   [:type-request ;; packet-type
