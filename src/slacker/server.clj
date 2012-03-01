@@ -5,7 +5,8 @@
   (:use [aleph tcp http])
   (:use [gloss.io :only [contiguous]])
   (:use [slingshot.slingshot :only [try+]])
-  (:require [zookeeper :as zk]))
+  (:require [zookeeper :as zk])
+  (:use slacker.aclmodule.authorize))
 
 ;; pipeline functions for server request handling
 (defn- map-req-fields [req]
@@ -49,6 +50,7 @@
 (def pong-packet [version [:type-pong]])
 (def protocol-mismatch-packet [version [:type-error :protocol-mismatch]])
 (def invalid-type-packet [version [:type-error :invalid-packet]])
+(def acl-reject-packet [version [:type-error :acl-rejct]])
 (defn make-inspect-ack [data]
   [version [:type-inspect-ack
             (serialize :clj data :string)]])
@@ -88,13 +90,15 @@
 (defmethod -handle-request :default [& _]
   invalid-type-packet)
 
-(defn handle-request [server-pipeline req client-info inspect-handler]
-  (if (= version (first req))
-    (-handle-request server-pipeline (second req)
-                     client-info inspect-handler)
-    protocol-mismatch-packet))
+(defn handle-request [server-pipeline req client-info inspect-handler acl]
+  (cond
+       (not (authorize client-info acl)) acl-reject-packet
+       (= version (first req))
+       (-handle-request server-pipeline (second req)
+                        client-info inspect-handler)
+       :else protocol-mismatch-packet))
 
-(defn- create-server-handler [funcs interceptors debug]
+(defn- create-server-handler [funcs interceptors acl debug]
   (let [server-pipeline (build-server-pipeline funcs interceptors)
         inspect-handler (build-inspect-handler funcs)]
     (fn [ch client-info]
@@ -106,7 +110,9 @@
                      (handle-request server-pipeline
                                      req
                                      client-info
-                                     inspect-handler))))))))
+                                     inspect-handler
+                                     acl))))))))
+
 
 (defn- ns-funcs [n]
   (let [nsname (ns-name n)]
@@ -124,13 +130,14 @@
   * http http port for slacker http transport
   * cluster publish server information to zookeeper"
   [exposed-ns port
-   & {:keys [http interceptors cluster]
+   & {:keys [http interceptors cluster acl]
       :or {http nil
            interceptors {:before identity :after identity}
-           cluster nil}}]
+           cluster nil
+           acl {}}}]
   (let [exposed-ns (if (coll? exposed-ns) exposed-ns [exposed-ns])
         funcs (apply merge (map ns-funcs exposed-ns))
-        handler (create-server-handler funcs interceptors *debug*)]
+        handler (create-server-handler funcs interceptors acl *debug*)]
     (when *debug* (doseq [f (keys funcs)] (println f)))
     (start-tcp-server handler {:port port :frame slacker-base-codec})
     (when-not (nil? http)
