@@ -10,6 +10,7 @@
 (defrules myrules
       (deny ["192.168.1.10"])
       (allow ["192.168.1.*" "192.168.100.*"]))
+
  (defrules lightrules
       (deny :all)
       (allow :all))
@@ -17,6 +18,8 @@
       (deny ["192.168.1.10"])
       (allow ["192.168.1.10"]))
 
+(defrules emptyrules
+      (deny ["192.168.1.10"]))
 
 (deftest test-defrules
     (is (= myrules {:deny ["192.168.1.10"]
@@ -32,4 +35,5 @@
   (is (true?  (authorize other-client lightrules)) )
   (is (true?  (authorize another-client darkrules)) )
   (is (true?  (authorize another-client {})) )
+  (is (false? (authorize client-info emptyrules)))
   )
