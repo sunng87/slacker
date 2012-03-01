@@ -1,4 +1,4 @@
-(ns slacker.aclmodule.core)
+(ns slacker.acl.core)
 
 (defn- ip-seg-contains?
   "Ip-segment A contains? B or not"
