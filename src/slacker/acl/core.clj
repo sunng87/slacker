@@ -1,11 +1,11 @@
-(ns slacker.aclmodule.authorize)
+(ns slacker.aclmodule.core)
 
 (defn- ip-seg-contains?
   "Ip-segment A contains? B or not"
   [ip-seg-a ip-seg-b]
   (cond
    (.contains ip-seg-a "*")
-       (.startsWith ip-seg-b (.substring ip-seg-a 0 (.indexOf ip-seg-a "*")))
+   (.startsWith ip-seg-b (.substring ip-seg-a 0 (.indexOf ip-seg-a "*")))
    (= ip-seg-a ip-seg-b) true
    :else false))
 
@@ -25,9 +25,9 @@
         flag (ip-set-contains? deny-set allow-set)
         ip-address (.. (client-info :remote-addr) getAddress getHostAddress)]
     (cond
-        (empty? rules) true
-        flag (ip-set-contains? allow-set ip-address)
-        :else (and (ip-set-contains? allow-set ip-address) (not (ip-set-contains? deny-set ip-address))))  
+     (empty? rules) true
+     flag (ip-set-contains? allow-set ip-address)
+     :else (and (ip-set-contains? allow-set ip-address) (not (ip-set-contains? deny-set ip-address))))  
     ))
 
 

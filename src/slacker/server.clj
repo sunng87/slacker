@@ -1,12 +1,12 @@
 (ns slacker.server
   (:use [slacker common serialization protocol])
   (:use [slacker.server http cluster])
+  (:use [slacker.acl.core])
   (:use [lamina.core])
   (:use [aleph tcp http])
   (:use [gloss.io :only [contiguous]])
   (:use [slingshot.slingshot :only [try+]])
   (:require [zookeeper :as zk])
-  (:use slacker.aclmodule.authorize))
 
 ;; pipeline functions for server request handling
 (defn- map-req-fields [req]
@@ -128,7 +128,8 @@
   Options:
   * interceptors add server interceptors
   * http http port for slacker http transport
-  * cluster publish server information to zookeeper"
+  * cluster publish server information to zookeeper
+  * acl the acl rules defined by defrules"
   [exposed-ns port
    & {:keys [http interceptors cluster acl]
       :or {http nil
