@@ -6,7 +6,7 @@
   (:use [aleph tcp http])
   (:use [gloss.io :only [contiguous]])
   (:use [slingshot.slingshot :only [try+]])
-  (:require [zookeeper :as zk])
+  (:require [zookeeper :as zk]))
 
 ;; pipeline functions for server request handling
 (defn- map-req-fields [req]
@@ -92,11 +92,18 @@
 
 (defn handle-request [server-pipeline req client-info inspect-handler acl]
   (cond
-       (not (authorize client-info acl)) acl-reject-packet
-       (= version (first req))
-       (-handle-request server-pipeline (second req)
-                        client-info inspect-handler)
-       :else protocol-mismatch-packet))
+   ;; acl enabled
+   (and (not (nil? acl))
+        (not (authorize client-info acl)))
+   acl-reject-packet
+   
+   ;; handle request
+   (= version (first req))
+   (-handle-request server-pipeline (second req)
+                    client-info inspect-handler)
+
+   ;; version mismatch
+   :else protocol-mismatch-packet))
 
 (defn- create-server-handler [funcs interceptors acl debug]
   (let [server-pipeline (build-server-pipeline funcs interceptors)
@@ -135,7 +142,7 @@
       :or {http nil
            interceptors {:before identity :after identity}
            cluster nil
-           acl {}}}]
+           acl nil}}]
   (let [exposed-ns (if (coll? exposed-ns) exposed-ns [exposed-ns])
         funcs (apply merge (map ns-funcs exposed-ns))
         handler (create-server-handler funcs interceptors acl *debug*)]
