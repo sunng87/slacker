@@ -25,7 +25,7 @@
         flag (ip-set-contains? deny-set allow-set)
         ip-address (.. (client-info :remote-addr) getAddress getHostAddress)]
     (cond
-        (empty? rules) true
+        (empty? rules) false
         flag (ip-set-contains? allow-set ip-address)
         :else (and (ip-set-contains? allow-set ip-address) (not (ip-set-contains? deny-set ip-address))))  
     ))
