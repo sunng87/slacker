@@ -34,5 +34,5 @@
   (is (true?  (authorize client-info lightrules)) )
   (is (true?  (authorize other-client lightrules)) )
   (is (true?  (authorize another-client darkrules)) )
-  (is (true?  (authorize another-client {})) )
+  (is (false?  (authorize another-client {})) )
   (is (false? (authorize client-info emptyrules))))
