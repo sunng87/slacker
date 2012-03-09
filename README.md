@@ -70,11 +70,7 @@ can run the examples by `lein run :server` and `lein run :client` .
 
 ### Leiningen
 
-<<<<<<< HEAD
-    :dependencies [[slacker "0.7.0-SNAPSHOT"]]
-=======
-    :dependencies [[slacker "0.6.2"]]
->>>>>>> master
+    :dependencies [[slacker "0.7.0"]]
 
 ### Getting Started
 
@@ -272,6 +268,11 @@ $ curl -d "[5]" http://localhost:4104/slapi/rand-ints.clj
 
 Note that you can only use `json` or `clj` as format. Because HTTP is
 a test based protocol, so `carb` won't be supported.
+
+### Access Control List
+
+Slacker 0.7 supports IP based access control list (ACL). Consult [wiki
+page](https://github.com/sunng87/slacker/wiki/AccessControlList) for the ACL rule DSL.
 
 ## Slacker Cluster
 
