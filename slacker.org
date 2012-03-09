@@ -35,7 +35,7 @@
     is there any dependencies management solution for cljs? how to
     release it as a cljs library ?
 *** TODO ACL                                                  :server:client:   
-**** Phase 1: hostname based ACL
+**** DONE Phase 1: hostname based ACL
      a DSL for ACL config. reference: DRuby ACL
      (http://en.wikibooks.org/wiki/Ruby_Programming/Standard_Library/DRb#Security_concerns)
 **** Phase 2: token based    
@@ -64,7 +64,7 @@
     Associate server to namesapces instead of functions, to adapt
     large scale cluster. We assume that namespace is the smallest
     gratuity in a cluster.
-*** TODO Copy stacktraces to client                           :server:client:
+*** DONE Copy stacktraces to client                           :server:client:
     Add the debug option to server and we should be able to get
     exception stacktrace from client.
 *** TODO Grouping in cluster                                         :client: 
@@ -72,7 +72,7 @@
     the same slacker server. (Check storm bolt API as reference)
 *** TODO remote stm                                           :server:client:
     thinking about stm in remote invocation.
-*** TODO Content compression                                  :serialization:
+*** DONE Content compression                                  :serialization:
     add options to compress serialized content.
 
 ** Lower Priority Features
@@ -96,7 +96,7 @@
 *** 0.6.0
     SCHEDULED: <2012-02-03 Fri>
 *** 0.7.0
-    
+    released on 2012-03-09
 
     
     

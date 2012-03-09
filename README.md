@@ -193,7 +193,7 @@ external applications.
 Configure slacker client to use JSON:
 
 ``` clojure
-(def sc (slackerc "localhost" 2104 :content-type :json))
+(def sc (slackerc "localhost:2104" :content-type :json))
 ```
 
 Turn on the debug option, you will see all the JSON data transported
