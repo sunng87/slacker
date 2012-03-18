@@ -1,76 +1,86 @@
 (ns slacker.protocol
-  (:use [gloss.core]))
+  (:refer-clojure :exclude [byte float double])
+  (:use [link.codec]))
 
-(defcodec packet-type
-  (enum :byte {:type-request 0
-               :type-response 1
-               :type-ping 2
-               :type-pong 3
-               :type-error 4
-               :type-auth-req 5
-               :type-auth-ack 6
-               :type-inspect-req 7
-               :type-inspect-ack 8}))
+(def packet-type
+  (enum (byte) {:type-request 0
+                :type-response 1
+                :type-ping 2
+                :type-pong 3
+                :type-error 4
+                :type-auth-req 5
+                :type-auth-ack 6
+                :type-inspect-req 7
+                :type-inspect-ack 8}))
 
-(defcodec content-type
-  (enum :byte {:carb 0 :json 1 :clj 2
-               :deflate-carb 10
-               :deflate-json 11
-               :deflate-clj 12}))
+(def content-type
+  (enum (byte) {:carb 0 :json 1 :clj 2
+                :deflate-carb 10
+                :deflate-json 11
+                :deflate-clj 12}))
 
-(defcodec result-codes
-  (enum :byte {:success 0
-               :not-found 11
-               :exception 12
-               :protocol-mismatch 20
-               :invalid-packet 21
-               :acl-rejct 22}))
+(def result-codes
+  (enum (byte) {:success 0
+                :not-found 11
+                :exception 12
+                :protocol-mismatch 20
+                :invalid-packet 21
+                :acl-rejct 22}))
 
-(defcodec slacker-request-codec
-  [:type-request ;; packet-type
-   content-type ;; content-type
-   (finite-frame :uint16 (string :utf8)) ;; function name
-   (finite-block :uint32) ;; arguments
-   ])
+;; :type-request
+(def slacker-request-codec
+  (frame
+   content-type
+   (string :encoding :utf-8 :prefix (uint16))
+   (byte-block :prefix (uint32))))
 
-(defcodec slacker-response-codec
-  [:type-response ;; packet-type
-   content-type ;; content-type
-   result-codes ;; result code
-   (finite-block :uint32) ;; result data
-   ])
+;; :type-response
+(def slacker-response-codec
+  (frame
+   content-type
+   result-codes
+   (byte-block :prefix (uint32))))
 
-(defcodec slacker-ping-codec
-  [:type-ping])
 
-(defcodec slacker-pong-codec
-  [:type-pong])
+;; :type-ping
+(def slacker-ping-codec
+  (frame))
 
-(defcodec slacker-error-codec
-  [:type-error
-   result-codes])
+;; :type-pong
+(def slacker-pong-codec
+  (frame))
 
-(defcodec slacker-auth-req-codec
-  [:type-auth-req
-   (finite-frame :uint16 (string :ascii))])
+;; :type-error
+(def slacker-error-codec
+  (frame
+   result-codes))
 
-(defcodec slacker-auth-ack-codec
-  [:type-auth-ack
-   (enum :byte {:auth-ok 0
-                :auth-reject 1})])
+;; :type-auth-req
+(def slacker-auth-req-codec
+  (frame
+   (string :encoding :ascii :prefix (uint16))))
 
-(defcodec slacker-inspect-req-codec
-  [:type-inspect-req
-   (enum :byte {:functions 0
-                :meta 1}) ;; inspect command code
-   (finite-frame :uint16 (string :utf8))]) ;; args
+;; type-auth-ack
+(def slacker-auth-ack-codec
+  (frame
+   (enum (byte) {:auth-ok 0
+                 :auth-reject 1})))
 
-(defcodec slacker-inspect-ack-codec
-  [:type-inspect-ack
-   (finite-frame :uint16 (string :utf8))]) ;; return value
+;; type-inspect-req
+(def slacker-inspect-req-codec
+  (frame
+   (enum (byte) {:functions 0
+                 :meta 1})
+   (string :prefix (uint16) :encoding :utf-8)))
 
-(defcodec slacker-base-codec
-  [:byte ;; protocol version
+;; type-inspect-ack
+(def slacker-inspect-ack-codec
+  (frame
+   (string :encoding :utf-8 :prefix (uint16))))
+
+(def slacker-base-codec
+  (frame
+   (byte) ;; protocol version
    (header
     packet-type
     {:type-request slacker-request-codec
@@ -81,6 +91,5 @@
      :type-auth-req slacker-auth-req-codec
      :type-auth-ack slacker-auth-ack-codec
      :type-inspect-req slacker-inspect-req-codec
-     :type-inspect-ack slacker-inspect-ack-codec}
-    first)])
-
+     :type-inspect-ack slacker-inspect-ack-codec})))
+  
