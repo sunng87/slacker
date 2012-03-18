@@ -1,6 +1,6 @@
 (ns slacker.interceptors.logargs
   (:use [slacker.interceptor])
-  (:require [clojure.contrib.logging :as log]))
+  (:require [clojure.tools.logging :as log]))
 
 (definterceptor+
   ^{:doc "log arguments when of calls that cause exception.

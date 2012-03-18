@@ -1,5 +1,6 @@
 (ns slacker.serialization.carbonite
   (:require [carbonite.api :as carb])
+  (:import [java.nio ByteBuffer])
   (:import [com.esotericsoftware.kryo Kryo Serializer SerializationException]
            [com.esotericsoftware.kryo.serialize StringSerializer
             MapSerializer IntSerializer

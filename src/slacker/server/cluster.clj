@@ -5,7 +5,7 @@
   (:require [slacker.utils :as utils])
   (:import java.net.Socket))
 
-(declare *zk-conn* )
+(declare ^{:dynamic true} *zk-conn* )
 
 (defn- auto-detect-ip
   "check IP address contains?
