@@ -1,31 +1,35 @@
 (ns slacker.server.http
   (:require [clojure.string :as string])
   (:require [clojure.java.io :as io])
-  (:import [java.io ByteArrayOutputStream])
-  (:import [java.nio ByteBuffer])
-  (:import [java.nio.charset Charset]))
+  (:import [java.io
+            ByteArrayInputStream
+            ByteArrayOutputStream])
+  (:import [java.nio ByteBuffer]))
 
-(defn- instream-to-bb [inputstream]
+(defn- stream->bytebuffer [inputstream]
   (let [out (ByteArrayOutputStream.)]
     (io/copy inputstream out)
     (ByteBuffer/wrap (.toByteArray out))))
 
-(defn- bb-to-string [bb]
-  (.toString (.decode (Charset/forName "UTF-8") bb)))
+(defn- bytebuffer->stream [bb]
+  (let [buf-size (.remaining bb)
+        buf (byte-array buf-size)]
+    (.getBytes bb buf)
+    (ByteArrayInputStream. bb)))
 
-(defn- decode-http-data [req]
+(defn- ring-req->slacker-req [req]
   (let [{uri :uri body :body} req
         content-type (last (string/split uri #"\."))
         fname (.substring uri 1 (dec (.lastIndexOf uri content-type)))
         content-type (keyword content-type)
         body (or body "[]")
-        data [(instream-to-bb body)]] ;; gloss finite-block workaround
+        data [(stream->bytebuffer body)]] ;; gloss finite-block workaround
     {:packet-type :type-request
      :content-type content-type
      :fname fname
      :data data}))
 
-(defn- encode-http-data [req]
+(defn- slacker-resp->ring-resp [req]
   (let [{ct :content-type code :code result :result} req
         content-type (str "application/" (name ct))
         status (case (:code req)
@@ -33,7 +37,7 @@
                  :exception 500
                  :not-found 404
                  400)
-        body (and result (bb-to-string result))]
+        body (and result (bytebuffer->stream result))]
     {:status status
      :headers {"content-type" content-type}
      :body (str body "\r\n")}))
@@ -44,8 +48,8 @@
   [server-handler]
   (fn [req]
     (-> req
-        decode-http-data
+        ring-req->slacker-req
         server-handler
-        encode-http-data)))
+        slacker-resp->ring-resp)))
 
 
