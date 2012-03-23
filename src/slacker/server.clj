@@ -9,7 +9,7 @@
 
 ;; pipeline functions for server request handling
 (defn- map-req-fields [req]
-  (zipmap [:packet-type :content-type :fname :data] req))
+  (zipmap [:content-type :fname :data] (second req)))
 
 (defn- look-up-function [req funcs]
   (if-let [func (funcs (:fname req))]
@@ -44,15 +44,16 @@
     req))
 
 (defn- map-response-fields [req]
-  [version (map req [:packet-type :content-type :code :result])])
+  [version [(:packet-type req)
+            (map req [:content-type :code :result])]])
 
 (def pong-packet [version [:type-pong]])
-(def protocol-mismatch-packet [version [:type-error :protocol-mismatch]])
-(def invalid-type-packet [version [:type-error :invalid-packet]])
-(def acl-reject-packet [version [:type-error :acl-rejct]])
+(def protocol-mismatch-packet [version [:type-error [:protocol-mismatch]]])
+(def invalid-type-packet [version [:type-error [:invalid-packet]]])
+(def acl-reject-packet [version [:type-error [:acl-reject]]])
 (defn make-inspect-ack [data]
   [version [:type-inspect-ack
-            (serialize :clj data :string)]])
+            [(serialize :clj data :string)]]])
 
 (defn build-server-pipeline [funcs interceptors]
   #(-> %
@@ -65,18 +66,19 @@
        (assoc :packet-type :type-response)))
 
 (defn build-inspect-handler [funcs]
-  #(let [[_ cmd data] %
-         data (deserialize :clj data :string)]
-     (make-inspect-ack
-      (case cmd
-        :functions
-        (let [nsname (or data "")]
-          (filter (fn [x] (.startsWith x nsname)) (keys funcs)))
-        :meta
-        (let [fname data
-              metadata (meta (funcs fname))]
-          (select-keys metadata [:name :doc :arglists]))
-        nil))))
+  (fn [req]
+    (let [[cmd data] (second req)
+          data (deserialize :clj data :string)]
+      (make-inspect-ack
+       (case cmd
+         :functions
+         (let [nsname (or data "")]
+           (filter (fn [x] (.startsWith x nsname)) (keys funcs)))
+         :meta
+         (let [fname data
+               metadata (meta (funcs fname))]
+           (select-keys metadata [:name :doc :arglists]))
+         nil)))))
 
 (defmulti -handle-request (fn [_ p & _] (first p)))
 (defmethod -handle-request :type-request [server-pipeline req client-info _]
