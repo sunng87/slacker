@@ -18,7 +18,7 @@
 
 (defn- deserialize-args [req]
   (if (nil? (:code req))
-    (let [data (contiguous (:data req))]
+    (let [data (:data req)]
       (assoc req :args
              (deserialize (:content-type req) data)))
     req))
