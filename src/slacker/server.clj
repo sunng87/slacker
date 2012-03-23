@@ -155,7 +155,8 @@
     (when-not (nil? http)
       (http-server http (wrap-http-server-handler
                          (build-server-pipeline funcs interceptors))
-                   :worker-pool worker-pool))
+                   :worker-pool worker-pool
+                   :debug *debug*))
     (when-not (nil? cluster)
       (with-zk (zk/connect (:zk cluster))
         (publish-cluster cluster port
