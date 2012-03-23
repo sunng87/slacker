@@ -107,17 +107,17 @@
 (defn- create-server-handler [funcs interceptors acl debug]
   (let [server-pipeline (build-server-pipeline funcs interceptors)
         inspect-handler (build-inspect-handler funcs)]
-    (fn [ch client-info]
-      (receive-all
-       ch
-       #(if-let [req %]
-          (enqueue ch
-                   (binding [*debug* debug]
-                     (handle-request server-pipeline
-                                     req
-                                     client-info
-                                     inspect-handler
-                                     acl))))))))
+    (create-handler
+     (on-message [ctx e]
+                 (let [data (.getMessage e)
+                       client-info {:remote-addr (.getRemoteAddress e)}
+                       ch (.getChannel ctx)]
+                   (.write ch (binding [*debug* debug]
+                                (handle-request server-pipeline
+                                                data
+                                                client-info
+                                                inspect-handler
+                                                acl))))))))
 
 
 (defn- ns-funcs [n]

@@ -11,11 +11,11 @@
     (io/copy inputstream out)
     (ByteBuffer/wrap (.toByteArray out))))
 
-(defn- bytebuffer->stream [bb]
+(defn- bytebuffer->stream [^ByteBuffer bb]
   (let [buf-size (.remaining bb)
         buf (byte-array buf-size)]
-    (.getBytes bb buf)
-    (ByteArrayInputStream. bb)))
+    (.get bb buf)
+    (ByteArrayInputStream. buf)))
 
 (defn- ring-req->slacker-req [req]
   (let [{uri :uri body :body} req
@@ -23,7 +23,7 @@
         fname (.substring uri 1 (dec (.lastIndexOf uri content-type)))
         content-type (keyword content-type)
         body (or body "[]")
-        data [(stream->bytebuffer body)]] ;; gloss finite-block workaround
+        data (stream->bytebuffer body)] 
     {:packet-type :type-request
      :content-type content-type
      :fname fname
@@ -40,7 +40,7 @@
         body (and result (bytebuffer->stream result))]
     {:status status
      :headers {"content-type" content-type}
-     :body (str body "\r\n")}))
+     :body body}))
 
 (defn wrap-http-server-handler
   "wrap a standard server-pipeline to support ring style
