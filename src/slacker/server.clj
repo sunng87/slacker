@@ -2,11 +2,10 @@
   (:use [slacker common serialization protocol])
   (:use [slacker.server http cluster])
   (:use [slacker.acl.core])
-  (:use [lamina.core])
-  (:use [aleph tcp http])
-  (:use [gloss.io :only [contiguous]])
+  (:use [link core tcp http])
   (:use [slingshot.slingshot :only [try+]])
-  (:require [zookeeper :as zk]))
+  (:require [zookeeper :as zk])
+  (:import [java.util.concurrent Executors]))
 
 ;; pipeline functions for server request handling
 (defn- map-req-fields [req]
@@ -145,14 +144,18 @@
            acl nil}}]
   (let [exposed-ns (if (coll? exposed-ns) exposed-ns [exposed-ns])
         funcs (apply merge (map ns-funcs exposed-ns))
-        handler (create-server-handler funcs interceptors acl *debug*)]
+        handler (create-server-handler funcs interceptors acl *debug*)
+        worker-pool (Executors/newCachedThreadPool)]
+    
     (when *debug* (doseq [f (keys funcs)] (println f)))
-    (start-tcp-server handler {:port port :frame slacker-base-codec})
+    
+    (tcp-server port handler 
+                :codec slacker-base-codec
+                :worker-pool worker-pool)
     (when-not (nil? http)
-      (start-http-server (wrap-ring-handler
-                          (wrap-http-server-handler
-                           (build-server-pipeline funcs interceptors)))
-                         {:port http}))
+      (http-server http (wrap-http-server-handler
+                         (build-server-pipeline funcs interceptors))
+                   :worker-pool worker-pool))
     (when-not (nil? cluster)
       (with-zk (zk/connect (:zk cluster))
         (publish-cluster cluster port
