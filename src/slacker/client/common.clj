@@ -1,12 +1,10 @@
 (ns slacker.client.common
   (:use [clojure.string :only [split]])
   (:use [slacker serialization common])
-  (:use [lamina.core :exclude [close]])
-  (:use [lamina.connections])
-  (:use [gloss.io :only [contiguous]])
+  (:use [link core tcp])
   (:use [slingshot.slingshot :only [throw+]]))
 
-(defn- handle-normal-response [response]
+(defn- handle-valid-response [response]
   (let [[_ content-type code data] response]
     (case code
       :success (deserialize content-type (contiguous data))
@@ -21,7 +19,7 @@
 
 (defn handle-response [response]
   (case (first response)
-    :type-response (handle-normal-response response)
+    :type-response (handle-valid-response response)
     :type-error (throw+ {:code (second response)})
     nil))
 
@@ -45,7 +43,7 @@
   (inspect [this cmd args])
   (close [this]))
 
-(deftype SlackerClient [conn content-type]
+(deftype SlackerClient [conn rmap content-type]
   SlackerClientProtocol
   (sync-call-remote [this ns-name func-name params]
     (let [fname (str ns-name "/" func-name)
@@ -67,7 +65,29 @@
           response (wait-for-result (conn request) *timeout*)]
       (parse-inspect-response response)))
   (close [this]
-    (close-connection conn)))
+    (.close conn)))
+
+(defn- create-link-handler
+  "The event handler for client"
+  [rmap]
+  (create-handler
+   (on-message [ctx e]
+               (let [msg (.getMessage e)
+                     tid (second msg)
+                     callback (get @rmap tid)]
+                 (swap! rmap dissoc tid)
+                 (when-not (nil? callback)
+                   (let [result (handle-response (nth msg 2))]
+                     (if-let [prms (:promise callback)]
+                       (deliver prms result))
+                     (if-let [cb (:callback)]
+                       (cb result))))))))
+
+(defn create-client [host port content-type]
+  (let [rmap (atom  {})
+        handler (create-link-handler rmap)
+        client (tcp-client host port handler)]
+    (SlackerClient. client rmap content-type)))
 
 (defn invoke-slacker
   "Invoke remote function with given slacker connection.
