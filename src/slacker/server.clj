@@ -8,8 +8,12 @@
   (:import [java.util.concurrent Executors]))
 
 ;; pipeline functions for server request handling
+;; request data structure:
+;; [version transaction-id [request-type [content-type func-name params]]]
 (defn- map-req-fields [req]
-  (zipmap [:content-type :fname :data] (second req)))
+  (assoc (zipmap [:content-type :fname :data]
+                 (second (nth req 2)))
+    :tid (second req)))
 
 (defn- look-up-function [req funcs]
   (if-let [func (funcs (:fname req))]
@@ -44,15 +48,19 @@
     req))
 
 (defn- map-response-fields [req]
-  [version [(:packet-type req)
-            (map req [:content-type :code :result])]])
+  [version (:tid req) [(:packet-type req)
+                       (map req [:content-type :code :result])]])
 
-(def pong-packet [version [:type-pong]])
-(def protocol-mismatch-packet [version [:type-error [:protocol-mismatch]]])
-(def invalid-type-packet [version [:type-error [:invalid-packet]]])
-(def acl-reject-packet [version [:type-error [:acl-reject]]])
-(defn make-inspect-ack [data]
-  [version [:type-inspect-ack
+(defn pong-packet [tid]
+  [version tid [:type-pong]])
+(defn protocol-mismatch-packet [tid]
+  [version tid [:type-error [:protocol-mismatch]]])
+(defn invalid-type-packet [tid]
+  [version tid [:type-error [:invalid-packet]]])
+(defn acl-reject-packet [tid]
+  [version tid [:type-error [:acl-reject]]])
+(defn make-inspect-ack [tid data]
+  [version tid [:type-inspect-ack
             [(serialize :clj data :string)]]])
 
 (defn build-server-pipeline [funcs interceptors]
@@ -65,11 +73,16 @@
        serialize-result
        (assoc :packet-type :type-response)))
 
+;; inspection handler
+;; inspect request data structure
+;; [version tid  [request-type [cmd data]]]
 (defn build-inspect-handler [funcs]
   (fn [req]
-    (let [[cmd data] (second req)
+    (let [tid (second req)
+          [cmd data] (second (nth req 2))
           data (deserialize :clj data :string)]
       (make-inspect-ack
+       tid
        (case cmd
          :functions
          (let [nsname (or data "")]
@@ -80,31 +93,34 @@
            (select-keys metadata [:name :doc :arglists]))
          nil)))))
 
-(defmulti -handle-request (fn [_ p & _] (first p)))
-(defmethod -handle-request :type-request [server-pipeline req client-info _]
+(defmulti -handle-request (fn [p & _] (first (nth p 2))))
+(defmethod -handle-request :type-request [req
+                                          server-pipeline
+                                          client-info
+                                          _]
   (let [req-map (assoc (map-req-fields req) :client client-info)]
     (map-response-fields (server-pipeline req-map))))
-(defmethod -handle-request :type-ping [& _]
-  pong-packet)
-(defmethod -handle-request :type-inspect-req [_ p _ inspect-handler]
+(defmethod -handle-request :type-ping [p & _]
+  (pong-packet (second p)))
+(defmethod -handle-request :type-inspect-req [p _ _ inspect-handler]
   (inspect-handler p))
-(defmethod -handle-request :default [& _]
-  invalid-type-packet)
+(defmethod -handle-request :default [p & _]
+  (invalid-type-packet (second p)))
 
 (defn handle-request [server-pipeline req client-info inspect-handler acl]
   (cond
+   (not= version (first req))
+   (protocol-mismatch-packet 0)
+   
    ;; acl enabled
    (and (not (nil? acl))
         (not (authorize client-info acl)))
-   acl-reject-packet
+   (acl-reject-packet (second req))
    
    ;; handle request
-   (= version (first req))
-   (-handle-request server-pipeline (second req)
-                    client-info inspect-handler)
 
-   ;; version mismatch
-   :else protocol-mismatch-packet))
+   :else (-handle-request req server-pipeline
+                          client-info inspect-handler)))
 
 (defn- create-server-handler [funcs interceptors acl debug]
   (let [server-pipeline (build-server-pipeline funcs interceptors)

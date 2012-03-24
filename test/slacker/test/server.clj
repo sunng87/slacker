@@ -10,13 +10,13 @@
   (let [server-pipeline (build-server-pipeline
                          funcs {:before identity :after identity})
         req {:content-type :carb
-             :data [params]
+             :data params
              :fname "plus"}
         req2 {:content-type :carb
-              :data [params]
+              :data params
               :fname "never-found"}
         req3 {:content-type :carb
-              :data [params]
+              :data params
               :fname "div"}]
 
     (.rewind params)
@@ -38,25 +38,33 @@
   (let [server-pipeline (build-server-pipeline
                          funcs {:before identity :after interceptor})
         req {:content-type :carb
-             :data [params]
+             :data params
              :fname "prod"}]
     (.rewind params)
     (is (= "0" (deserialize :carb (:result (server-pipeline req)))))))
 
 (deftest test-ping
-  (let [request [version [:type-ping :json nil nil]]
-        response (second (handle-request nil request nil nil nil))]
+  (let [request [version 0 [:type-ping]]
+        response (nth (handle-request nil request nil nil nil) 2)]
     (is (= :type-pong (nth response 0)))))
 
 (deftest test-invalid-packet
-  (let [request [version [:type-unknown :json nil nil]]
-        response (second (handle-request nil request nil nil nil))]
+  (let [request [version 0 [:type-unknown]]
+        response (nth (handle-request nil request nil nil nil) 2)]
     (is (= :type-error (nth response 0)))
-    (is (= :invalid-packet (nth response 1)))))
+    (is (= :invalid-packet (-> response
+                               second
+                               first)))))
 
 
 (deftest test-functions-inspect
-  (let [request [version [:type-inspect-req :functions "nil"]]
-        response (deserialize :clj (second (second (handle-request nil request nil (build-inspect-handler funcs) nil))) :string)]
+  (let [request [version 0 [:type-inspect-req [:functions "nil"]]]
+        result (->
+                (handle-request nil request nil
+                                (build-inspect-handler funcs) nil)
+                (nth 2)
+                second
+                first)
+        response (deserialize :clj result :string)]
     (= (map name (keys funcs)) response)))
 

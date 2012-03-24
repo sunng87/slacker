@@ -81,6 +81,7 @@
 (def slacker-base-codec
   (frame
    (byte) ;; protocol version
+   (int32) ;; transaction id
    (header
     packet-type
     {:type-request slacker-request-codec

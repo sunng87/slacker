@@ -10,4 +10,4 @@
   *timeout* 10000)
 (def
   ^{:doc "Protocol version."}
-  version (short 4))
+  version (short 5))
