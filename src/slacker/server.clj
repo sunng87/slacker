@@ -135,7 +135,9 @@
                                                 data
                                                 client-info
                                                 inspect-handler
-                                                acl))))))))
+                                                acl)))))
+     (on-error [ctx e]
+               (.printStackTrace (.getCause e))))))
 
 
 (defn- ns-funcs [n]

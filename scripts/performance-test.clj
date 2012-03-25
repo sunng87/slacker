@@ -4,15 +4,14 @@
 
 (def total-calls (Integer/valueOf (second *command-line-args*)))
 (def total-threads (Integer/valueOf (nth *command-line-args* 2)))
-(def total-connections (Integer/valueOf (nth *command-line-args* 3)))
+
 (println (str "Performing " total-calls " requests with "
               total-threads " threads"))
 
 (def thread-pool (Executors/newFixedThreadPool total-threads))
 
-(def scp (slackerc-pool "localhost" 2104
-                        :max-active total-connections))
-(defn-remote scp rand-ints)
+(def scp (slackerc "127.0.0.1:2104"))
+(defn-remote scp rand-ints :remote-ns "slacker.example.api")
 
 (def cdl (CountDownLatch. total-calls))
 (time
