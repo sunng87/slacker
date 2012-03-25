@@ -1,6 +1,6 @@
 (ns slacker.client.common
   (:use [clojure.string :only [split]])
-  (:use [slacker serialization common])
+  (:use [slacker serialization common protocol])
   (:use [link core tcp])
   (:use [slingshot.slingshot :only [throw+]]))
 
@@ -105,7 +105,8 @@
 (defn create-client [host port content-type]
   (let [rmap (atom  {})
         handler (create-link-handler rmap)
-        client (tcp-client host port handler)]
+        client (tcp-client host port handler
+                           :codec slacker-base-codec)]
     (SlackerClient. client rmap (atom 0) content-type)))
 
 (defn invoke-slacker

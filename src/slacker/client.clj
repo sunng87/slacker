@@ -1,9 +1,6 @@
 (ns slacker.client
-  (:use [slacker common protocol])
+  (:use [slacker common])
   (:use [slacker.client common pool])
-  (:use [lamina.connections])
-  (:use [aleph.tcp])
-  (:use [gloss.io :only [contiguous]])
   (:use [clojure.string :only [split]])
   (:import [slacker.client.common SlackerClient])
   (:import [slacker.client.pool PooledSlackerClient]))
@@ -14,11 +11,8 @@
    & {:keys [content-type]
       :or {content-type :carb}
       :as _}]
-  (let [[host port] (host-port addr)
-        conn (client #(tcp-client {:host host
-                                   :port port
-                                   :frame slacker-base-codec}))]
-    (SlackerClient. conn content-type)))
+  (let [[host port] (host-port addr)]
+    (create-client host port content-type)))
 
 
 (defn slackerc-pool
