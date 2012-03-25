@@ -51,11 +51,11 @@
           tid (swap! trans-id-gen inc)
           request (make-request tid content-type fname params)
           prms (promise)]
-      (swap! rmap assoc tid {:promise prms :type :call})
+      (swap! rmap assoc tid {:promise prms})
       (.write conn request)
       (deref prms *timeout* nil)
       (if (realized? prms)
-        @prms
+        (handle-response @prms)
         (do
           (swap! rmap dissoc tid)
           (throw+ {:error :timeout})))))
@@ -64,7 +64,7 @@
           tid (swap! trans-id-gen inc)
           request (make-request tid content-type fname params)
           prms (promise)]
-      (swap! rmap assoc tid {:promise prms :callback cb :type :call})
+      (swap! rmap assoc tid {:promise prms :callback cb :async? true})
       (.write conn request)
       prms))
   (inspect [this cmd args]
@@ -75,7 +75,7 @@
       (.write conn request)
       (deref prms *timeout* nil)
       (if (realized? prms)
-        @prms)))
+        (parse-inspect-response @prms))))
   (close [this]
     (.close conn)))
 
@@ -89,15 +89,18 @@
                      callback (get @rmap tid)]
                  (swap! rmap dissoc tid)
                  (when-not (nil? callback)
-                   (let [msg-body (nth msg 2)
-                         result (case (:type callback)
-                                  :call (handle-response msg-body)
-                                  :inspect (parse-inspect-response
-                                            msg-body))]
-                     (if-let [prms (:promise callback)]
-                       (deliver prms result))
-                     (if-let [cb (:callback callback)]
-                       (cb result))))))
+                   (let [msg-body (nth msg 2)]
+                     (if (:async? callback)
+                       ;; async callback should run in another thread
+                       ;; that won't block or kill the worker pool
+                       (future
+                         (let [result (handle-response msg-body)]
+                           (deliver (:promise callback) result)
+                           (if-let [cb (:callback callback)]
+                             (cb result))))
+                       ;; sync request need to decode ths message in 
+                       ;; caller thread
+                       (deliver (:promise callback) msg-body))))))
    (on-error [ctx e]
              (.printStackTrace (.getCause e)))))
 
