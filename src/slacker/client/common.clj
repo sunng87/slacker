@@ -7,9 +7,9 @@
 (defn- handle-valid-response [response]
   (let [[content-type code data] (second response)]
     (case code
-      :success (deserialize content-type (contiguous data))
+      :success (deserialize content-type data)
       :not-found (throw+ {:code code})
-      :exception (let [einfo (deserialize content-type (contiguous data))]
+      :exception (let [einfo (deserialize content-type data)]
                    (if-not (map? einfo)
                      (throw+ {:code code :error einfo})
                      (let [e (Exception. (:msg einfo))]
@@ -28,15 +28,12 @@
     [version tid [:type-request [content-type func-name serialized-params]]]))
 
 (def ping-packet [version 0 [:type-ping]])
-(defn ping [conn]
-  (wait-for-result (conn ping-packet) *timeout*))
 
 (defn make-inspect-request [tid cmd args]
   [version tid [:type-inspect-req
                 [cmd (serialize :clj args :string)]]])
 (defn parse-inspect-response [response]
   (deserialize :clj (-> response
-                        (nth 2)
                         second
                         first)
                :string))
@@ -100,7 +97,9 @@
                      (if-let [prms (:promise callback)]
                        (deliver prms result))
                      (if-let [cb (:callback callback)]
-                       (cb result))))))))
+                       (cb result))))))
+   (on-error [ctx e]
+             (.printStackTrace (.getCause e)))))
 
 (defn create-client [host port content-type]
   (let [rmap (atom  {})

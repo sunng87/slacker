@@ -1,9 +1,7 @@
 (ns slacker.client
   (:use [slacker common])
   (:use [slacker.client common])
-  (:use [clojure.string :only [split]])
-  (:import [slacker.client.common SlackerClient])
-  (:import [slacker.client.pool PooledSlackerClient]))
+  (:use [clojure.string :only [split]]))
 
 (defn slackerc
   "Create connection to a slacker server."
