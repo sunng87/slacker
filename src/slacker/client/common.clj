@@ -104,11 +104,18 @@
    (on-error [ctx e]
              (.printStackTrace (.getCause e)))))
 
+(def tcp-options
+  {"tcpNoDelay" true,
+   "reuseAddress" true,
+   "readWriteFair" true,
+   "connectTimeoutMillis" 3000})
+
 (defn create-client [host port content-type]
   (let [rmap (atom  {})
         handler (create-link-handler rmap)
         client (tcp-client host port handler
-                           :codec slacker-base-codec)]
+                           :codec slacker-base-codec
+                           :tcp-options tcp-options)]
     (SlackerClient. client rmap (atom 0) content-type)))
 
 (defn invoke-slacker

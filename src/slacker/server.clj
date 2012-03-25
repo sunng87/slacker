@@ -127,15 +127,18 @@
         inspect-handler (build-inspect-handler funcs)]
     (create-handler
      (on-message [ctx e]
-                 (let [data (.getMessage e)
-                       client-info {:remote-addr (.getRemoteAddress e)}
-                       ch (.getChannel ctx)]
-                   (.write ch (binding [*debug* debug]
-                                (handle-request server-pipeline
-                                                data
-                                                client-info
-                                                inspect-handler
-                                                acl)))))
+                 (binding [*debug* debug]
+                   (let [data (.getMessage e)
+                         client-info {:remote-addr (.getRemoteAddress e)}
+                         ch (.getChannel ctx)
+
+                         result (handle-request
+                                 server-pipeline
+                                 data
+                                 client-info
+                                 inspect-handler
+                                 acl)]
+                     (.write ch result))))
      (on-error [ctx e]
                (.printStackTrace (.getCause e))))))
 
@@ -146,6 +149,16 @@
           (for [[k v] (ns-publics n) :when (fn? @v)]
             [(str nsname "/" (name k)) v]))))
 
+(def
+  ^{:doc "Default TCP options"}
+  tcp-options
+  {"child.reuseAddress" true,
+   "reuseAddress" true,
+   "child.keepAlive" true,
+   "child.connectTimeoutMillis" 100,
+   "tcpNoDelay" true,
+   "readWriteFair" true,
+   "child.tcpNoDelay" true})
 
 (defn start-slacker-server
   "Start a slacker server to expose all public functions under
@@ -171,7 +184,8 @@
     
     (tcp-server port handler 
                 :codec slacker-base-codec
-                :worker-pool worker-pool)
+                :worker-pool worker-pool
+                :tcp-options tcp-options)
     (when-not (nil? http)
       (http-server http (wrap-http-server-handler
                          (build-server-pipeline funcs interceptors))
