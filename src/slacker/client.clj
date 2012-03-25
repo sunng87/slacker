@@ -1,6 +1,6 @@
 (ns slacker.client
   (:use [slacker common])
-  (:use [slacker.client common pool])
+  (:use [slacker.client common])
   (:use [clojure.string :only [split]])
   (:import [slacker.client.common SlackerClient])
   (:import [slacker.client.pool PooledSlackerClient]))
@@ -14,25 +14,6 @@
   (let [[host port] (host-port addr)]
     (create-client host port content-type)))
 
-
-(defn slackerc-pool
-  "Create a auto resizable connection pool to slacker server.
-  You can set arguments for the pool to control the number of
-  connection and the policy when pool is exhausted. Check commons
-  pool javadoc for the meaning of each argument:
-  http://commons.apache.org/pool/apidocs/org/apache/commons/pool/impl/GenericObjectPool.html"
-  [connection-string
-   & {:keys [content-type max-active exhausted-action max-wait max-idle]
-      :or {content-type :carb
-           max-active 8
-           exhausted-action :block
-           max-wait -1
-           max-idle 8}
-      :as _}]
-  (let [[host port] (host-port connection-string)
-        pool (connection-pool host port
-                              max-active exhausted-action max-wait max-idle)]
-    (PooledSlackerClient. pool content-type)))
 
 (defn close-slackerc [client]
   (close client))
