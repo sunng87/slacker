@@ -34,13 +34,8 @@
            (refresh-associated-servers sc (str rns)))
          (apply slacker.client/use-remote sc-sym rns options)))))
 
-(defn- create-slackerc [connection-info
-                        & {:keys [pool?]
-                           :or {pool? false}
-                           :as options}]
-  (if-not pool?
-    (apply slacker.client/slackerc connection-info options)
-    (apply slacker.client/slackerc-pool connection-info options)))
+(defn- create-slackerc [connection-info & options]
+  (apply slacker.client/slackerc connection-info options))
 
 (defn- find-server [slacker-ns-servers ns-name]
   (if-let [servers (@slacker-ns-servers ns-name)]
