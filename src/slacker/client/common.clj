@@ -5,7 +5,7 @@
   (:use [slingshot.slingshot :only [throw+]]))
 
 (defn- handle-valid-response [response]
-  (let [[_ content-type code data] response]
+  (let [[content-type code data] (second response)]
     (case code
       :success (deserialize content-type (contiguous data))
       :not-found (throw+ {:code code})
@@ -20,22 +20,26 @@
 (defn handle-response [response]
   (case (first response)
     :type-response (handle-valid-response response)
-    :type-error (throw+ {:code (second response)})
+    :type-error (throw+ {:code (-> response second first)})
     nil))
 
-(defn make-request [content-type func-name params]
+(defn make-request [tid content-type func-name params]
   (let [serialized-params (serialize content-type params)]
-    [version [:type-request content-type func-name serialized-params]]))
+    [version tid [:type-request [content-type func-name serialized-params]]]))
 
-(def ping-packet [version :type-ping 0 nil nil])
+(def ping-packet [version 0 [:type-ping]])
 (defn ping [conn]
   (wait-for-result (conn ping-packet) *timeout*))
 
-(defn make-inspect-request [cmd args]
-  [version [:type-inspect-req cmd
-            (serialize :clj args :string)]])
+(defn make-inspect-request [tid cmd args]
+  [version tid [:type-inspect-req
+                [cmd (serialize :clj args :string)]]])
 (defn parse-inspect-response [response]
-  (deserialize :clj (second (second response)) :string))
+  (deserialize :clj (-> response
+                        (nth 2)
+                        second
+                        first)
+               :string))
 
 (defprotocol SlackerClientProtocol
   (sync-call-remote [this ns-name func-name params])
@@ -43,27 +47,38 @@
   (inspect [this cmd args])
   (close [this]))
 
-(deftype SlackerClient [conn rmap content-type]
+(deftype SlackerClient [conn rmap trans-id-gen content-type]
   SlackerClientProtocol
   (sync-call-remote [this ns-name func-name params]
     (let [fname (str ns-name "/" func-name)
-          request (make-request content-type fname params)
-          response (wait-for-result (conn request) *timeout*)]
-      (when-let [[_ resp] response]
-        (handle-response resp))))
+          tid (swap! trans-id-gen inc)
+          request (make-request tid content-type fname params)
+          prms (promise)]
+      (swap! rmap assoc tid {:promise prms :type :call})
+      (.write conn request)
+      (deref prms *timeout* nil)
+      (if (realized? prms)
+        @prms
+        (do
+          (swap! rmap dissoc tid)
+          (throw+ {:error :timeout})))))
   (async-call-remote [this ns-name func-name params cb]
     (let [fname (str ns-name "/" func-name)
-          request (make-request content-type fname params)]
-      (run-pipeline
-       (conn request)
-       #(if-let [[_ resp] %]
-          (let [result (handle-response resp)]
-            (if-not (nil? cb) (cb result))
-            result)))))
+          tid (swap! trans-id-gen inc)
+          request (make-request tid content-type fname params)
+          prms (promise)]
+      (swap! rmap assoc tid {:promise prms :callback cb :type :call})
+      (.write conn request)
+      prms))
   (inspect [this cmd args]
-    (let [request (make-inspect-request cmd args)
-          response (wait-for-result (conn request) *timeout*)]
-      (parse-inspect-response response)))
+    (let [tid (swap! trans-id-gen inc)
+          request (make-inspect-request tid cmd args)
+          prms (promise)]
+      (swap! rmap assoc tid {:promise prms :type :inspect})
+      (.write conn request)
+      (deref prms *timeout* nil)
+      (if (realized? prms)
+        @prms)))
   (close [this]
     (.close conn)))
 
@@ -77,17 +92,21 @@
                      callback (get @rmap tid)]
                  (swap! rmap dissoc tid)
                  (when-not (nil? callback)
-                   (let [result (handle-response (nth msg 2))]
+                   (let [msg-body (nth msg 2)
+                         result (case (:type callback)
+                                  :call (handle-response msg-body)
+                                  :inspect (parse-inspect-response
+                                            msg-body))]
                      (if-let [prms (:promise callback)]
                        (deliver prms result))
-                     (if-let [cb (:callback)]
+                     (if-let [cb (:callback callback)]
                        (cb result))))))))
 
 (defn create-client [host port content-type]
   (let [rmap (atom  {})
         handler (create-link-handler rmap)
         client (tcp-client host port handler)]
-    (SlackerClient. client rmap content-type)))
+    (SlackerClient. client rmap (atom 0) content-type)))
 
 (defn invoke-slacker
   "Invoke remote function with given slacker connection.
