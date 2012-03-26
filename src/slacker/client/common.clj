@@ -2,7 +2,11 @@
   (:use [clojure.string :only [split]])
   (:use [slacker serialization common protocol])
   (:use [link core tcp])
-  (:use [slingshot.slingshot :only [throw+]]))
+  (:use [slingshot.slingshot :only [throw+]])
+  (:import [org.jboss.netty.channel
+            Channel
+            ExceptionEvent
+            MessageEvent]))
 
 (defn- handle-valid-response [response]
   (let [[content-type code data] (second response)]
@@ -12,7 +16,7 @@
       :exception (let [einfo (deserialize content-type data)]
                    (if-not (map? einfo)
                      (throw+ {:code code :error einfo})
-                     (let [e (Exception. (:msg einfo))]
+                     (let [e (Exception. ^String (:msg einfo))]
                        (.setStackTrace e (:stacktrace einfo))
                        (throw+ e))))
       (throw+ {:code :invalid-result-code}))))
@@ -44,7 +48,7 @@
   (inspect [this cmd args])
   (close [this]))
 
-(deftype SlackerClient [conn rmap trans-id-gen content-type]
+(deftype SlackerClient [^Channel conn rmap trans-id-gen content-type]
   SlackerClientProtocol
   (sync-call-remote [this ns-name func-name params]
     (let [fname (str ns-name "/" func-name)
@@ -83,7 +87,7 @@
   "The event handler for client"
   [rmap]
   (create-handler
-   (on-message [ctx e]
+   (on-message [ctx ^MessageEvent e]
                (let [msg (.getMessage e)
                      tid (second msg)
                      callback (get @rmap tid)]
@@ -101,7 +105,7 @@
                        ;; sync request need to decode ths message in 
                        ;; caller thread
                        (deliver (:promise callback) msg-body))))))
-   (on-error [ctx e]
+   (on-error [ctx ^ExceptionEvent e]
              (.printStackTrace (.getCause e)))))
 
 (def tcp-options
@@ -142,5 +146,5 @@
   "get host and port from connection string"
   [connection-string]
   (let [[host port] (split connection-string #":")]
-    [host (Integer/valueOf port)]))
+    [host (Integer/valueOf ^String port)]))
 

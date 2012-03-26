@@ -5,7 +5,11 @@
   (:use [link core tcp http])
   (:use [slingshot.slingshot :only [try+]])
   (:require [zookeeper :as zk])
-  (:import [java.util.concurrent Executors]))
+  (:import [java.util.concurrent Executors])
+  (:import [org.jboss.netty.channel
+            ChannelHandlerContext
+            MessageEvent
+            ExceptionEvent]))
 
 ;; pipeline functions for server request handling
 ;; request data structure:
@@ -36,10 +40,10 @@
         (assoc req :result r :code :success))
       (catch Exception e
         (if-not *debug*
-          (assoc req :code :exception :result (.toString e))
+          (assoc req :code :exception :result (str e))
           (assoc req :code :exception
-                 :result {:msg (.getMessage e)
-                          :stacktrace (.getStackTrace e)}))))
+                 :result {:msg (.getMessage ^Exception e)
+                          :stacktrace (.getStackTrace ^Exception e)}))))
     req))
 
 (defn- serialize-result [req]    
@@ -86,7 +90,7 @@
        (case cmd
          :functions
          (let [nsname (or data "")]
-           (filter (fn [x] (.startsWith x nsname)) (keys funcs)))
+           (filter (fn [x] (.startsWith ^String x nsname)) (keys funcs)))
          :meta
          (let [fname data
                metadata (meta (funcs fname))]
@@ -126,7 +130,7 @@
   (let [server-pipeline (build-server-pipeline funcs interceptors)
         inspect-handler (build-inspect-handler funcs)]
     (create-handler
-     (on-message [ctx e]
+     (on-message [^ChannelHandlerContext ctx ^MessageEvent e]
                  (binding [*debug* debug]
                    (let [data (.getMessage e)
                          client-info {:remote-addr (.getRemoteAddress e)}
@@ -139,7 +143,7 @@
                                  inspect-handler
                                  acl)]
                      (.write ch result))))
-     (on-error [ctx e]
+     (on-error [^ChannelHandlerContext ctx ^ExceptionEvent e]
                (.printStackTrace (.getCause e))))))
 
 

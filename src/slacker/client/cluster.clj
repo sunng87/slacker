@@ -122,7 +122,7 @@
       :meta (meta-data-from-zk zk-conn cluster-name args))))
 
 (defn- on-zk-events [e sc]
-  (if (.endsWith (:path e) "servers")
+  (if (.endsWith ^String (:path e) "servers")
     ;; event on `servers` node
     (clients-callback e sc)
     ;; event on `namespaces` nodes

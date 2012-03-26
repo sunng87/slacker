@@ -14,6 +14,7 @@
   :run-aliases {:server "slacker.example.server"
                 :client "slacker.example.client"
                 :cluster-server "slacker.example.cluster-server"
-                :cluster-client "slacker.example.cluster-client"})
+                :cluster-client "slacker.example.cluster-client"}
+  :warn-on-reflection false)
 
 

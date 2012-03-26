@@ -20,7 +20,9 @@
 (defn- ring-req->slacker-req [req]
   (let [{uri :uri body :body} req
         content-type (last (string/split uri #"\."))
-        fname (.substring uri 1 (dec (.lastIndexOf uri content-type)))
+        fname (.substring ^String uri
+                          1 (dec (.lastIndexOf ^String uri
+                                               ^String content-type)))
         content-type (keyword content-type)
         body (or body "[]")
         data (stream->bytebuffer body)] 

@@ -14,7 +14,7 @@
   (let [zk-address (split zk-addr #":")
         zk-ip (first zk-address)
         zk-port (Integer/parseInt (second zk-address))
-        socket (Socket. zk-ip zk-port)
+        socket (Socket. ^String ^Integer zk-ip zk-port)
         local-ip (.getHostAddress (.getLocalAddress socket))]
     (.close socket)
     local-ip))
