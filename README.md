@@ -4,19 +4,13 @@
 
 **"Superman is a slacker."**
 
-slacker is a simple RPC framework for Clojure based on
-[aleph](https://github.com/ztellman/aleph) and
-[carbonite](https://github.com/sunng87/carbonite/). I forked carbonite
-because slacker requires it to work on clojure 1.2.
-
-slacker is growing.
+slacker is a simple RPC framework designed for Clojure and created by clojure.
 
 ## Features
 
 * Fast serialization based on Kryo (Text based serialization is also supported)
 * Security without additional policies
 * Transparent and non-invasive API
-* Connection pool
 * Extensible server with interceptor framework
 * Cluster with Zookeeper
 * Clean code
@@ -120,25 +114,6 @@ slacker.client.common.SlackerClient@575752>, :slacker-remote-ns
 ``` clojure
 (close-slackerc sc)
 ```
-
-### Client Connection Pool
-
-Slacker also supports connection pool in client API, which enables
-high concurrent communication. 
-
-To create a connection pool, use `slackerc-pool` instead of
-`slackerc`.
-
-You can configure the pool with following options:
-
-* `:max-active`
-* `:exhausted-action`
-* `:max-wait`
-* `:min-idle`
-
-For the meaning of each option, check the
-[javadoc](http://commons.apache.org/pool/apidocs/org/apache/commons/pool/impl/GenericObjectPool.html)
-of commons-pool.
 
 ### Options in defn-remote
 
