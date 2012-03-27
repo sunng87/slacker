@@ -317,14 +317,17 @@ By checking logs, you can trace the calls on each server instance.
 
 ## Performance
 
-Some performance tests was executed while I'm developing slacker.
+To test performance, just start an example server with `lein run :server`.
 
-A simple test client is [here](https://gist.github.com/1449860). With
-the client, as tested on HP DL360 (dual 6 core X5650, 2.66GHz), a
-single client (50 connections, 50 threads) performed 500000
-**synchronous** calls in 48862 msecs (TPS is about **10232**).
+Then run the performance test script: 
+`lein exec scripts/performance-test.clj 200000 50`. This will run
+200,000 calls with 50 threads.
 
-Some formal performance benchmark is coming soon.
+Tested on my working desktop (DELL optiplex 760, Intel(R) Core(TM)2
+Duo CPU E7400 @ 2.80GHz, 8G memory), without any special JVM optimization.
+**200,000** calls with **50** threads is completed in **21923.806054
+msecs**, which means slacker could handle more than **9000** calls per
+second on this machine.
 
 ## Contributors
 
