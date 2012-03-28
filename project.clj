@@ -1,7 +1,7 @@
 (defproject slacker "0.8.0-SNAPSHOT"
   :description "Transparent, non-invasive RPC by clojure and for clojure"
   :dependencies [[org.clojure/clojure "1.3.0"]
-                 [link "0.1.1-SNAPSHOT"]
+                 [link "0.1.2-SNAPSHOT"]
                  [info.sunng/carbonite "0.2.2"]
                  [cheshire "3.0.0"]
                  [slingshot "0.10.1"]
