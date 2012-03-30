@@ -1,4 +1,5 @@
 (ns slacker.server
+  (:refer-clojure :exclude [send])
   (:use [slacker common serialization protocol])
   (:use [slacker.server http cluster])
   (:use [slacker.acl.core])

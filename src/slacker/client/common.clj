@@ -1,10 +1,11 @@
 (ns slacker.client.common
+  (:refer-clojure :exclude [send])
   (:use [clojure.string :only [split]])
   (:use [slacker serialization common protocol])
-  (:use [link core tcp])
+  (:use [link.core :exclude [close]])
+  (:use [link.tcp])
   (:use [slingshot.slingshot :only [throw+]])
   (:import [org.jboss.netty.channel
-            Channel
             ExceptionEvent
             MessageEvent]))
 
@@ -48,7 +49,7 @@
   (inspect [this cmd args])
   (close [this]))
 
-(deftype SlackerClient [^Channel conn rmap trans-id-gen content-type]
+(deftype SlackerClient [conn rmap trans-id-gen content-type]
   SlackerClientProtocol
   (sync-call-remote [this ns-name func-name params]
     (let [fname (str ns-name "/" func-name)
@@ -56,7 +57,7 @@
           request (make-request tid content-type fname params)
           prms (promise)]
       (swap! rmap assoc tid {:promise prms})
-      (.write conn request)
+      (send conn request)
       (deref prms *timeout* nil)
       (if (realized? prms)
         (handle-response @prms)
@@ -69,19 +70,19 @@
           request (make-request tid content-type fname params)
           prms (promise)]
       (swap! rmap assoc tid {:promise prms :callback cb :async? true})
-      (.write conn request)
+      (send conn request)
       prms))
   (inspect [this cmd args]
     (let [tid (swap! trans-id-gen inc)
           request (make-inspect-request tid cmd args)
           prms (promise)]
       (swap! rmap assoc tid {:promise prms :type :inspect})
-      (.write conn request)
+      (send conn request)
       (deref prms *timeout* nil)
       (if (realized? prms)
         (parse-inspect-response @prms))))
   (close [this]
-    (.close conn)))
+    (link.core/close conn)))
 
 (defn- create-link-handler
   "The event handler for client"
@@ -119,7 +120,8 @@
         handler (create-link-handler rmap)
         client (tcp-client host port handler
                            :codec slacker-base-codec
-                           :tcp-options tcp-options)]
+                           :tcp-options tcp-options
+                           :auto-reconnect true)]
     (SlackerClient. client rmap (atom 0) content-type)))
 
 (defn invoke-slacker
