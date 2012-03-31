@@ -5,6 +5,7 @@
   (:use [link.core :exclude [close]])
   (:use [link.tcp])
   (:use [slingshot.slingshot :only [throw+]])
+  (:import [java.nio.channel ClosedChannelException])
   (:import [org.jboss.netty.channel
             ExceptionEvent
             MessageEvent]))
@@ -107,7 +108,15 @@
                        ;; caller thread
                        (deliver (:promise callback) msg-body))))))
    (on-error [ctx ^ExceptionEvent e]
-             (.printStackTrace (.getCause e)))))
+             (let [exp (.getCause e)]
+               (if (instance? ClosedChannelException exp)
+                 (do
+                   (let [cbs (vals @rmap)]
+                     ;; notify cbs for failure
+
+                     )
+                   (reset! rmap {}))
+                 (.printStackTrace exp))))))
 
 (def tcp-options
   {"tcpNoDelay" true,
