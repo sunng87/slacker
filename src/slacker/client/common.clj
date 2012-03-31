@@ -98,7 +98,7 @@
                    (let [msg-body (nth msg 2)]
                      (if (:async? callback)
                        ;; async callback should run in another thread
-                       ;; that won't block or kill the worker pool
+                       ;; that won't block or hang the worker thread
                        (future
                          (let [result (handle-response msg-body)]
                            (deliver (:promise callback) result)
@@ -110,12 +110,8 @@
    (on-error [ctx ^ExceptionEvent e]
              (let [exp (.getCause e)]
                (if (instance? ClosedChannelException exp)
-                 (do
-                   (let [cbs (vals @rmap)]
-                     ;; notify cbs for failure
-
-                     )
-                   (reset! rmap {}))
+                 ;; remove all pending requests
+                 (reset! rmap {})
                  (.printStackTrace exp))))))
 
 (def tcp-options
