@@ -5,7 +5,7 @@
   (:use [link.core :exclude [close]])
   (:use [link.tcp])
   (:use [slingshot.slingshot :only [throw+]])
-  (:import [java.nio.channel ClosedChannelException])
+  (:import [java.nio.channels ClosedChannelException])
   (:import [org.jboss.netty.channel
             ExceptionEvent
             MessageEvent]))
