@@ -6,7 +6,9 @@
                  [cheshire "2.2.0"]
                  [commons-pool/commons-pool "1.5.6"]
                  [slingshot "0.10.1"]
-                 [zookeeper-clj "0.9.2"]
+                 [zookeeper-clj "0.9.2"
+                  :exclusions [jline/jline
+                               junit/junit]]
                  [org.clojure/tools.logging "0.2.3"]]
   :dev-dependencies [[codox "0.5.0"]
                      [lein-exec "0.1"]]
