@@ -5,10 +5,7 @@
   (:use [link.core :exclude [close]])
   (:use [link.tcp])
   (:use [slingshot.slingshot :only [throw+]])
-  (:import [java.nio.channels ClosedChannelException])
-  (:import [org.jboss.netty.channel
-            ExceptionEvent
-            MessageEvent]))
+  (:import [java.nio.channels ClosedChannelException]))
 
 (defn- handle-valid-response [response]
   (let [[content-type code data] (second response)]
@@ -89,9 +86,8 @@
   "The event handler for client"
   [rmap]
   (create-handler
-   (on-message [ctx ^MessageEvent e]
-               (let [msg (.getMessage e)
-                     tid (second msg)
+   (on-message [_ msg _]
+               (let [tid (second msg)
                      callback (get @rmap tid)]
                  (swap! rmap dissoc tid)
                  (when-not (nil? callback)
@@ -107,12 +103,11 @@
                        ;; sync request need to decode ths message in 
                        ;; caller thread
                        (deliver (:promise callback) msg-body))))))
-   (on-error [ctx ^ExceptionEvent e]
-             (let [exp (.getCause e)]
-               (if (instance? ClosedChannelException exp)
-                 ;; remove all pending requests
-                 (reset! rmap {})
-                 (.printStackTrace exp))))))
+   (on-error [^Exception exp]
+             (if (instance? ClosedChannelException exp)
+               ;; remove all pending requests
+               (reset! rmap {})
+               (.printStackTrace exp)))))
 
 (def tcp-options
   {"tcpNoDelay" true,

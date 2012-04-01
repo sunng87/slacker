@@ -6,11 +6,7 @@
   (:use [link core tcp http])
   (:use [slingshot.slingshot :only [try+]])
   (:require [zookeeper :as zk])
-  (:import [java.util.concurrent Executors])
-  (:import [org.jboss.netty.channel
-            ChannelHandlerContext
-            MessageEvent
-            ExceptionEvent]))
+  (:import [java.util.concurrent Executors]))
 
 ;; pipeline functions for server request handling
 ;; request data structure:
@@ -131,21 +127,18 @@
   (let [server-pipeline (build-server-pipeline funcs interceptors)
         inspect-handler (build-inspect-handler funcs)]
     (create-handler
-     (on-message [^ChannelHandlerContext ctx ^MessageEvent e]
+     (on-message [ch data addr]
                  (binding [*debug* debug]
-                   (let [data (.getMessage e)
-                         client-info {:remote-addr (.getRemoteAddress e)}
-                         ch (.getChannel ctx)
-
+                   (let [client-info {:remote-addr addr}
                          result (handle-request
                                  server-pipeline
                                  data
                                  client-info
                                  inspect-handler
                                  acl)]
-                     (.write ch result))))
-     (on-error [^ChannelHandlerContext ctx ^ExceptionEvent e]
-               (.printStackTrace (.getCause e))))))
+                     (send ch result))))
+     (on-error [^Exception e]
+               (.printStackTrace e)))))
 
 
 (defn- ns-funcs [n]
