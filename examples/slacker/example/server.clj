@@ -12,7 +12,7 @@
 
 (defn -main [& args]
   (start-slacker-server (the-ns 'slacker.example.api) 2104
-                        :interceptors (interceptors [log-function-calls
+                        :interceptors (interceptors [
                                                      function-call-stats
                                                      (logargs :error)
                                                      exectime-stats])
