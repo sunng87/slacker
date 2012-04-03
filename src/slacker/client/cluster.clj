@@ -18,7 +18,12 @@
 (defmacro defn-remote
   "cluster enabled defn-remote"
   [sc fname & options]
-  (let [{:keys [remote-ns] :or {remote-ns (ns-name *ns*)}} options]
+  (let [fname-str (str fname)
+        remote-ns-declared (> (.indexOf fname-str "/") 0)
+        {:keys [remote-ns] :or {remote-ns (ns-name *ns*)}} options
+        remote-ns (if remote-ns-declared
+                    (first (split fname-str #"/" 2))
+                    remote-ns)]
     `(do
        (when (nil? ((get-ns-mappings ~sc) ~remote-ns))
          (refresh-associated-servers ~sc ~remote-ns))
