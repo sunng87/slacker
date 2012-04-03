@@ -131,14 +131,14 @@ asynchronous which returns a *promise* when you call it. You should
 deref it by yourself to get the return value.
 
 ``` clojure
-(defn-remote timestamp :async true :remote-ns "slapi")
+(defn-remote sc slapi/timestamp :async true)
 @(timestamp)
 ```
 
 You can also assign a callback for an async facade.
 
 ``` clojure
-(defn-remote timestamp :remote-ns "slapi" :callback #(println %))
+(defn-remote sc slapi/timestamp :callback #(println %))
 (timestamp)
 ```
 
