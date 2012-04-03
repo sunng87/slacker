@@ -22,26 +22,33 @@
   connection and the function name. (Argument list is not required here.)"
   ([sc fname & {:keys [remote-ns remote-name async? callback]
                 :or {remote-ns (ns-name *ns*)
-                     remote-name nil async? false callback nil}}]
-     `(let [rname# (or ~remote-name (name '~fname))]
-        (def ~fname
+                     remote-name nil
+                     async? false callback nil}}]
+     (let [fname-str (str fname)
+           remote-ns-declared (> (.indexOf fname-str "/") 0)
+           [remote-ns remote-name] (if remote-ns-declared
+                                     (split fname-str #"/" 2)
+                                     [remote-ns
+                                      (or remote-name fname-str)])
+           facade-sym (if remote-ns-declared
+                        (symbol remote-name)
+                        fname)]
+       `(def ~facade-sym
           (with-meta
             (fn [& args#]
               (invoke-slacker ~sc
-                [~remote-ns rname# (into [] args#)]
-                :async? ~async?
-                :callback ~callback))
-            (merge (meta-remote ~sc (str ~remote-ns "/" rname#))
+                              [~remote-ns ~remote-name (into [] args#)]
+                              :async? ~async?
+                              :callback ~callback))
+            (merge (meta-remote ~sc ~fname-str)
                    {:slacker-remote-fn true
                     :slacker-client ~sc
                     :slacker-remote-ns ~remote-ns
-                    :slacker-remote-name rname#}))))))
+                    :slacker-remote-name ~remote-name}))))))
 
 (defn- defn-remote*
   [sc-sym fname]
-  (eval (list 'defn-remote sc-sym
-              (symbol (second (split fname #"/")))
-              :remote-ns (first (split fname #"/")))))
+  (eval (list 'defn-remote sc-sym (symbol fname))))
 
 (defn use-remote
   "import remote functions the current namespace"
