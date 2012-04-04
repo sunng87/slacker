@@ -1,6 +1,6 @@
 (ns slacker.interceptors.slowwatchdog
   (:use [slacker.interceptor])
-  (:require [clojure.contrib.logging :as log]))
+  (:require [clojure.tools.logging :as log]))
 
 (definterceptor+
   ^{:doc "set threshold in ms the interceptor will log slow
@@ -13,11 +13,9 @@
            (let [now (System/currentTimeMillis)
                  cost (- now (:start-time req))]
              (when (> cost threshold)
-               (log/log :warn (str "Slow call "
-                                   (:fname req)
-                                   " "
-                                   (pr-str (:args req))
-                                   " "
-                                   cost "ms.")))
-             req)))
+               (log/warn (format "Slow call %s %s %dmsecs."
+                                 (:fname req)
+                                 (pr-str (:args req))
+                                 cost))))
+           req))
 
