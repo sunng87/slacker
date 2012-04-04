@@ -11,7 +11,7 @@
 (def thread-pool (Executors/newFixedThreadPool total-threads))
 
 (def scp (slackerc "127.0.0.1:2104"))
-(defn-remote scp rand-ints :remote-ns "slacker.example.api")
+(defn-remote scp slacker.example.api/rand-ints)
 
 (def cdl (CountDownLatch. total-calls))
 (time
