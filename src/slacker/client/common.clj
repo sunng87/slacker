@@ -5,6 +5,7 @@
   (:use [link.core :exclude [close]])
   (:use [link.tcp])
   (:use [slingshot.slingshot :only [throw+]])
+  (:require [clojure.tools.logging :as log])
   (:import [java.nio.channels ClosedChannelException]))
 
 (defn- handle-valid-response [response]
@@ -103,11 +104,11 @@
                        ;; sync request need to decode ths message in 
                        ;; caller thread
                        (deliver (:promise callback) msg-body))))))
-   (on-error [^Exception exp]
-             (if (instance? ClosedChannelException exp)
+   (on-error [^Exception exc]
+             (if (instance? ClosedChannelException exc)
                ;; remove all pending requests
                (reset! rmap {})
-               (.printStackTrace exp)))))
+               (log/error exc "Unexpected error in event loop")))))
 
 (def tcp-options
   {"tcpNoDelay" true,

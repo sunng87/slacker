@@ -6,6 +6,7 @@
   (:use [link core tcp http])
   (:use [slingshot.slingshot :only [try+]])
   (:require [zookeeper :as zk])
+  (:require [clojure.tools.logging :as log])
   (:import [java.util.concurrent Executors]))
 
 ;; pipeline functions for server request handling
@@ -138,7 +139,7 @@
                                  acl)]
                      (send ch result))))
      (on-error [^Exception e]
-               (.printStackTrace e)))))
+               (log/error e "Unexpected error in event loop")))))
 
 
 (defn- ns-funcs [n]
