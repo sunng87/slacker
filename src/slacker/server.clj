@@ -3,7 +3,7 @@
   (:use [slacker.server http cluster])
   (:use [slacker.acl.core])
   (:use [lamina.core])
-  (:use [aleph tcp http])
+  (:use [aleph tcp]) ;;http
   (:use [gloss.io :only [contiguous]])
   (:use [slingshot.slingshot :only [try+]])
   (:require [zookeeper :as zk]))
@@ -148,11 +148,11 @@
         handler (create-server-handler funcs interceptors acl *debug*)]
     (when *debug* (doseq [f (keys funcs)] (println f)))
     (start-tcp-server handler {:port port :frame slacker-base-codec})
-    (when-not (nil? http)
-      (start-http-server (wrap-ring-handler
-                          (wrap-http-server-handler
-                           (build-server-pipeline funcs interceptors)))
-                         {:port http}))
+;    (when-not (nil? http)
+;      (start-http-server (wrap-ring-handler
+;                          (wrap-http-server-handler
+;                           (build-server-pipeline funcs interceptors)))
+;                         {:port http}))
     (when-not (nil? cluster)
       (with-zk (zk/connect (:zk cluster))
         (publish-cluster cluster port
