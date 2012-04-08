@@ -15,9 +15,9 @@
       :or {content-type :carb}
       :as _}]
   (let [[host port] (host-port addr)
-        conn (client #(tcp-client {:host host
-                                   :port port
-                                   :frame slacker-base-codec}))]
+        conn (pipelined-client #(tcp-client {:host host
+                                             :port port
+                                             :frame slacker-base-codec}))]
     (SlackerClient. conn content-type)))
 
 
