@@ -10,8 +10,9 @@
 
 (def thread-pool (Executors/newFixedThreadPool total-threads))
 
-(def scp (slackerc-pool "localhost:2104"
-                        :max-active total-connections))
+(def scp (slackerc "localhost:2104"))
+;(def scp (slackerc-pool "localhost:2104"
+;                        :max-active total-connections))
 (defn-remote scp rand-ints :remote-ns "slacker.example.api")
 
 (def cdl (CountDownLatch. total-calls))

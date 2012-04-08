@@ -23,3 +23,7 @@
 (defn echo [x]
   x)
 
+(defn long-running []
+  (Thread/sleep 5000)
+  true)
+
