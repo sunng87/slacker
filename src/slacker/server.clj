@@ -129,6 +129,7 @@
         inspect-handler (build-inspect-handler funcs)]
     (create-handler
      (on-message [ch data addr]
+                 (println (Thread/currentThread))
                  (binding [*debug* debug]
                    (let [client-info {:remote-addr addr}
                          result (handle-request
@@ -176,19 +177,18 @@
            acl nil}}]
   (let [exposed-ns (if (coll? exposed-ns) exposed-ns [exposed-ns])
         funcs (apply merge (map ns-funcs exposed-ns))
-        handler (create-server-handler funcs interceptors acl *debug*)
-        worker-pool (Executors/newCachedThreadPool)]
+        handler (create-server-handler funcs interceptors acl *debug*)]
     
     (when *debug* (doseq [f (keys funcs)] (println f)))
     
     (tcp-server port handler 
                 :codec slacker-base-codec
-                :worker-pool worker-pool
+                :threaded? true
                 :tcp-options tcp-options)
     (when-not (nil? http)
       (http-server http (wrap-http-server-handler
                          (build-server-pipeline funcs interceptors))
-                   :worker-pool worker-pool
+                   :threaded? true
                    :debug *debug*))
     (when-not (nil? cluster)
       (with-zk (zk/connect (:zk cluster))
