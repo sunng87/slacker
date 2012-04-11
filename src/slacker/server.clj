@@ -129,7 +129,7 @@
         inspect-handler (build-inspect-handler funcs)]
     (create-handler
      (on-message [ch data addr]
-                 (println (Thread/currentThread))
+;;                 (println (Thread/currentThread))
                  (binding [*debug* debug]
                    (let [client-info {:remote-addr addr}
                          result (handle-request
