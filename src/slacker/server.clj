@@ -184,11 +184,11 @@
     (tcp-server port handler 
                 :codec slacker-base-codec
                 :threaded? true
+                :ordered? false
                 :tcp-options tcp-options)
     (when-not (nil? http)
       (http-server http (wrap-http-server-handler
                          (build-server-pipeline funcs interceptors))
-                   :threaded? true
                    :debug *debug*))
     (when-not (nil? cluster)
       (with-zk (zk/connect (:zk cluster))
