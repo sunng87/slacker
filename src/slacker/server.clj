@@ -1,11 +1,10 @@
 (ns slacker.server
   (:refer-clojure :exclude [send])
   (:use [slacker common serialization protocol])
-  (:use [slacker.server http cluster])
+  (:use [slacker.server http])
   (:use [slacker.acl.core])
   (:use [link core tcp http])
   (:use [slingshot.slingshot :only [try+]])
-  (:require [zookeeper :as zk])
   (:require [clojure.tools.logging :as log])
   (:import [java.util.concurrent Executors]))
 
@@ -170,10 +169,9 @@
   * cluster publish server information to zookeeper
   * acl the acl rules defined by defrules"
   [exposed-ns port
-   & {:keys [http interceptors cluster acl]
+   & {:keys [http interceptors acl]
       :or {http nil
            interceptors {:before identity :after identity}
-           cluster nil
            acl nil}}]
   (let [exposed-ns (if (coll? exposed-ns) exposed-ns [exposed-ns])
         funcs (apply merge (map ns-funcs exposed-ns))
@@ -189,10 +187,6 @@
     (when-not (nil? http)
       (http-server http (wrap-http-server-handler
                          (build-server-pipeline funcs interceptors))
-                   :debug *debug*))
-    (when-not (nil? cluster)
-      (with-zk (zk/connect (:zk cluster))
-        (publish-cluster cluster port
-                         (map ns-name exposed-ns) funcs)))))
+                   :debug *debug*))))
 
 
