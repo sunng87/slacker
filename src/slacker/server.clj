@@ -142,7 +142,7 @@
                (log/error e "Unexpected error in event loop")))))
 
 
-(defn- ns-funcs [n]
+(defn ns-funcs [n]
   (let [nsname (ns-name n)]
     (into {}
           (for [[k v] (ns-publics n) :when (fn? @v)]
@@ -161,12 +161,11 @@
 
 (defn start-slacker-server
   "Start a slacker server to expose all public functions under
-  a namespace. If you have multiple namespace to expose, it's better
-  to combine them into one.
+  a namespace. If you have multiple namespace to expose, put
+  `exposed-ns` as a vector.
   Options:
   * interceptors add server interceptors
   * http http port for slacker http transport
-  * cluster publish server information to zookeeper
   * acl the acl rules defined by defrules"
   [exposed-ns port
    & {:keys [http interceptors acl]
