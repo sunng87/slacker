@@ -12,48 +12,8 @@ slacker is a simple RPC framework designed for Clojure and created by clojure.
 * Security without additional policies
 * Transparent and non-invasive API
 * Extensible server with interceptor framework
-* Cluster with Zookeeper
+* Cluster with Zookeeper (moved to [slacker-cluster](https://github.com/sunng87/slacker-cluster))
 * Clean code
-
-### Slacker VS. Remote Eval
-
-Before slacker, the clojure world uses a *remote eval* approach for
-remoting ([nREPL](https://github.com/clojure/tools.nrepl),
-[portal](https://github.com/flatland/portal)).  Comparing to remote
-eval, RPC (especially slacker) has some pros and cons:
-
-#### pros
-
-* slacker uses direct function call, which is much faster than eval
-  (about *100x*)
-* with slacker, only selected functions are exposed, instead of the
-  whole java environment when using eval. So it's much securer and
-  generally you don't need a sandbox (like clojail) for slacker.
-
-#### cons
-
-* Eval approach provides full features of clojure, you can use
-  high-order functions and lazy arguments. Due to the limitation of
-  serialization, slacker has its difficulty to support these features.
-
-### Slacker VS. Thrift
-
-Since clojure is also hosted on Java virtual machine, you can use
-existed Java RPC framework in clojure, like thrift. 
-
-#### pros
-
-* No schema needed
-* No additional code generation
-* Transparent, non-invasive API
-* Pure clojure way
-* Highly customizable (interceptor framework)
-
-#### cons
-
-* Currently, there is no cross language support. Slacker is only for
-  clojure. I am planning to add nodejs support via clojurescript. 
-* Potential performance improvements.
 
 ## Example
 
@@ -64,7 +24,7 @@ can run the examples by `lein run :server` and `lein run :client` .
 
 ### Leiningen
 
-    :dependencies [[slacker "0.7.0"]]
+    :dependencies [[slacker "0.8.0-SNAPSHOT"]]
 
 ### Getting Started
 
@@ -171,21 +131,6 @@ Configure slacker client to use JSON:
 (def sc (slackerc "localhost:2104" :content-type :json))
 ```
 
-Turn on the debug option, you will see all the JSON data transported
-between client and server:
-
-``` clojure
-(use 'slacker.common)
-(binding [slacker.common/*debug* true]
-  (inc-m 100))
-```
-
-shows:
-
-        dbg:: [100]
-        dbg:: 700
-        700
-
 One thing you should note is the representation of keyword in
 JSON. Keywords and strings are both encoded as JSON string in
 transport. But while decoding, all map keys will be decoded to
@@ -251,69 +196,6 @@ page](https://github.com/sunng87/slacker/wiki/AccessControlList) for the ACL rul
 
 ## Slacker Cluster
 
-Leveraging on ZooKeeper, slacker now has a solution for high
-availability and load balancing. You can have several slacker servers
-in a cluster serving functions. And the clustered slacker client will
-randomly select one of these server to invoke. Once a server is added
-to or removed from the cluster, the client will automatically
-establish connection to it. 
-
-To create such a slacker cluster, make sure you have a zookeeper
-instance in your network.
-
-### Clustered Slacker Server
-
-On the server side, add an option `:cluster`. Some information is    
-required:
-
-``` clojure
-(use 'slacker.server)
-(start-slacker-server ...
-                      :cluster {:name "cluster-name"
-                                :zk "127.0.0.1:2181"})
-```
-
-Cluster information here:
-
-* `:name` the cluster name (*required*)
-* `:zk` zookeeper server address (*required*)
-* `:node` server IP (*optional*, if you don't provide the server IP
-  here, slacker will try to detect server IP by connecting to zk,
-  on which we assume that your slacker server are bound on the same
-  network with zookeeper)
-
-### Clustered Slacker Client
-
-On the client side, you have to specify the zookeeper address instead
-of a particular slacker server. Use the `clustered-slackerc`:
-
-``` clojure
-(use 'slacker.client.cluster)
-(def sc (clustered-slackerc "cluster-name" "127.0.0.1:2181"))
-(use-remote 'sc 'slapi)
-```
-
-You should make sure to use the `use-remote` and `defn-remote` from
-`slacker.client.cluster` instead of `slacker.client`.
-
-### Examples
-
-There is a cluster example in the source code. To run the server,
-start a zookeeper on your machine (127.0.0.1:2181)
-
-Start server instance:
-
-    lein run :cluster-server 2104
-
-Open a new terminal, start another server instance:
-
-    lein run :cluster-server 2105
-
-On another terminal, you can run the example client:
-
-    lein run :cluster-client
-
-By checking logs, you can trace the calls on each server instance.
 
 ## Performance
 
@@ -335,6 +217,6 @@ second on this machine.
 
 ## License
 
-Copyright (C) 2011 Sun Ning
+Copyright (C) 2011-2012 Sun Ning
 
 Distributed under the Eclipse Public License, the same as Clojure.
