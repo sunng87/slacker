@@ -128,7 +128,6 @@
         inspect-handler (build-inspect-handler funcs)]
     (create-handler
      (on-message [ch data addr]
-;;                 (println (Thread/currentThread))
                  (binding [*debug* debug]
                    (let [client-info {:remote-addr addr}
                          result (handle-request
@@ -159,6 +158,14 @@
    "readWriteFair" true,
    "child.tcpNoDelay" true})
 
+(defn slacker-ring-app
+  "Wrap slacker as a ring app that can be deployed to any ring adaptors."
+  [exposed-ns & {:keys [interceptors acl]
+                 :or {interceptors {:before identity :after identity}
+                      acl nil}}]
+  ;TODO
+  )
+
 (defn start-slacker-server
   "Start a slacker server to expose all public functions under
   a namespace. If you have multiple namespace to expose, put
@@ -184,7 +191,7 @@
                 :ordered? false
                 :tcp-options tcp-options)
     (when-not (nil? http)
-      (http-server http (wrap-http-server-handler
+      (http-server http (wrap-ring-app
                          (build-server-pipeline funcs interceptors))
                    :debug *debug*))))
 

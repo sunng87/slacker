@@ -1,6 +1,7 @@
 (ns slacker.server.http
   (:require [clojure.string :as string])
   (:require [clojure.java.io :as io])
+  (:require [slacker.common])
   (:import [java.io
             ByteArrayInputStream
             ByteArrayOutputStream])
@@ -17,7 +18,7 @@
     (.get bb buf)
     (ByteArrayInputStream. buf)))
 
-(defn- ring-req->slacker-req [req]
+(defn ring-req->slacker-req [req]
   (let [{uri :uri body :body} req
         content-type (last (string/split uri #"\."))
         fname (.substring ^String uri
@@ -26,12 +27,13 @@
         content-type (keyword content-type)
         body (or body "[]")
         data (stream->bytebuffer body)] 
-    {:packet-type :type-request
+    {:version slacker.common/version
+     :packet-type :type-request
      :content-type content-type
      :fname fname
      :data data}))
 
-(defn- slacker-resp->ring-resp [req]
+(defn slacker-resp->ring-resp [req]
   (let [{ct :content-type code :code result :result} req
         content-type (str "application/" (name ct))
         status (case (:code req)
@@ -44,14 +46,5 @@
      :headers {"content-type" content-type}
      :body body}))
 
-(defn wrap-http-server-handler
-  "wrap a standard server-pipeline to support ring style
-  handler."
-  [server-handler]
-  (fn [req]
-    (-> req
-        ring-req->slacker-req
-        server-handler
-        slacker-resp->ring-resp)))
 
 
