@@ -8,7 +8,8 @@
                  [org.clojure/java.jmx "0.1"]                 
                  [org.clojure/tools.logging "0.2.3"]]
   :dev-dependencies [[codox "0.6.1"]
-                     [lein-exec "0.1"]]
+                     [lein-exec "0.1"]
+                     [criterium "0.2.1-SNAPSHOT"]]
   :extra-classpath-dirs ["examples"]
   :run-aliases {:server "slacker.example.server"
                 :client "slacker.example.client"}
