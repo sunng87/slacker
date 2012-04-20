@@ -189,13 +189,26 @@ $ curl -d "[5]" http://localhost:4104/slapi/rand-ints.clj
 Note that you can only use `json` or `clj` as format. Because HTTP is
 a test based protocol, so `carb` won't be supported.
 
+### Slacker as a Ring App
+
+You can also use slacker as a ring app with
+`slacker.server/slacker-ring-app`. The ring app is fully compatible
+with ring spec. So it could be deployed on any ring adapter.
+
+``` clojure
+(use 'slacker.server)
+(use 'ring.adapter.jetty)
+
+(run-jetty (slacker-ring-app (the-ns 'slapi))  {:port 8080})
+```
+
+The url pattern of this ring app is same as slacker's built-in http
+module. 
+
 ### Access Control List
 
 Slacker 0.7 supports IP based access control list (ACL). Consult [wiki
 page](https://github.com/sunng87/slacker/wiki/AccessControlList) for the ACL rule DSL.
-
-## Slacker Cluster
-
 
 ## Performance
 
