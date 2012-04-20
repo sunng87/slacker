@@ -159,11 +159,13 @@
    "child.tcpNoDelay" true})
 
 (defn slacker-ring-app
-  "Wrap slacker as a ring app that can be deployed to any ring adaptors."
+  "Wrap slacker as a ring app that can be deployed to any ring adaptors.
+  You can also configure interceptors and acl just like `start-slacker-server`"
   [exposed-ns & {:keys [interceptors acl]
                  :or {interceptors {:before identity :after identity}
                       acl nil}}]
-  (let [funcs (apply merge (map ns-funcs exposed-ns))
+  (let [exposed-ns (if (coll? exposed-ns) exposed-ns [exposed-ns])
+        funcs (apply merge (map ns-funcs exposed-ns))
         server-pipeline (build-server-pipeline funcs interceptors)]
     (fn [req]
       (let [client-info (http-client-info req)
