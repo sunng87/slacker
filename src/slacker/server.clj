@@ -163,8 +163,19 @@
   [exposed-ns & {:keys [interceptors acl]
                  :or {interceptors {:before identity :after identity}
                       acl nil}}]
-  ;TODO
-  )
+  (let [funcs (apply merge (map ns-funcs exposed-ns))
+        server-pipeline (build-server-pipeline funcs interceptors)]
+    (fn [req]
+      (let [client-info (http-client-info req)
+            curried-handler (fn [req] (handle-request server-pipeline
+                                                     req
+                                                     client-info
+                                                     nil
+                                                     acl))]
+        (-> req
+            ring-req->slacker-req
+            curried-handler
+            slacker-resp->ring-resp)))))
 
 (defn start-slacker-server
   "Start a slacker server to expose all public functions under
@@ -178,7 +189,8 @@
    & {:keys [http interceptors acl]
       :or {http nil
            interceptors {:before identity :after identity}
-           acl nil}}]
+           acl nil}
+      :as options}]
   (let [exposed-ns (if (coll? exposed-ns) exposed-ns [exposed-ns])
         funcs (apply merge (map ns-funcs exposed-ns))
         handler (create-server-handler funcs interceptors acl *debug*)]
@@ -191,8 +203,7 @@
                 :ordered? false
                 :tcp-options tcp-options)
     (when-not (nil? http)
-      (http-server http (wrap-ring-app
-                         (build-server-pipeline funcs interceptors))
+      (http-server http (apply slacker-ring-app exposed-ns options)
                    :debug *debug*))))
 
 
