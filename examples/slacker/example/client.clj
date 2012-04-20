@@ -20,8 +20,7 @@
 
 (defn -main [& args]
   (println (timestamp))
-  (binding [slacker.common/*debug* true]
-    (println (inc-m 100)))
+  (println (inc-m 100))
   (println (show-m))
   (println @(get-m))
   (get-m2)
