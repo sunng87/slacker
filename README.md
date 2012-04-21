@@ -48,7 +48,9 @@ To expose `slapi`, use:
 (start-slacker-server (the-ns 'slapi) 2104)
 ```
 
-On the client side, define a facade for the remote function:
+On the client side, define facades for the remote functions.
+The `use-remote` function is convenience for importing all functions
+under a remote namespace. 
 
 ``` clojure
 (use 'slacker.client)
@@ -57,7 +59,17 @@ On the client side, define a facade for the remote function:
 (timestamp)
 ```
 
-By checking the metadata of `timestamp`, you can find useful
+You can also use `defn-remote` to create facade one by one. Remember
+to add remote namespace here as facade name, `slapi/timestamp`,
+eg. Otherwise, the name of remote namespace will be treated as remote
+namespace. 
+
+``` clojure
+(defn-remote sc slapi/timestamp)
+(timestamp)
+```
+
+By checking the metadata of `timestamp`, you can get some useful
 information:
 
 ``` clojure
@@ -77,8 +89,8 @@ slacker.client.common.SlackerClient@575752>, :slacker-remote-ns
 
 ### Options in defn-remote
 
-You are specify the remote function name when the name is occupied in
-current namespace
+You can specify the remote function name when there are conflicts in
+current namespace.
 
 ``` clojure
 (defn-remote sc remote-time
