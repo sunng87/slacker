@@ -43,7 +43,7 @@
        :body "rejected by access control list"}
       ;; normal response packet
       (let [[ct code result] (second resp-body)
-            content-type (str "application/" (str ct))
+            content-type (str "application/" (name ct))
             status (case code
                      :success 200
                      :exception 500
