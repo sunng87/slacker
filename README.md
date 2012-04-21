@@ -61,7 +61,7 @@ under a remote namespace.
 
 You can also use `defn-remote` to create facade one by one. Remember
 to add remote namespace here as facade name, `slapi/timestamp`,
-eg. Otherwise, the name of remote namespace will be treated as remote
+eg. Otherwise, the name of current namespace will be treated as remote
 namespace. 
 
 ``` clojure
