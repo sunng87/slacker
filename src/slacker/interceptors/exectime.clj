@@ -1,6 +1,6 @@
 (ns slacker.interceptors.exectime
   (:use [slacker.interceptor])
-  (:require [clojure.contrib.jmx :as jmx])
+  (:require [clojure.java.jmx :as jmx])
   (:import [javax.management DynamicMBean MBeanInfo
             MBeanAttributeInfo Attribute AttributeList
             MBeanOperationInfo]))

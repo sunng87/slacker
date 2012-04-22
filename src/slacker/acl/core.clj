@@ -1,8 +1,9 @@
-(ns slacker.acl.core)
+(ns slacker.acl.core
+  (:import [java.net InetSocketAddress]))
 
 (defn- ip-seg-contains?
   "Ip-segment A contains? B or not"
-  [ip-seg-a ip-seg-b]
+  [^String ip-seg-a ^String ip-seg-b]
   (cond
    (.contains ip-seg-a "*")
    (.startsWith ip-seg-b (.substring ip-seg-a 0 (.indexOf ip-seg-a "*")))
@@ -23,7 +24,7 @@
   (let [allow-set (rules :allow)
         deny-set (rules :deny)
         flag (ip-set-contains? deny-set allow-set)
-        ip-address (.. (client-info :remote-addr) getAddress getHostAddress)]
+        ip-address (.. ^InetSocketAddress (client-info :remote-addr) getAddress getHostAddress)]
     (cond
      (empty? rules) false
      flag (ip-set-contains? allow-set ip-address)

@@ -1,51 +1,63 @@
 (ns slacker.server.http
   (:require [clojure.string :as string])
   (:require [clojure.java.io :as io])
-  (:import [java.io ByteArrayOutputStream])
-  (:import [java.nio ByteBuffer])
-  (:import [java.nio.charset Charset]))
+  (:require [slacker.common])
+  (:import [java.io
+            ByteArrayInputStream
+            ByteArrayOutputStream])
+  (:import [java.nio ByteBuffer]))
 
-(defn- instream-to-bb [inputstream]
+(defn- stream->bytebuffer [inputstream]
   (let [out (ByteArrayOutputStream.)]
     (io/copy inputstream out)
     (ByteBuffer/wrap (.toByteArray out))))
 
-(defn- bb-to-string [bb]
-  (.toString (.decode (Charset/forName "UTF-8") bb)))
+(defn- bytebuffer->stream [^ByteBuffer bb]
+  (let [buf-size (.remaining bb)
+        buf (byte-array buf-size)]
+    (.get bb buf)
+    (ByteArrayInputStream. buf)))
 
-(defn- decode-http-data [req]
+(defn ring-req->slacker-req
+  "transform ring request to slacker request"
+  [req]
   (let [{uri :uri body :body} req
         content-type (last (string/split uri #"\."))
-        fname (.substring uri 1 (dec (.lastIndexOf uri content-type)))
+        fname (.substring ^String uri
+                          1 (dec (.lastIndexOf ^String uri
+                                               ^String content-type)))
         content-type (keyword content-type)
         body (or body "[]")
-        data [(instream-to-bb body)]] ;; gloss finite-block workaround
-    {:packet-type :type-request
-     :content-type content-type
-     :fname fname
-     :data data}))
+        data (stream->bytebuffer body)]
+    [slacker.common/version 0 [:type-request [content-type fname data]]]))
 
-(defn- encode-http-data [req]
-  (let [{ct :content-type code :code result :result} req
-        content-type (str "application/" (name ct))
-        status (case (:code req)
-                 :success 200
-                 :exception 500
-                 :not-found 404
-                 400)
-        body (and result (bb-to-string result))]
-    {:status status
-     :headers {"content-type" content-type}
-     :body (str body "\r\n")}))
+(defn slacker-resp->ring-resp
+  "transform slacker response to ring response"
+  [resp]
+  (let [resp-body (nth resp 2)
+        packet-type (first resp-body)]
+    (if (and (= :type-error packet-type)
+             (= :acl-reject (-> resp-body second first)))
+      ;; rejected by acl, return HTTP403
+      {:status 403
+       :body "rejected by access control list"}
+      ;; normal response packet
+      (let [[ct code result] (second resp-body)
+            content-type (str "application/" (name ct))
+            status (case code
+                     :success 200
+                     :exception 500
+                     :not-found 404
+                     400)
+            body (and result (bytebuffer->stream result))]
+        {:status status
+         :headers {"content-type" content-type}
+         :body body}))))
+  
+    
 
-(defn wrap-http-server-handler
-  "wrap a standard server-pipeline to support ring style
-  handler."
-  [server-handler]
-  (fn [req]
-    (-> req
-        decode-http-data
-        server-handler
-        encode-http-data)))
-
+(defn http-client-info
+  "Get http client information (remote IP) from ring request"
+  [req]
+  (select-keys req [:remote-addr]))
 

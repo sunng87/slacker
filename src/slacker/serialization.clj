@@ -9,7 +9,7 @@
   (:import [java.nio.charset Charset])
   (:import [java.util.zip DeflaterInputStream InflaterInputStream]))
 
-(defn- bytebuffer-bytes [data]
+(defn- bytebuffer-bytes [^ByteBuffer data]
   (let [bs (byte-array (.remaining data))]
     (.get data bs)
     bs))
@@ -46,7 +46,7 @@
      (let [jsonstr
            (case it
              :buffer (.toString (.decode (Charset/forName "UTF-8") data))
-             :bytes (String. data "UTF-8")
+             :bytes (String. ^bytes ^String data "UTF-8")
              :string data)]
        (if *debug* (println (str "dbg:: " jsonstr)))
        (json/parse-string jsonstr true))))
@@ -67,7 +67,7 @@
      (let [cljstr
            (case ot
              :buffer (.toString (.decode (Charset/forName "UTF-8") data))
-             :bytes (String. data "UTF-8")
+             :bytes (String. ^bytes ^String data "UTF-8")
              :string data)]
        (if *debug* (println (str "dbg:: " cljstr)))
        (read-string cljstr))))

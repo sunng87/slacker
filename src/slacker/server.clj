@@ -1,16 +1,20 @@
 (ns slacker.server
+  (:refer-clojure :exclude [send])
   (:use [slacker common serialization protocol])
-  (:use [slacker.server http cluster])
+  (:use [slacker.server http])
   (:use [slacker.acl.core])
-  (:use [lamina.core])
-  (:use [aleph tcp http])
-  (:use [gloss.io :only [contiguous]])
+  (:use [link core tcp http])
   (:use [slingshot.slingshot :only [try+]])
-  (:require [zookeeper :as zk]))
+  (:require [clojure.tools.logging :as log])
+  (:import [java.util.concurrent Executors]))
 
 ;; pipeline functions for server request handling
+;; request data structure:
+;; [version transaction-id [request-type [content-type func-name params]]]
 (defn- map-req-fields [req]
-  (zipmap [:packet-type :content-type :fname :data] req))
+  (assoc (zipmap [:content-type :fname :data]
+                 (second (nth req 2)))
+    :tid (second req)))
 
 (defn- look-up-function [req funcs]
   (if-let [func (funcs (:fname req))]
@@ -19,7 +23,7 @@
 
 (defn- deserialize-args [req]
   (if (nil? (:code req))
-    (let [data (contiguous (:data req))]
+    (let [data (:data req)]
       (assoc req :args
              (deserialize (:content-type req) data)))
     req))
@@ -33,10 +37,10 @@
         (assoc req :result r :code :success))
       (catch Exception e
         (if-not *debug*
-          (assoc req :code :exception :result (.toString e))
+          (assoc req :code :exception :result (str e))
           (assoc req :code :exception
-                 :result {:msg (.getMessage e)
-                          :stacktrace (.getStackTrace e)}))))
+                 :result {:msg (.getMessage ^Exception e)
+                          :stacktrace (.getStackTrace ^Exception e)}))))
     req))
 
 (defn- serialize-result [req]    
@@ -45,15 +49,20 @@
     req))
 
 (defn- map-response-fields [req]
-  [version (map req [:packet-type :content-type :code :result])])
+  [version (:tid req) [(:packet-type req)
+                       (map req [:content-type :code :result])]])
 
-(def pong-packet [version [:type-pong]])
-(def protocol-mismatch-packet [version [:type-error :protocol-mismatch]])
-(def invalid-type-packet [version [:type-error :invalid-packet]])
-(def acl-reject-packet [version [:type-error :acl-rejct]])
-(defn make-inspect-ack [data]
-  [version [:type-inspect-ack
-            (serialize :clj data :string)]])
+(defn pong-packet [tid]
+  [version tid [:type-pong]])
+(defn protocol-mismatch-packet [tid]
+  [version tid [:type-error [:protocol-mismatch]]])
+(defn invalid-type-packet [tid]
+  [version tid [:type-error [:invalid-packet]]])
+(defn acl-reject-packet [tid]
+  [version tid [:type-error [:acl-reject]]])
+(defn make-inspect-ack [tid data]
+  [version tid [:type-inspect-ack
+            [(serialize :clj data :string)]]])
 
 (defn build-server-pipeline [funcs interceptors]
   #(-> %
@@ -65,97 +74,138 @@
        serialize-result
        (assoc :packet-type :type-response)))
 
+;; inspection handler
+;; inspect request data structure
+;; [version tid  [request-type [cmd data]]]
 (defn build-inspect-handler [funcs]
-  #(let [[_ cmd data] %
-         data (deserialize :clj data :string)]
-     (make-inspect-ack
-      (case cmd
-        :functions
-        (let [nsname (or data "")]
-          (filter (fn [x] (.startsWith x nsname)) (keys funcs)))
-        :meta
-        (let [fname data
-              metadata (meta (funcs fname))]
-          (select-keys metadata [:name :doc :arglists]))
-        nil))))
+  (fn [req]
+    (let [tid (second req)
+          [cmd data] (second (nth req 2))
+          data (deserialize :clj data :string)]
+      (make-inspect-ack
+       tid
+       (case cmd
+         :functions
+         (let [nsname (or data "")]
+           (filter (fn [x] (.startsWith ^String x nsname)) (keys funcs)))
+         :meta
+         (let [fname data
+               metadata (meta (funcs fname))]
+           (select-keys metadata [:name :doc :arglists]))
+         nil)))))
 
-(defmulti -handle-request (fn [_ p & _] (first p)))
-(defmethod -handle-request :type-request [server-pipeline req client-info _]
+(defmulti -handle-request (fn [p & _] (first (nth p 2))))
+(defmethod -handle-request :type-request [req
+                                          server-pipeline
+                                          client-info
+                                          _]
   (let [req-map (assoc (map-req-fields req) :client client-info)]
     (map-response-fields (server-pipeline req-map))))
-(defmethod -handle-request :type-ping [& _]
-  pong-packet)
-(defmethod -handle-request :type-inspect-req [_ p _ inspect-handler]
+(defmethod -handle-request :type-ping [p & _]
+  (pong-packet (second p)))
+(defmethod -handle-request :type-inspect-req [p _ _ inspect-handler]
   (inspect-handler p))
-(defmethod -handle-request :default [& _]
-  invalid-type-packet)
+(defmethod -handle-request :default [p & _]
+  (invalid-type-packet (second p)))
 
 (defn handle-request [server-pipeline req client-info inspect-handler acl]
   (cond
+   (not= version (first req))
+   (protocol-mismatch-packet 0)
+   
    ;; acl enabled
    (and (not (nil? acl))
         (not (authorize client-info acl)))
-   acl-reject-packet
+   (acl-reject-packet (second req))
    
    ;; handle request
-   (= version (first req))
-   (-handle-request server-pipeline (second req)
-                    client-info inspect-handler)
 
-   ;; version mismatch
-   :else protocol-mismatch-packet))
+   :else (-handle-request req server-pipeline
+                          client-info inspect-handler)))
 
 (defn- create-server-handler [funcs interceptors acl debug]
   (let [server-pipeline (build-server-pipeline funcs interceptors)
         inspect-handler (build-inspect-handler funcs)]
-    (fn [ch client-info]
-      (receive-all
-       ch
-       #(if-let [req %]
-          (enqueue ch
-                   (binding [*debug* debug]
-                     (handle-request server-pipeline
-                                     req
-                                     client-info
-                                     inspect-handler
-                                     acl))))))))
+    (create-handler
+     (on-message [ch data addr]
+                 (binding [*debug* debug]
+                   (let [client-info {:remote-addr addr}
+                         result (handle-request
+                                 server-pipeline
+                                 data
+                                 client-info
+                                 inspect-handler
+                                 acl)]
+                     (send ch result))))
+     (on-error [^Exception e]
+               (log/error e "Unexpected error in event loop")))))
 
 
-(defn- ns-funcs [n]
+(defn ns-funcs [n]
   (let [nsname (ns-name n)]
     (into {}
           (for [[k v] (ns-publics n) :when (fn? @v)]
             [(str nsname "/" (name k)) v]))))
 
+(def
+  ^{:doc "Default TCP options"}
+  tcp-options
+  {"child.reuseAddress" true,
+   "reuseAddress" true,
+   "child.keepAlive" true,
+   "child.connectTimeoutMillis" 100,
+   "tcpNoDelay" true,
+   "readWriteFair" true,
+   "child.tcpNoDelay" true})
+
+(defn slacker-ring-app
+  "Wrap slacker as a ring app that can be deployed to any ring adaptors.
+  You can also configure interceptors and acl just like `start-slacker-server`"
+  [exposed-ns & {:keys [interceptors acl]
+                 :or {interceptors {:before identity :after identity}
+                      acl nil}}]
+  (let [exposed-ns (if (coll? exposed-ns) exposed-ns [exposed-ns])
+        funcs (apply merge (map ns-funcs exposed-ns))
+        server-pipeline (build-server-pipeline funcs interceptors)]
+    (fn [req]
+      (let [client-info (http-client-info req)
+            curried-handler (fn [req] (handle-request server-pipeline
+                                                     req
+                                                     client-info
+                                                     nil
+                                                     acl))]
+        (-> req
+            ring-req->slacker-req
+            curried-handler
+            slacker-resp->ring-resp)))))
 
 (defn start-slacker-server
   "Start a slacker server to expose all public functions under
-  a namespace. If you have multiple namespace to expose, it's better
-  to combine them into one.
+  a namespace. If you have multiple namespace to expose, put
+  `exposed-ns` as a vector.
   Options:
   * interceptors add server interceptors
   * http http port for slacker http transport
-  * cluster publish server information to zookeeper
   * acl the acl rules defined by defrules"
   [exposed-ns port
-   & {:keys [http interceptors cluster acl]
+   & {:keys [http interceptors acl]
       :or {http nil
            interceptors {:before identity :after identity}
-           cluster nil
-           acl nil}}]
+           acl nil}
+      :as options}]
   (let [exposed-ns (if (coll? exposed-ns) exposed-ns [exposed-ns])
         funcs (apply merge (map ns-funcs exposed-ns))
         handler (create-server-handler funcs interceptors acl *debug*)]
+    
     (when *debug* (doseq [f (keys funcs)] (println f)))
-    (start-tcp-server handler {:port port :frame slacker-base-codec})
+    
+    (tcp-server port handler 
+                :codec slacker-base-codec
+                :threaded? true
+                :ordered? false
+                :tcp-options tcp-options)
     (when-not (nil? http)
-      (start-http-server (wrap-ring-handler
-                          (wrap-http-server-handler
-                           (build-server-pipeline funcs interceptors)))
-                         {:port http}))
-    (when-not (nil? cluster)
-      (with-zk (zk/connect (:zk cluster))
-        (publish-cluster cluster port
-                         (map ns-name exposed-ns) funcs)))))
+      (http-server http (apply slacker-ring-app exposed-ns options)
+                   :debug *debug*))))
 
 

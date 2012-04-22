@@ -1,6 +1,6 @@
 (ns slacker.interceptors.slowwatchdog
   (:use [slacker.interceptor])
-  (:require [clojure.contrib.logging :as log]))
+  (:require [clojure.tools.logging :as log]))
 
 (definterceptor+
   ^{:doc "set threshold in ms the interceptor will log slow

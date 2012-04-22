@@ -4,62 +4,16 @@
 
 **"Superman is a slacker."**
 
-slacker is a simple RPC framework for Clojure based on
-[aleph](https://github.com/ztellman/aleph) and
-[carbonite](https://github.com/sunng87/carbonite/). I forked carbonite
-because slacker requires it to work on clojure 1.2.
-
-slacker is growing.
+slacker is a simple RPC framework designed for Clojure and created by clojure.
 
 ## Features
 
 * Fast serialization based on Kryo (Text based serialization is also supported)
 * Security without additional policies
 * Transparent and non-invasive API
-* Connection pool
 * Extensible server with interceptor framework
-* Cluster with Zookeeper
+* Cluster with Zookeeper (moved to [slacker-cluster](https://github.com/sunng87/slacker-cluster))
 * Clean code
-
-### Slacker VS. Remote Eval
-
-Before slacker, the clojure world uses a *remote eval* approach for
-remoting ([nREPL](https://github.com/clojure/tools.nrepl),
-[portal](https://github.com/flatland/portal)).  Comparing to remote
-eval, RPC (especially slacker) has some pros and cons:
-
-#### pros
-
-* slacker uses direct function call, which is much faster than eval
-  (about *100x*)
-* with slacker, only selected functions are exposed, instead of the
-  whole java environment when using eval. So it's much securer and
-  generally you don't need a sandbox (like clojail) for slacker.
-
-#### cons
-
-* Eval approach provides full features of clojure, you can use
-  high-order functions and lazy arguments. Due to the limitation of
-  serialization, slacker has its difficulty to support these features.
-
-### Slacker VS. Thrift
-
-Since clojure is also hosted on Java virtual machine, you can use
-existed Java RPC framework in clojure, like thrift. 
-
-#### pros
-
-* No schema needed
-* No additional code generation
-* Transparent, non-invasive API
-* Pure clojure way
-* Highly customizable (interceptor framework)
-
-#### cons
-
-* Currently, there is no cross language support. Slacker is only for
-  clojure. I am planning to add nodejs support via clojurescript. 
-* Potential performance improvements.
 
 ## Example
 
@@ -70,7 +24,7 @@ can run the examples by `lein run :server` and `lein run :client` .
 
 ### Leiningen
 
-    :dependencies [[slacker "0.7.0"]]
+    :dependencies [[slacker "0.8.0-SNAPSHOT"]]
 
 ### Getting Started
 
@@ -94,7 +48,9 @@ To expose `slapi`, use:
 (start-slacker-server (the-ns 'slapi) 2104)
 ```
 
-On the client side, define a facade for the remote function:
+On the client side, define facades for the remote functions.
+The `use-remote` function is convenience for importing all functions
+under a remote namespace. 
 
 ``` clojure
 (use 'slacker.client)
@@ -103,7 +59,17 @@ On the client side, define a facade for the remote function:
 (timestamp)
 ```
 
-By checking the metadata of `timestamp`, you can find useful
+You can also use `defn-remote` to create facade one by one. Remember
+to add remote namespace here as facade name, `slapi/timestamp`,
+eg. Otherwise, the name of current namespace will be treated as remote
+namespace. 
+
+``` clojure
+(defn-remote sc slapi/timestamp)
+(timestamp)
+```
+
+By checking the metadata of `timestamp`, you can get some useful
 information:
 
 ``` clojure
@@ -121,29 +87,10 @@ slacker.client.common.SlackerClient@575752>, :slacker-remote-ns
 (close-slackerc sc)
 ```
 
-### Client Connection Pool
-
-Slacker also supports connection pool in client API, which enables
-high concurrent communication. 
-
-To create a connection pool, use `slackerc-pool` instead of
-`slackerc`.
-
-You can configure the pool with following options:
-
-* `:max-active`
-* `:exhausted-action`
-* `:max-wait`
-* `:min-idle`
-
-For the meaning of each option, check the
-[javadoc](http://commons.apache.org/pool/apidocs/org/apache/commons/pool/impl/GenericObjectPool.html)
-of commons-pool.
-
 ### Options in defn-remote
 
-You are specify the remote function name when the name is occupied in
-current namespace
+You can specify the remote function name when there are conflicts in
+current namespace.
 
 ``` clojure
 (defn-remote sc remote-time
@@ -156,14 +103,14 @@ asynchronous which returns a *promise* when you call it. You should
 deref it by yourself to get the return value.
 
 ``` clojure
-(defn-remote timestamp :async true :remote-ns "slapi")
+(defn-remote sc slapi/timestamp :async true)
 @(timestamp)
 ```
 
 You can also assign a callback for an async facade.
 
 ``` clojure
-(defn-remote timestamp :remote-ns "slapi" :callback #(println %))
+(defn-remote sc slapi/timestamp :callback #(println %))
 (timestamp)
 ```
 
@@ -195,21 +142,6 @@ Configure slacker client to use JSON:
 ``` clojure
 (def sc (slackerc "localhost:2104" :content-type :json))
 ```
-
-Turn on the debug option, you will see all the JSON data transported
-between client and server:
-
-``` clojure
-(use 'slacker.common)
-(binding [slacker.common/*debug* true]
-  (inc-m 100))
-```
-
-shows:
-
-        dbg:: [100]
-        dbg:: 700
-        700
 
 One thing you should note is the representation of keyword in
 JSON. Keywords and strings are both encoded as JSON string in
@@ -269,87 +201,40 @@ $ curl -d "[5]" http://localhost:4104/slapi/rand-ints.clj
 Note that you can only use `json` or `clj` as format. Because HTTP is
 a test based protocol, so `carb` won't be supported.
 
+### Slacker as a Ring App
+
+You can also use slacker as a ring app with
+`slacker.server/slacker-ring-app`. The ring app is fully compatible
+with ring spec. So it could be deployed on any ring adapter.
+
+``` clojure
+(use 'slacker.server)
+(use 'ring.adapter.jetty)
+
+(run-jetty (slacker-ring-app (the-ns 'slapi))  {:port 8080})
+```
+
+The url pattern of this ring app is same as slacker's built-in http
+module. 
+
 ### Access Control List
 
 Slacker 0.7 supports IP based access control list (ACL). Consult [wiki
 page](https://github.com/sunng87/slacker/wiki/AccessControlList) for the ACL rule DSL.
 
-## Slacker Cluster
-
-Leveraging on ZooKeeper, slacker now has a solution for high
-availability and load balancing. You can have several slacker servers
-in a cluster serving functions. And the clustered slacker client will
-randomly select one of these server to invoke. Once a server is added
-to or removed from the cluster, the client will automatically
-establish connection to it. 
-
-To create such a slacker cluster, make sure you have a zookeeper
-instance in your network.
-
-### Clustered Slacker Server
-
-On the server side, add an option `:cluster`. Some information is    
-required:
-
-``` clojure
-(use 'slacker.server)
-(start-slacker-server ...
-                      :cluster {:name "cluster-name"
-                                :zk "127.0.0.1:2181"})
-```
-
-Cluster information here:
-
-* `:name` the cluster name (*required*)
-* `:zk` zookeeper server address (*required*)
-* `:node` server IP (*optional*, if you don't provide the server IP
-  here, slacker will try to detect server IP by connecting to zk,
-  on which we assume that your slacker server are bound on the same
-  network with zookeeper)
-
-### Clustered Slacker Client
-
-On the client side, you have to specify the zookeeper address instead
-of a particular slacker server. Use the `clustered-slackerc`:
-
-``` clojure
-(use 'slacker.client.cluster)
-(def sc (clustered-slackerc "cluster-name" "127.0.0.1:2181"))
-(use-remote 'sc 'slapi)
-```
-
-You should make sure to use the `use-remote` and `defn-remote` from
-`slacker.client.cluster` instead of `slacker.client`.
-
-### Examples
-
-There is a cluster example in the source code. To run the server,
-start a zookeeper on your machine (127.0.0.1:2181)
-
-Start server instance:
-
-    lein run :cluster-server 2104
-
-Open a new terminal, start another server instance:
-
-    lein run :cluster-server 2105
-
-On another terminal, you can run the example client:
-
-    lein run :cluster-client
-
-By checking logs, you can trace the calls on each server instance.
-
 ## Performance
 
-Some performance tests was executed while I'm developing slacker.
+To test performance, just start an example server with `lein run :server`.
 
-A simple test client is [here](https://gist.github.com/1449860). With
-the client, as tested on HP DL360 (dual 6 core X5650, 2.66GHz), a
-single client (50 connections, 50 threads) performed 500000
-**synchronous** calls in 48862 msecs (TPS is about **10232**).
+Then run the performance test script: 
+`lein exec scripts/performance-test.clj 200000 50`. This will run
+200,000 calls with 50 threads.
 
-Some formal performance benchmark is coming soon.
+Tested on my working desktop (DELL optiplex 760, Intel(R) Core(TM)2
+Duo CPU E7400 @ 2.80GHz, 8G memory), without any special JVM optimization.
+**200,000** calls with **50** threads is completed in **21923.806054
+msecs**, which means slacker could handle more than **9000** calls per
+second on this machine.
 
 ## Contributors
 
@@ -357,6 +242,6 @@ Some formal performance benchmark is coming soon.
 
 ## License
 
-Copyright (C) 2011 Sun Ning
+Copyright (C) 2011-2012 Sun Ning
 
 Distributed under the Eclipse Public License, the same as Clojure.
