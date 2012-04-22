@@ -1,4 +1,4 @@
-(defproject slacker "0.8.0-SNAPSHOT"
+(defproject slacker "0.8.0"
   :description "Transparent, non-invasive RPC by clojure and for clojure"
   :dependencies [[org.clojure/clojure "1.3.0"]
                  [link "0.3.1"]
