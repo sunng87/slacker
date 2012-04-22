@@ -4,10 +4,11 @@
 
 **"Superman is a slacker."**
 
-slacker is a simple RPC framework designed for Clojure and created by clojure.
+slacker is a simple RPC framework designed for Clojure and created by Clojure.
 
 ## Features
 
+* Fast network infrastucture
 * Fast serialization based on Kryo (Text based serialization is also supported)
 * Security without additional policies
 * Transparent and non-invasive API
@@ -15,9 +16,9 @@ slacker is a simple RPC framework designed for Clojure and created by clojure.
 * Cluster with Zookeeper (moved to [slacker-cluster](https://github.com/sunng87/slacker-cluster))
 * Clean code
 
-## Example
+## Examples
 
-An pair of example server/client can be found under "examples", you
+A pair of example server/client can be found under "examples", you
 can run the examples by `lein run :server` and `lein run :client` . 
 
 ## Usage
