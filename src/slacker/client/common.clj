@@ -104,7 +104,7 @@
                        ;; sync request need to decode ths message in 
                        ;; caller thread
                        (deliver (:promise callback) msg-body))))))
-   (on-error [^Exception exc]
+   (on-error [_ ^Exception exc]
              (if (instance? ClosedChannelException exc)
                ;; remove all pending requests
                (reset! rmap {})
