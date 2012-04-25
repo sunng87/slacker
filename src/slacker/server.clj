@@ -137,7 +137,7 @@
                                  inspect-handler
                                  acl)]
                      (send ch result))))
-     (on-error [^Exception e]
+     (on-error [ch ^Exception e]
                (log/error e "Unexpected error in event loop")))))
 
 
