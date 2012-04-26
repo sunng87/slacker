@@ -6,6 +6,7 @@
   (:use [link.tcp])
   (:use [slingshot.slingshot :only [throw+]])
   (:require [clojure.tools.logging :as log])
+  (:import [java.net ConnectException])
   (:import [java.nio.channels ClosedChannelException]))
 
 (defn- handle-valid-response [response]
@@ -105,9 +106,13 @@
                        ;; caller thread
                        (deliver (:promise callback) msg-body))))))
    (on-error [_ ^Exception exc]
-             (if (instance? ClosedChannelException exc)
+             (if (or
+                  (instance? ConnectException exc)
+                  (instance? ClosedChannelException exc))
                ;; remove all pending requests
-               (reset! rmap {})
+               (do
+                 (log/warn "Failed to connect to server or connection lost.")
+                 (reset! rmap {}))
                (log/error exc "Unexpected error in event loop")))))
 
 (def tcp-options
