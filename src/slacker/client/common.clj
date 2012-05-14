@@ -126,8 +126,7 @@
         handler (create-link-handler rmap)
         client (tcp-client host port handler
                            :codec slacker-base-codec
-                           :tcp-options tcp-options
-                           :auto-reconnect true)]
+                           :tcp-options tcp-options)]
     (SlackerClient. client rmap (atom 0) content-type)))
 
 (defn invoke-slacker
