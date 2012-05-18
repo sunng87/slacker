@@ -1,5 +1,4 @@
 (use 'slacker.client)
-(use 'criterium.core)
 (import '[java.util.concurrent Executors CountDownLatch])
 
 (def total-calls (Integer/valueOf (second *command-line-args*)))
@@ -28,8 +27,7 @@
     (.await cdl)))
 
 (if (= :time report-func)
-  (time (run-all))
-  (bench (run-all) :verbose))
+  (time (run-all)))
 
 (System/exit 0)
 
