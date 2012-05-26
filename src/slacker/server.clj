@@ -138,7 +138,8 @@
                                  acl)]
                      (send ch result))))
      (on-error [ch ^Exception e]
-               (log/error e "Unexpected error in event loop")))))
+               (log/error e "Unexpected error in event loop")
+               (close ch)))))
 
 
 (defn ns-funcs [n]
