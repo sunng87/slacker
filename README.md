@@ -19,13 +19,14 @@ slacker is a simple RPC framework designed for Clojure and created by Clojure.
 ## Examples
 
 A pair of example server/client can be found under "examples", you
-can run the examples by `lein run :server` and `lein run :client` . 
+can run the examples by `lein2 run -m slacker.example.server` and
+`lein2 run -m slacker.example.client`.
 
 ## Usage
 
 ### Leiningen
 
-    :dependencies [[slacker "0.8.2"]]
+    :dependencies [[slacker "0.8.3-SNAPSHOT"]]
 
 ### Getting Started
 
@@ -225,10 +226,11 @@ page](https://github.com/sunng87/slacker/wiki/AccessControlList) for the ACL rul
 
 ## Performance
 
-To test performance, just start an example server with `lein run :server`.
+To test performance, just start an example server with `lein2 run -m
+slacker.example.server`. 
 
 Then run the performance test script: 
-`lein exec scripts/performance-test.clj 200000 50`. This will run
+`lein2 exec -p scripts/performance-test.clj 200000 50`. This will run
 200,000 calls with 50 threads.
 
 Tested on my working desktop (DELL optiplex 760, Intel(R) Core(TM)2

@@ -4,3 +4,4 @@ pom.xml
 /doc/
 /classes/
 .*
+target
