@@ -121,13 +121,17 @@
    "readWriteFair" true,
    "connectTimeoutMillis" 3000})
 
+(defonce request-map (atom {}));; shared between multiple connections
+(defonce transaction-id-counter (atom 0))
+(defonce slacker-client-factory
+  (let [handler (create-link-handler request-map)]
+    (tcp-client-factory handler
+                        :codec slacker-base-codec
+                        :tcp-options tcp-options)))
+
 (defn create-client [host port content-type]
-  (let [rmap (atom  {})
-        handler (create-link-handler rmap)
-        client (tcp-client host port handler
-                           :codec slacker-base-codec
-                           :tcp-options tcp-options)]
-    (SlackerClient. client rmap (atom 0) content-type)))
+  (let [client (tcp-client slacker-client-factory host port)]
+    (SlackerClient. client request-map transaction-id-counter content-type)))
 
 (defn invoke-slacker
   "Invoke remote function with given slacker connection.
