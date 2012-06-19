@@ -26,7 +26,7 @@ can run the examples by `lein2 run -m slacker.example.server` and
 
 ### Leiningen
 
-    :dependencies [[slacker "0.8.3-SNAPSHOT"]]
+    :dependencies [[slacker "0.8.3"]]
 
 ### Getting Started
 
