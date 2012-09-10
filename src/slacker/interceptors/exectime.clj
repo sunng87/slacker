@@ -5,8 +5,8 @@
             MBeanAttributeInfo Attribute AttributeList
             MBeanOperationInfo]))
 
-(def time-data (atom {}))
-(def ^{:private true} bound 50)
+(def time-data (agent {} :error-mode :continue))
+(def ^{:private true :const true} bound 50)
 
 (defn enqueue-time-data [m k v]
   (update-in m [k]
@@ -28,7 +28,7 @@
              (let [fname (:fname req)
                    call-time (- (System/currentTimeMillis)
                                 (:start-time req))]
-               (swap! time-data enqueue-time-data fname call-time)))
+               (send time-data enqueue-time-data fname call-time)))
            req))
 
 (def ^{:private true} stats-bean
