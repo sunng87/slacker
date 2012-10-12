@@ -49,11 +49,14 @@
   (inspect [this cmd args])
   (close [this]))
 
+(defn- next-trans-id [trans-id-gen]
+  (swap! trans-id-gen unchecked-inc))
+
 (deftype SlackerClient [conn rmap trans-id-gen content-type]
   SlackerClientProtocol
   (sync-call-remote [this ns-name func-name params]
     (let [fname (str ns-name "/" func-name)
-          tid (swap! trans-id-gen inc)
+          tid (next-trans-id trans-id-gen)
           request (make-request tid content-type fname params)
           prms (promise)]
       (swap! rmap assoc tid {:promise prms})
@@ -66,14 +69,14 @@
           (throw+ {:error :timeout})))))
   (async-call-remote [this ns-name func-name params cb]
     (let [fname (str ns-name "/" func-name)
-          tid (swap! trans-id-gen inc)
+          tid (next-trans-id trans-id-gen)
           request (make-request tid content-type fname params)
           prms (promise)]
       (swap! rmap assoc tid {:promise prms :callback cb :async? true})
       (send conn request)
       prms))
   (inspect [this cmd args]
-    (let [tid (swap! trans-id-gen inc)
+    (let [tid (next-trans-id trans-id-gen)
           request (make-inspect-request tid cmd args)
           prms (promise)]
       (swap! rmap assoc tid {:promise prms :type :inspect})
