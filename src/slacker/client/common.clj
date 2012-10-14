@@ -57,7 +57,9 @@
           request (make-request tid content-type fname params)
           prms (promise)]
       (swap! rmap assoc tid {:promise prms})
-      (send conn request)
+      (if (link.core/valid? conn)
+        (send conn request)
+        (log/warn "sync-call-remote on invalid conn: " conn))
       (deref prms *timeout* nil)
       (if (realized? prms)
         (handle-response @prms)
@@ -70,14 +72,18 @@
           request (make-request tid content-type fname params)
           prms (promise)]
       (swap! rmap assoc tid {:promise prms :callback cb :async? true})
-      (send conn request)
+      (if (link.core/valid? conn)
+        (send conn request)
+        (log/warn "async-call-remote on invalid conn: " conn))
       prms))
   (inspect [this cmd args]
     (let [tid (swap! trans-id-gen inc)
           request (make-inspect-request tid cmd args)
           prms (promise)]
       (swap! rmap assoc tid {:promise prms :type :inspect})
-      (send conn request)
+      (if (link.core/valid? conn)
+        (send conn request)
+        (log/warn "inspect on invalid conn: " conn))
       (deref prms *timeout* nil)
       (if (realized? prms)
         (parse-inspect-response @prms))))
