@@ -49,44 +49,38 @@
   (inspect [this cmd args])
   (close [this]))
 
-(deftype SlackerClient [conn rmap trans-id-gen content-type ob-init ob-max]
+(deftype SlackerClient [conn rmap trans-id-gen content-type]
   SlackerClientProtocol
   (sync-call-remote [this ns-name func-name params]
-    (binding [*ob-init* ob-init
-              *ob-max* ob-max]
-      (let [fname (str ns-name "/" func-name)
-            tid (swap! trans-id-gen inc)
-            request (make-request tid content-type fname params)
-            prms (promise)]
-        (swap! rmap assoc tid {:promise prms})
-        (send conn request)
-        (deref prms *timeout* nil)
-        (if (realized? prms)
-          (handle-response @prms)
-          (do
-            (swap! rmap dissoc tid)
-            (throw+ {:error :timeout}))))))
+    (let [fname (str ns-name "/" func-name)
+          tid (swap! trans-id-gen inc)
+          request (make-request tid content-type fname params)
+          prms (promise)]
+      (swap! rmap assoc tid {:promise prms})
+      (send conn request)
+      (deref prms *timeout* nil)
+      (if (realized? prms)
+        (handle-response @prms)
+        (do
+          (swap! rmap dissoc tid)
+          (throw+ {:error :timeout})))))
   (async-call-remote [this ns-name func-name params cb]
-    (binding [*ob-init* ob-init
-              *ob-max* ob-max]
-      (let [fname (str ns-name "/" func-name)
-            tid (swap! trans-id-gen inc)
-            request (make-request tid content-type fname params)
-            prms (promise)]
-        (swap! rmap assoc tid {:promise prms :callback cb :async? true})
-        (send conn request)
-        prms)))
+    (let [fname (str ns-name "/" func-name)
+          tid (swap! trans-id-gen inc)
+          request (make-request tid content-type fname params)
+          prms (promise)]
+      (swap! rmap assoc tid {:promise prms :callback cb :async? true})
+      (send conn request)
+      prms))
   (inspect [this cmd args]
-    (binding [*ob-init* ob-init
-              *ob-max* ob-max]
-      (let [tid (swap! trans-id-gen inc)
-            request (make-inspect-request tid cmd args)
-            prms (promise)]
-        (swap! rmap assoc tid {:promise prms :type :inspect})
-        (send conn request)
-        (deref prms *timeout* nil)
-        (if (realized? prms)
-          (parse-inspect-response @prms)))))
+    (let [tid (swap! trans-id-gen inc)
+          request (make-inspect-request tid cmd args)
+          prms (promise)]
+      (swap! rmap assoc tid {:promise prms :type :inspect})
+      (send conn request)
+      (deref prms *timeout* nil)
+      (if (realized? prms)
+        (parse-inspect-response @prms))))
   (close [this]
     (link.core/close conn)))
 
@@ -133,8 +127,7 @@
         client (tcp-client host port handler
                            :codec slacker-base-codec
                            :tcp-options tcp-options)]
-    ; Passing in currently bound values of *ob-init*, *ob-max*
-    (SlackerClient. client rmap (atom 0) content-type *ob-init* *ob-max*)))
+    (SlackerClient. client rmap (atom 0) content-type)))
 
 (defn invoke-slacker
   "Invoke remote function with given slacker connection.
