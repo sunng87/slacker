@@ -21,7 +21,7 @@ slacker is a simple RPC framework designed for Clojure and created by Clojure.
 A pair of example server/client can be found under "examples", you
 can run the examples by `lein2 run-example-server` and
 `lein2 run-example-client`. The example client will print out various 
-outputs from the server as well as a RuntimeException: "Excepted exception."
+outputs from the server as well as a RuntimeException: "Expected exception."
 This exception is part of the example - not a genuine error in the slacker 
 source code.
 
