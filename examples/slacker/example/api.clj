@@ -18,7 +18,7 @@
 (defn make-error
   "test runtime exception"
   []
-  (throw (RuntimeException. "Excepted exception.")))
+  (throw (RuntimeException. "Expected exception.")))
 
 (defn echo [x]
   x)
