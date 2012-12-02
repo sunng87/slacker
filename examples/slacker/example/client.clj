@@ -32,4 +32,4 @@
   (close-slackerc conn)
   (close-slackerc conn2)
 
-  (System/exit 0))
+  #_(System/exit 0))
