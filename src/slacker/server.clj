@@ -155,7 +155,8 @@
    "child.keepAlive" true,
    "child.connectTimeoutMillis" 100,
    "tcpNoDelay" true,
-   "readWriteFair" true,
+   "writeBufferHighWaterMark" 0xFFFF ; 65kB
+   "writeBufferLowWaterMark" 0xFFF ; 4kB
    "child.tcpNoDelay" true})
 
 (defn slacker-ring-app
