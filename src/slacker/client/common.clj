@@ -118,15 +118,17 @@
 (def tcp-options
   {"tcpNoDelay" true,
    "reuseAddress" true,
-   "readWriteFair" true,
+   "writeBufferHighWaterMark" 0xFFFF ; 65kB
+   "writeBufferLowWaterMark" 0xFFF ; 4kB
    "connectTimeoutMillis" 3000})
 
-(defn create-client [host port content-type]
+(defn create-client [host port content-type ssl-context]
   (let [rmap (atom  {})
         handler (create-link-handler rmap)
         client (tcp-client host port handler
                            :codec slacker-base-codec
-                           :tcp-options tcp-options)]
+                           :tcp-options tcp-options
+                           :ssl-context ssl-context)]
     (SlackerClient. client rmap (atom 0) content-type)))
 
 (defn invoke-slacker
