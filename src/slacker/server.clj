@@ -187,12 +187,14 @@
   Options:
   * interceptors add server interceptors
   * http http port for slacker http transport
-  * acl the acl rules defined by defrules"
+  * acl the acl rules defined by defrules
+  * ssl-context the SSLContext object for enabling tls support"
   [exposed-ns port
-   & {:keys [http interceptors acl]
+   & {:keys [http interceptors acl ssl-context]
       :or {http nil
            interceptors {:before identity :after identity}
-           acl nil}
+           acl nil
+           ssl-context nil}
       :as options}]
   (let [exposed-ns (if (coll? exposed-ns) exposed-ns [exposed-ns])
         funcs (apply merge (map ns-funcs exposed-ns))
@@ -204,7 +206,8 @@
                 :codec slacker-base-codec
                 :threaded? true
                 :ordered? false
-                :tcp-options tcp-options)
+                :tcp-options tcp-options
+                :ssl-context ssl-context)
     (when-not (nil? http)
       (http-server http (apply slacker-ring-app exposed-ns options)))))
 
