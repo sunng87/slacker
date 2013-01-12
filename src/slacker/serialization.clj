@@ -36,9 +36,8 @@
   ([_ data] (serialize :carb data :buffer))
   ([_ data ot]
      (if (= ot :bytes)
-       (carb/write-buffer @carb-registry data)
+       (carb/write-buffer @carb-registry data *ob-init* *ob-max*)
        (ByteBuffer/wrap (serialize :carb data :bytes)))))
-
 
 (defmethod deserialize :json
   ([_ data] (deserialize :json data :buffer))
@@ -103,7 +102,7 @@
   ([dct data ot]
      (let [ct (keyword (subs (name dct) 8))
            in-bytes (case ot
-                      :buffer (bytebuffer-bytes data) 
+                      :buffer (bytebuffer-bytes data)
                       :bytes data)
            inflater (InflaterInputStream.
                      (ByteArrayInputStream. in-bytes))

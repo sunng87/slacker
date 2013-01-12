@@ -112,31 +112,30 @@
   (cond
    (not= version (first req))
    (protocol-mismatch-packet 0)
-   
+
    ;; acl enabled
    (and (not (nil? acl))
         (not (authorize client-info acl)))
    (acl-reject-packet (second req))
-   
+
    ;; handle request
 
    :else (-handle-request req server-pipeline
                           client-info inspect-handler)))
 
-(defn- create-server-handler [funcs interceptors acl debug]
+(defn- create-server-handler [funcs interceptors acl]
   (let [server-pipeline (build-server-pipeline funcs interceptors)
         inspect-handler (build-inspect-handler funcs)]
     (create-handler
      (on-message [ch data addr]
-                 (binding [*debug* debug]
-                   (let [client-info {:remote-addr addr}
-                         result (handle-request
-                                 server-pipeline
-                                 data
-                                 client-info
-                                 inspect-handler
-                                 acl)]
-                     (send ch result))))
+                 (let [client-info {:remote-addr addr}
+                       result (handle-request
+                               server-pipeline
+                               data
+                               client-info
+                               inspect-handler
+                               acl)]
+                   (send ch result)))
      (on-error [ch ^Exception e]
                (log/error e "Unexpected error in event loop")
                (close ch)))))
@@ -196,8 +195,8 @@
       :as options}]
   (let [exposed-ns (if (coll? exposed-ns) exposed-ns [exposed-ns])
         funcs (apply merge (map ns-funcs exposed-ns))
-        handler (create-server-handler funcs interceptors acl *debug*)]
-    
+        handler (create-server-handler funcs interceptors acl)]
+
     (when *debug* (doseq [f (keys funcs)] (println f)))
     
     (tcp-server port handler 
@@ -206,7 +205,6 @@
                 :ordered? false
                 :tcp-options tcp-options)
     (when-not (nil? http)
-      (http-server http (apply slacker-ring-app exposed-ns options)
-                   :debug *debug*))))
+      (http-server http (apply slacker-ring-app exposed-ns options)))))
 
 
