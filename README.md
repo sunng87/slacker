@@ -245,6 +245,7 @@ second on this machine.
 ## Contributors
 
 * [lbt05](https://github.com/lbt05)
+* [johnchapin](https://github.com/johnchapin)
 
 ## License
 
