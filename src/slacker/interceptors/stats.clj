@@ -5,13 +5,13 @@
             MBeanAttributeInfo Attribute AttributeList
             MBeanOperationInfo]))
 
-(def stats-data (atom {}))
+(def stats-data (agent {} :error-mode :continue))
 
 (defn assoc-with-default [m k]
   (update-in m [k] #(if (nil? %) 1 (inc %))))
 
 (defn reset-stats []
-  (reset! stats-data {})
+  (send stats-data (constantly {}))
   nil)
 
 (definterceptor
@@ -20,7 +20,7 @@
   :before (fn [req]
             (when (nil? (:code req))
               (let [fname (:fname req)]
-                (swap! stats-data assoc-with-default fname)))
+                (send stats-data assoc-with-default fname)))
             req))
 
 (defmulti jmx-invoke (fn [a _ _ ] a))

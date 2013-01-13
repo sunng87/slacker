@@ -49,11 +49,14 @@
   (inspect [this cmd args])
   (close [this]))
 
+(defn- next-trans-id [trans-id-gen]
+  (swap! trans-id-gen unchecked-inc))
+
 (deftype SlackerClient [conn rmap trans-id-gen content-type]
   SlackerClientProtocol
   (sync-call-remote [this ns-name func-name params]
     (let [fname (str ns-name "/" func-name)
-          tid (swap! trans-id-gen inc)
+          tid (next-trans-id trans-id-gen)
           request (make-request tid content-type fname params)
           prms (promise)]
       (swap! rmap assoc tid {:promise prms})
@@ -66,14 +69,14 @@
           (throw+ {:error :timeout})))))
   (async-call-remote [this ns-name func-name params cb]
     (let [fname (str ns-name "/" func-name)
-          tid (swap! trans-id-gen inc)
+          tid (next-trans-id trans-id-gen)
           request (make-request tid content-type fname params)
           prms (promise)]
       (swap! rmap assoc tid {:promise prms :callback cb :async? true})
       (send conn request)
       prms))
   (inspect [this cmd args]
-    (let [tid (swap! trans-id-gen inc)
+    (let [tid (next-trans-id trans-id-gen)
           request (make-inspect-request tid cmd args)
           prms (promise)]
       (swap! rmap assoc tid {:promise prms :type :inspect})
@@ -121,13 +124,17 @@
    "readWriteFair" true,
    "connectTimeoutMillis" 3000})
 
+(defonce request-map (atom {}));; shared between multiple connections
+(defonce transaction-id-counter (atom 0))
+(defonce slacker-client-factory
+  (let [handler (create-link-handler request-map)]
+    (tcp-client-factory handler
+                        :codec slacker-base-codec
+                        :tcp-options tcp-options)))
+
 (defn create-client [host port content-type]
-  (let [rmap (atom  {})
-        handler (create-link-handler rmap)
-        client (tcp-client host port handler
-                           :codec slacker-base-codec
-                           :tcp-options tcp-options)]
-    (SlackerClient. client rmap (atom 0) content-type)))
+  (let [client (tcp-client slacker-client-factory host port)]
+    (SlackerClient. client request-map transaction-id-counter content-type)))
 
 (defn invoke-slacker
   "Invoke remote function with given slacker connection.
