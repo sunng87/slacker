@@ -29,7 +29,7 @@ source code.
 
 ### Leiningen
 
-    :dependencies [[slacker "0.8.5"]]
+    :dependencies [[slacker "0.9.0"]]
 
 ### Getting Started
 
