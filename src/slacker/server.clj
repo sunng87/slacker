@@ -211,6 +211,7 @@
     (when-not (nil? http)
       (http-server http (apply slacker-ring-app exposed-ns options)))))
 
-(defn stop-slacker-server [{bootstrap :bootstrap channel :channel}]
-  (.unbind channel)
-  (.releaseExternalResources bootstrap))
+(defn stop-slacker-server [server]
+  "Takes a link.core.Server object that is returned when the server is started,
+   then stops the server"
+  (stop-server server))
