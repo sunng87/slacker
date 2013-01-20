@@ -6,11 +6,12 @@
 (defn slackerc
   "Create connection to a slacker server."
   [addr
-   & {:keys [content-type]
-      :or {content-type :carb}
+   & {:keys [content-type ssl-context]
+      :or {content-type :carb
+           ssl-context nil}
       :as _}]
   (let [[host port] (host-port addr)]
-    (create-client host port content-type)))
+    (create-client host port content-type ssl-context)))
 
 
 (defn close-slackerc [client]

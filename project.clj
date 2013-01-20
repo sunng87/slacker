@@ -1,11 +1,11 @@
-(defproject slacker "0.9.0"
+(defproject slacker "0.10.0-SNAPSHOT"
   :description "Transparent, non-invasive RPC by clojure and for clojure"
   :url "http://github.com/sunng87/slacker"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :min-lein-version "2.0.0"
   :dependencies [[org.clojure/clojure "1.4.0"]
-                 [link "0.4.0"]
+                 [link "0.5.0-SNAPSHOT"]
                  [info.sunng/carbonite "0.2.3"]
                  [cheshire "4.0.3"]
                  [slingshot "0.10.3"]

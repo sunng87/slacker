@@ -118,22 +118,25 @@
                  (reset! rmap {}))
                (log/error exc "Unexpected error in event loop")))))
 
-(def tcp-options
+(def ^:dynamic *tcp-options*
   {"tcpNoDelay" true,
    "reuseAddress" true,
-   "readWriteFair" true,
+   "writeBufferHighWaterMark" 0xFFFF ; 65kB
+   "writeBufferLowWaterMark" 0xFFF ; 4kB
    "connectTimeoutMillis" 3000})
 
 (defonce request-map (atom {}));; shared between multiple connections
 (defonce transaction-id-counter (atom 0))
 (defonce slacker-client-factory
-  (let [handler (create-link-handler request-map)]
-    (tcp-client-factory handler
-                        :codec slacker-base-codec
-                        :tcp-options tcp-options)))
+  (tcp-client-factory))
 
-(defn create-client [host port content-type]
-  (let [client (tcp-client slacker-client-factory host port)]
+(defn create-client [host port content-type ssl-context]
+  (let [handler (create-link-handler request-map)
+        client (tcp-client slacker-client-factory
+                           host port handler
+                           :codec slacker-base-codec
+                           :tcp-options *tcp-options*
+                           :ssl-context ssl-context)]
     (SlackerClient. client request-map transaction-id-counter content-type)))
 
 (defn invoke-slacker
