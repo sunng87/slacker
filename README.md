@@ -103,12 +103,12 @@ current namespace.
   :remote-name "timestamp")
 ```
 
-If you add an `:async` flag to `defn-remote`, then the facade will be
+If you add an `:async?` flag to `defn-remote`, then the facade will be
 asynchronous which returns a *promise* when you call it. You should
 deref it by yourself to get the return value.
 
 ``` clojure
-(defn-remote sc slapi/timestamp :async true)
+(defn-remote sc slapi/timestamp :async? true)
 @(timestamp)
 ```
 
