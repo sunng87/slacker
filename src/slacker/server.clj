@@ -67,11 +67,13 @@
 (defn build-server-pipeline [funcs interceptors]
   #(-> %
        (look-up-function funcs)
+       ((:pre interceptors))
        deserialize-args
        ((:before interceptors))
        do-invoke
        ((:after interceptors))
        serialize-result
+       ((:post interceptors))
        (assoc :packet-type :type-response)))
 
 ;; inspection handler
@@ -158,15 +160,21 @@
    "readWriteFair" true,
    "child.tcpNoDelay" true})
 
+(def default-interceptors
+  {:pre identity
+   :before identity
+   :after identity
+   :post identity})
+
 (defn slacker-ring-app
   "Wrap slacker as a ring app that can be deployed to any ring adaptors.
   You can also configure interceptors and acl just like `start-slacker-server`"
   [exposed-ns & {:keys [interceptors acl]
-                 :or {interceptors {:before identity :after identity}
-                      acl nil}}]
+                 :or {acl nil}}]
   (let [exposed-ns (if (coll? exposed-ns) exposed-ns [exposed-ns])
         funcs (apply merge (map ns-funcs exposed-ns))
-        server-pipeline (build-server-pipeline funcs interceptors)]
+        server-pipeline (build-server-pipeline
+                          funcs (merge default-interceptors interceptors))]
     (fn [req]
       (let [client-info (http-client-info req)
             curried-handler (fn [req] (handle-request server-pipeline
@@ -190,12 +198,12 @@
   [exposed-ns port
    & {:keys [http interceptors acl]
       :or {http nil
-           interceptors {:before identity :after identity}
            acl nil}
       :as options}]
   (let [exposed-ns (if (coll? exposed-ns) exposed-ns [exposed-ns])
         funcs (apply merge (map ns-funcs exposed-ns))
-        handler (create-server-handler funcs interceptors acl)]
+        handler (create-server-handler
+                  funcs (merge default-interceptors interceptors) acl)]
 
     (when *debug* (doseq [f (keys funcs)] (println f)))
     
