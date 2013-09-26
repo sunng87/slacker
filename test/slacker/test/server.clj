@@ -8,7 +8,7 @@
 
 (deftest test-server-pipeline
   (let [server-pipeline (build-server-pipeline
-                         funcs {:before identity :after identity})
+                         funcs {:pre identity :before identity :after identity :post identity})
         req {:content-type :carb
              :data params
              :fname "plus"}
@@ -36,7 +36,7 @@
 
 (deftest test-server-pipeline-interceptors
   (let [server-pipeline (build-server-pipeline
-                         funcs {:before identity :after interceptor})
+                         funcs {:pre identity :before identity :after interceptor :post identity})
         req {:content-type :carb
              :data params
              :fname "prod"}]
