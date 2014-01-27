@@ -28,8 +28,5 @@
   (try+
     (make-error)
     (catch [:code :exception] {:keys [error]} (println error)))
-  ;; shutdown
-  (close-slackerc conn)
-  (close-slackerc conn2)
 
-  #_(System/exit 0))
+  (close-all-slackerc))
