@@ -3,7 +3,7 @@
   (:use [slacker common serialization protocol])
   (:use [slacker.server http])
   (:use [slacker.acl.core])
-  (:use [link core tcp http])
+  (:use [link core tcp http threads])
   (:use [slingshot.slingshot :only [try+]])
   (:require [clojure.tools.logging :as log])
   (:import [java.util.concurrent Executors]))
@@ -43,7 +43,7 @@
                           :stacktrace (.getStackTrace ^Exception e)}))))
     req))
 
-(defn- serialize-result [req]    
+(defn- serialize-result [req]
   (if-not (nil? (:result req))
     (assoc req :result (serialize (:content-type req) (:result req)))
     req))
@@ -127,8 +127,8 @@
   (let [server-pipeline (build-server-pipeline funcs interceptors)
         inspect-handler (build-inspect-handler funcs)]
     (create-handler
-     (on-message [ch data addr]
-                 (let [client-info {:remote-addr addr}
+     (on-message [ch data]
+                 (let [client-info {:remote-addr (remote-addr ch)}
                        result (handle-request
                                server-pipeline
                                data
@@ -148,16 +148,15 @@
             [(str nsname "/" (name k)) v]))))
 
 (def
-  ^{:doc "Default TCP options"}
-  tcp-options
-  {"child.reuseAddress" true,
-   "reuseAddress" true,
-   "child.keepAlive" true,
-   "child.connectTimeoutMillis" 100,
-   "tcpNoDelay" true,
-   "writeBufferHighWaterMark" 0xFFFF ; 65kB
-   "writeBufferLowWaterMark" 0xFFF ; 4kB
-   "child.tcpNoDelay" true})
+  ^{:doc "Default options"}
+  server-options
+  {:child.so-reuseaddr true,
+   :so-reuseaddr true,
+   :child.so-keepalive true,
+   :tcp-nodelay true,
+   :write-buffer-high-water-mark (int 0xFFFF) ; 65kB
+   :write-buffer-low-water-mark (int 0xFFF)       ; 4kB
+   :child.tcp-nodelay true})
 
 (defn slacker-ring-app
   "Wrap slacker as a ring app that can be deployed to any ring adaptors.
@@ -190,28 +189,34 @@
   * acl the acl rules defined by defrules
   * ssl-context the SSLContext object for enabling tls support"
   [exposed-ns port
-   & {:keys [http interceptors acl ssl-context]
+   & {:keys [http interceptors acl ssl-context threads]
       :or {http nil
            interceptors {:before identity :after identity}
            acl nil
-           ssl-context nil}
+           ssl-context nil
+           threads 10}
       :as options}]
   (let [exposed-ns (if (coll? exposed-ns) exposed-ns [exposed-ns])
         funcs (apply merge (map ns-funcs exposed-ns))
-        handler (create-server-handler funcs interceptors acl)]
+        executor (new-executor threads)
+        handler (create-server-handler funcs interceptors acl)
+        handler-spec {:handler handler
+                      :executor executor}]
 
     (when *debug* (doseq [f (keys funcs)] (println f)))
-    
-    (tcp-server port handler 
-                :codec slacker-base-codec
-                :threaded? true
-                :ordered? false
-                :tcp-options tcp-options
-                :ssl-context ssl-context)
-    (when-not (nil? http)
-      (http-server http (apply slacker-ring-app exposed-ns options)))))
+
+    (let [the-tcp-server (tcp-server port handler-spec
+                                         :codec slacker-base-codec
+                                         :options server-options
+                                         :ssl-context ssl-context)
+          the-http-server (when-not (nil? http)
+                            (http-server http (apply slacker-ring-app exposed-ns options)
+                                         :executor executor
+                                         :ssl-context ssl-context))]
+      [the-tcp-server the-http-server])))
 
 (defn stop-slacker-server [server]
-  "Takes a link.core.Server object that is returned when the server is started,
-   then stops the server"
-  (stop-server server))
+  "Takes the value returned by start-slacker-server and stop both tcp and http server if any"
+  (doseq [sub-server server]
+    (when (not-empty sub-server)
+      (stop-server sub-server))))

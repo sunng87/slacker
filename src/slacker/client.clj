@@ -1,7 +1,10 @@
 (ns slacker.client
   (:use [slacker common])
   (:use [slacker.client common])
-  (:use [clojure.string :only [split]]))
+  (:use [clojure.string :only [split]])
+  (:use [link.tcp :only [stop-clients]]))
+
+(defonce slacker-client-factory (atom nil))
 
 (defn slackerc
   "Create connection to a slacker server."
@@ -10,13 +13,17 @@
       :or {content-type :carb
            ssl-context nil}
       :as _}]
-  (let [[host port] (host-port addr)]
-    (create-client host port content-type ssl-context)))
-
+  (let [factory (or @slacker-client-factory
+                    (swap! slacker-client-factory (fn [_] (create-client-factory ssl-context))))
+        [host port] (host-port addr)]
+    (create-client factory host port content-type)))
 
 (defn close-slackerc [client]
   (close client))
 
+(defn close-all-slackerc []
+  (when @slacker-client-factory
+    (stop-clients @slacker-client-factory)))
 
 (defmacro defn-remote
   "Define a facade for remote function. You have to provide the
@@ -70,4 +77,3 @@
        (dorun (map defn-remote*
                    (repeat sc-sym)
                    (filter filter-fn all-functions))))))
-
