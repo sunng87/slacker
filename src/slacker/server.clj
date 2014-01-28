@@ -210,7 +210,8 @@
                                          :options server-options
                                          :ssl-context ssl-context)
           the-http-server (when-not (nil? http)
-                            (http-server http (apply slacker-ring-app exposed-ns options)
+                            (http-server http (apply slacker-ring-app exposed-ns
+                                                     (flatten (into [] options)))
                                          :executor executor
                                          :ssl-context ssl-context))]
       [the-tcp-server the-http-server])))
