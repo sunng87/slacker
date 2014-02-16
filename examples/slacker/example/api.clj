@@ -23,6 +23,9 @@
 (defn echo [x]
   x)
 
+(defn return-nil []
+  nil)
+
 (defn long-running []
   (Thread/sleep 10000)
   true)

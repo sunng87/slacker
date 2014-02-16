@@ -91,7 +91,7 @@
   "The event handler for client"
   [rmap]
   (create-handler
-   (on-message [_ msg _]
+   (on-message [_ msg]
                (let [tid (second msg)
                      callback (get @rmap tid)]
                  (swap! rmap dissoc tid)
@@ -105,7 +105,7 @@
                            (deliver (:promise callback) result)
                            (if-let [cb (:callback callback)]
                              (cb result))))
-                       ;; sync request need to decode ths message in 
+                       ;; sync request need to decode ths message in
                        ;; caller thread
                        (deliver (:promise callback) msg-body))))))
    (on-error [_ ^Exception exc]
@@ -118,22 +118,26 @@
                  (reset! rmap {}))
                (log/error exc "Unexpected error in event loop")))))
 
-(def tcp-options
-  {"tcpNoDelay" true,
-   "reuseAddress" true,
-   "readWriteFair" true,
-   "connectTimeoutMillis" 3000})
+(def ^:dynamic *options*
+  {:tcp-nodelay true
+   :so-reuseaddr true
+   :so-keepalive true
+   :write-buffer-high-water-mark (int 0xFFFF) ; 65kB
+   :write-buffer-low-water-mark (int 0xFFF)       ; 4kB
+   :connect-timeout-millis (int 5000)})
 
 (defonce request-map (atom {}));; shared between multiple connections
 (defonce transaction-id-counter (atom 0))
-(defonce slacker-client-factory
+
+(defn create-client-factory [ssl-context]
   (let [handler (create-link-handler request-map)]
     (tcp-client-factory handler
                         :codec slacker-base-codec
-                        :tcp-options tcp-options)))
+                        :options *options*
+                        :ssl-context ssl-context)))
 
-(defn create-client [host port content-type]
-  (let [client (tcp-client slacker-client-factory host port)]
+(defn create-client [client-factory host port content-type]
+  (let [client (tcp-client client-factory host port)]
     (SlackerClient. client request-map transaction-id-counter content-type)))
 
 (defn invoke-slacker
@@ -161,4 +165,3 @@
   [connection-string]
   (let [[host port] (split connection-string #":")]
     [host (Integer/valueOf ^String port)]))
-

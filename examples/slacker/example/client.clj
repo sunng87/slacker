@@ -16,9 +16,12 @@
   :remote-ns "slacker.example.api")
 (defn-remote conn slacker.example.api/rand-ints)
 (defn-remote conn slacker.example.api/make-error)
-
+(defn-remote conn slacker.example.api/return-nil)
+#(defn-remote conn slacker.example.api/not-found)
 
 (defn -main [& args]
+  #(not-found 1 2 3)
+  (return-nil)
   (println (timestamp))
   (println (inc-m 100))
   (println (show-m))
@@ -28,8 +31,5 @@
   (try+
     (make-error)
     (catch [:code :exception] {:keys [error]} (println error)))
-  ;; shutdown
-  (close-slackerc conn)
-  (close-slackerc conn2)
 
-  (System/exit 0))
+  (close-all-slackerc))
