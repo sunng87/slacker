@@ -16,9 +16,11 @@
   :remote-ns "slacker.example.api")
 (defn-remote conn slacker.example.api/rand-ints)
 (defn-remote conn slacker.example.api/make-error)
+(defn-remote conn slacker.example.api/return-nil)
 
 
 (defn -main [& args]
+  (return-nil)
   (println (timestamp))
   (println (inc-m 100))
   (println (show-m))

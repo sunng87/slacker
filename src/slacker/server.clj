@@ -44,9 +44,7 @@
     req))
 
 (defn- serialize-result [req]
-  (if-not (nil? (:result req))
-    (assoc req :result (serialize (:content-type req) (:result req)))
-    req))
+  (assoc req :result (serialize (:content-type req) (:result req))))
 
 (defn- map-response-fields [req]
   [version (:tid req) [(:packet-type req)
