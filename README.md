@@ -20,31 +20,31 @@ slacker is a simple RPC framework designed for Clojure and created by Clojure.
 
 A pair of example server/client can be found under "examples", you
 can run the examples by `lein2 run-example-server` and
-`lein2 run-example-client`. The example client will print out various 
+`lein2 run-example-client`. The example client will print out various
 outputs from the server as well as a RuntimeException: "Expected exception."
-This exception is part of the example - not a genuine error in the slacker 
+This exception is part of the example - not a genuine error in the slacker
 source code.
 
 ## Usage
 
 ### Leiningen
 
-    :dependencies [[slacker "0.9.0"]]
+    :dependencies [[slacker "0.10.0"]]
 
 ### Getting Started
 
 Slacker will expose all your public functions under a given
-namespace. 
+namespace.
 
 ``` clojure
 (ns slapi)
-(defn timestamp 
+(defn timestamp
   "return server time in milliseconds"
   []
   (System/currentTimeMillis))
 
 ;; ...more functions
-```             
+```
 
 To expose `slapi`, use:
 
@@ -53,9 +53,11 @@ To expose `slapi`, use:
 (start-slacker-server (the-ns 'slapi) 2104)
 ```
 
+You can also add option `:threads 50` to config the size of server thread pool.
+
 On the client side, define facades for the remote functions.
 The `use-remote` function is convenience for importing all functions
-under a remote namespace. 
+under a remote namespace.
 
 ``` clojure
 (use 'slacker.client)
@@ -67,7 +69,7 @@ under a remote namespace.
 You can also use `defn-remote` to create facade one by one. Remember
 to add remote namespace here as facade name, `slapi/timestamp`,
 eg. Otherwise, the name of current namespace will be treated as remote
-namespace. 
+namespace.
 
 ``` clojure
 (defn-remote sc slapi/timestamp)
@@ -82,7 +84,7 @@ information:
 => {:slacker-remote-name "timestamp", :slacker-remote-fn true,
 :slacker-client #<SlackerClient
 slacker.client.common.SlackerClient@575752>, :slacker-remote-ns
-"slapi" :arglists ([]), :name timestamp 
+"slapi" :arglists ([]), :name timestamp
 :doc "return server time in milliseconds"}
 ```
 
@@ -168,7 +170,7 @@ To add custom functions on server, you can define custom
 interceptors before or after function called.
 
 ``` clojure
-(definterceptor logging-interceptor 
+(definterceptor logging-interceptor
    :before (fn [req] (println (str "calling: " (:fname req))) req))
 
 (start-slacker-server (the-ns 'slapi) 2104
@@ -220,7 +222,7 @@ with ring spec. So it could be deployed on any ring adapter.
 ```
 
 The url pattern of this ring app is same as slacker's built-in http
-module. 
+module.
 
 ### Access Control List
 
@@ -230,9 +232,9 @@ page](https://github.com/sunng87/slacker/wiki/AccessControlList) for the ACL rul
 ## Performance
 
 To test performance, just start an example server with `lein2 run -m
-slacker.example.server`. 
+slacker.example.server`.
 
-Then run the performance test script: 
+Then run the performance test script:
 `lein2 exec -p scripts/performance-test.clj 200000 50`. This will run
 200,000 calls with 50 threads.
 
