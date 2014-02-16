@@ -158,12 +158,6 @@
    :write-buffer-low-water-mark (int 0xFFF)       ; 4kB
    :child.tcp-nodelay true})
 
-(def default-interceptors
-  {:pre identity
-   :before identity
-   :after identity
-   :post identity})
-
 (defn slacker-ring-app
   "Wrap slacker as a ring app that can be deployed to any ring adaptors.
   You can also configure interceptors and acl just like `start-slacker-server`"
@@ -172,7 +166,7 @@
   (let [exposed-ns (if (coll? exposed-ns) exposed-ns [exposed-ns])
         funcs (apply merge (map ns-funcs exposed-ns))
         server-pipeline (build-server-pipeline
-                          funcs (merge default-interceptors interceptors))]
+                          funcs interceptors)]
     (fn [req]
       (let [client-info (http-client-info req)
             curried-handler (fn [req] (handle-request server-pipeline
@@ -197,7 +191,10 @@
   [exposed-ns port
    & {:keys [http interceptors acl ssl-context threads]
       :or {http nil
-           interceptors {:before identity :after identity}
+           interceptors {:before identity
+                         :after identity
+                         :pre identity
+                         :post identity}
            acl nil
            ssl-context nil
            threads 10}

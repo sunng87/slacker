@@ -24,8 +24,11 @@
   "This is a macro to combine multiple interceptors. If you have more that one
   interceptors, use this macro to combine them as one."
   [intercs]
-  `{:before #(-> % ~@(map (fn [x] `((fn [y#] ((get ~x :before identity) y#))))
+  `{:pre #(-> % ~@(map (fn [x] `((fn [y#] ((get ~x :pre identity) y#))))
+                       intercs))
+    :before #(-> % ~@(map (fn [x] `((fn [y#] ((get ~x :before identity) y#))))
                           intercs))
     :after #(-> % ~@(map (fn [x] `((fn [y#] ((get ~x :after identity) y#))))
+                         (reverse intercs)))
+    :post #(-> % ~@(map (fn [x] `((fn [y#] ((get ~x :post identity) y#))))
                          (reverse intercs)))})
-
