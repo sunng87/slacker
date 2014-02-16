@@ -5,7 +5,7 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :min-lein-version "2.0.0"
   :dependencies [[org.clojure/clojure "1.5.1"]
-                 [link "0.5.0-SNAPSHOT"]
+                 [link "0.5.4"]
                  [info.sunng/carbonite "0.2.3"]
                  [cheshire "5.3.1"]
                  [slingshot "0.10.3"]
