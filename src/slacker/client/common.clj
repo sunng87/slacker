@@ -44,8 +44,8 @@
                :string))
 
 (defprotocol SlackerClientProtocol
-  (sync-call-remote [this ns-name func-name params])
-  (async-call-remote [this ns-name func-name params cb])
+  (sync-call-remote [this ns-name func-name params options])
+  (async-call-remote [this ns-name func-name params cb options])
   (inspect [this cmd args])
   (close [this]))
 
@@ -54,7 +54,7 @@
 
 (deftype SlackerClient [conn rmap trans-id-gen content-type]
   SlackerClientProtocol
-  (sync-call-remote [this ns-name func-name params]
+  (sync-call-remote [this ns-name func-name params options]
     (let [fname (str ns-name "/" func-name)
           tid (next-trans-id trans-id-gen)
           request (make-request tid content-type fname params)
@@ -67,7 +67,7 @@
         (do
           (swap! rmap dissoc tid)
           (throw+ {:error :timeout})))))
-  (async-call-remote [this ns-name func-name params cb]
+  (async-call-remote [this ns-name func-name params cb options]
     (let [fname (str ns-name "/" func-name)
           tid (next-trans-id trans-id-gen)
           request (make-request tid content-type fname params)
@@ -146,11 +146,12 @@
   function directly. You should define remote call facade with defremote"
   [sc remote-call-info
    & {:keys [async? callback]
-      :or {async? false callback nil}}]
+      :or {async? false callback nil}
+      :as options}]
   (let [[nsname fname args] remote-call-info]
     (if (or async? (not (nil? callback)))
-      (async-call-remote sc nsname fname args callback)
-      (sync-call-remote sc nsname fname args))))
+      (async-call-remote sc nsname fname args callback options)
+      (sync-call-remote sc nsname fname args options))))
 
 (defn meta-remote
   "get metadata of a remote function by inspect api"

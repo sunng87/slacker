@@ -31,7 +31,8 @@
   ([sc fname & {:keys [remote-ns remote-name async? callback]
                 :or {remote-ns (ns-name *ns*)
                      remote-name nil
-                     async? false callback nil}}]
+                     async? false callback nil}
+                :as options}]
      (let [fname-str (str fname)
            remote-ns-declared (> (.indexOf fname-str "/") 0)
            [remote-ns remote-name] (if remote-ns-declared
@@ -44,10 +45,9 @@
        `(def ~facade-sym
           (with-meta
             (fn [& args#]
-              (invoke-slacker ~sc
-                              [~remote-ns ~remote-name (into [] args#)]
-                              :async? ~async?
-                              :callback ~callback))
+              (apply invoke-slacker ~sc
+                     [~remote-ns ~remote-name (into [] args#)]
+                     (flatten (into [] ~options))))
             (merge (meta-remote ~sc (str ~remote-ns "/" ~remote-name))
                    {:slacker-remote-fn true
                     :slacker-client ~sc
