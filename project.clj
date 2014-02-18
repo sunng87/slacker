@@ -10,10 +10,10 @@
                  [slingshot "0.10.3"]
                  [org.clojure/java.jmx "0.2.0"]
                  [org.clojure/tools.logging "0.2.6"]]
-  :profiles {:dev {:source-paths ["examples"]}
+  :profiles {:example {:source-paths ["examples"]}
              :1.3 {:dependencies [org.clojure/clojure "1.3.0"]}}
   :plugins [[lein-exec "0.3.1"]
             [codox "0.6.7"]]
   :global-vars {*warn-on-reflection* true}
-  :aliases {"run-example-server" ["with-profile" "default,dev" "run" "-m" "slacker.example.server"]
-            "run-example-client" ["with-profile" "default,dev" "run" "-m" "slacker.example.client"]})
+  :aliases {"run-example-server" ["with-profile" "default,example" "run" "-m" "slacker.example.server"]
+            "run-example-client" ["with-profile" "default,example" "run" "-m" "slacker.example.client"]})
