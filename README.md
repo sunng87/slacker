@@ -29,7 +29,7 @@ source code.
 
 ### Leiningen
 
-`[slacker "0.10.2"]`
+`[slacker "0.10.3"]`
 
 ### Getting Started
 
