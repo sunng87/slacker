@@ -249,7 +249,7 @@ any slacker client.
 (timestamp)
 
 ;; call the function with conn1
-(with-slacker conn1
+(with-slackerc conn1
   (timestamp))
 ```
 
