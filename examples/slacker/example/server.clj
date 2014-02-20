@@ -7,7 +7,7 @@
 
 (definterceptor log-function-calls
   :before (fn [req]
-            (println (str "calling: " (:fname req)))
+            (println (str (-> req :client :remote-addr)  " calling: " (:fname req)))
             req))
 
 (defn -main [& args]
@@ -16,4 +16,3 @@
                                                      function-call-stats])
                         :http 4104)
   (println "Slacker example server started on port 2104, http enabled on 4104"))
-
