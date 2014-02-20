@@ -31,7 +31,7 @@ source code.
 
 `[slacker "0.10.3"]`
 
-### Getting Started
+### Basic Usage
 
 Slacker will expose all your public functions under a given
 namespace.
@@ -88,13 +88,9 @@ slacker.client.common.SlackerClient@575752>, :slacker-remote-ns
 :doc "return server time in milliseconds"}
 ```
 
-#### Closing the client
+### Advanced Usage
 
-``` clojure
-(close-slackerc sc)
-```
-
-### Options in defn-remote
+#### Options in defn-remote
 
 You can specify the remote function name when there are conflicts in
 current namespace.
@@ -121,7 +117,9 @@ You can also assign a callback for an async facade.
 (timestamp)
 ```
 
-### Serializing custom types
+#### Serialiation
+
+##### Serializing custom types
 
 By default, most clojure data types are registered in carbonite. (As
 kryo requires you to **register** a class before you can serialize
@@ -137,7 +135,7 @@ this before you start server or client:
 [Carbonite](https://github.com/revelytix/carbonite "carbonite") has
 some detailed docs on how to create your own serializers.
 
-### JSON Serialization
+##### JSON Serialization
 
 Other than binary format, you can also use JSON for
 serialization. JSON is a text based format which is more friendly to
@@ -158,13 +156,15 @@ may lead to inconsistency of your clojure data structure between server and
 client. Try to avoid this by carefully design your data structure or
 just using carbonite(default and recommended).
 
+##### EDN Serialization
+
 From slacker 0.4.0, clojure pr/read is supported. You can just
 set content-type as `:clj`. clojure pr/read has full support on
 clojure data structures and also easy for debugging. However, it's
 much slower that carbonite so you'd better not use it if you have
 critical performance requirements.
 
-### Server interceptors
+#### Server interceptors
 
 To add custom functions on server, you can define custom
 interceptors before or after function called.
@@ -181,7 +181,7 @@ For more information about using interceptors and creating your own
 interceptors, query the [wiki
 page](https://github.com/sunng87/slacker/wiki/Interceptors).
 
-### Slacker on HTTP
+#### Slacker on HTTP
 
 From 0.4.0, slacker can be configured to run on HTTP protocol. To
 enable HTTP transport, just add a `:http` option to your slacker
@@ -208,7 +208,7 @@ $ curl -d "[5]" http://localhost:4104/slapi/rand-ints.clj
 Note that you can only use `json` or `clj` as format. Because HTTP is
 a test based protocol, so `carb` won't be supported.
 
-### Slacker as a Ring App
+#### Slacker as a Ring App
 
 You can also use slacker as a ring app with
 `slacker.server/slacker-ring-app`. The ring app is fully compatible
@@ -224,10 +224,38 @@ with ring spec. So it could be deployed on any ring adapter.
 The url pattern of this ring app is same as slacker's built-in http
 module.
 
-### Access Control List
+#### Access Control List
 
 Slacker 0.7 supports IP based access control list (ACL). Consult [wiki
-page](https://github.com/sunng87/slacker/wiki/AccessControlList) for the ACL rule DSL.
+page](https://github.com/sunng87/slacker/wiki/AccessControlList) for
+the ACL rule DSL.
+
+#### Custom client on function call
+
+One issue with previous version of slacker is you have to define a
+remote function with a slacker client, then call this function with
+that client always. This is no flexible.
+
+From 0.10.3, we added a macro `with-slackerc` to isolate local
+function facade and a specific client. You can call the function with
+any slacker client.
+
+```clojure
+;; conn0 and conn1 are two slacker clients
+
+(defn-remote conn0 timestamp)
+
+;; call the function with conn0
+(timestamp)
+
+;; call the function with conn1
+(with-slacker conn1
+  (timestamp))
+```
+
+Note that you have ensure that the function you call is also available
+to the client. Otherwise, there will be a `not-found` exception
+raised.
 
 ## Performance
 
