@@ -140,6 +140,7 @@
   (let [client (tcp-client client-factory host port)]
     (SlackerClient. client request-map transaction-id-counter content-type)))
 
+(def ^:dynamic *sc* nil)
 (defn invoke-slacker
   "Invoke remote function with given slacker connection.
   A call-info tuple should be passed in. Usually you don't use this
@@ -148,7 +149,8 @@
    & {:keys [async? callback]
       :or {async? false callback nil}
       :as options}]
-  (let [[nsname fname args] remote-call-info]
+  (let [sc (or *sc* sc) ;; allow local binding to override client
+        [nsname fname args] remote-call-info]
     (if (or async? (not (nil? callback)))
       (async-call-remote sc nsname fname args callback options)
       (sync-call-remote sc nsname fname args options))))

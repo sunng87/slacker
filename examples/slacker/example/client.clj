@@ -28,6 +28,10 @@
   (println @(get-m))
   (get-m2)
   (println (rand-ints 10))
+
+  ;; call a function with another client
+  (println (with-slackerc conn2 (timestamp)))
+
   (try+
     (make-error)
     (catch [:code :exception] {:keys [error]} (println error)))

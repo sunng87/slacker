@@ -77,3 +77,9 @@
        (dorun (map defn-remote*
                    (repeat sc-sym)
                    (filter filter-fn all-functions))))))
+
+(defmacro with-slackerc
+  "call the slacker remote function with a client other than the client
+  used to declare the function"
+  [sc & body]
+  `(binding [*sc* ~sc] ~@body))
