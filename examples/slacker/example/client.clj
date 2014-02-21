@@ -20,7 +20,7 @@
 #(defn-remote conn slacker.example.api/not-found)
 
 (defn -main [& args]
-  #(not-found 1 2 3)
+  #_(not-found 1 2 3)
   (return-nil)
   (println (timestamp))
   (println (inc-m 100))
