@@ -58,7 +58,8 @@
   (eval (list 'defn-remote sc-sym (symbol fname))))
 
 (defn use-remote
-  "import remote functions the current namespace"
+  "import remote functions the current namespace, this function
+  will generate remote call, use it carefully in a declarative style."
   ([sc-sym] (use-remote sc-sym (ns-name *ns*)))
   ([sc-sym rns & {:keys [only exclude]
                   :or {only [] exclude []}}]
