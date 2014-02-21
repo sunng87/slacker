@@ -55,24 +55,24 @@ To expose `slapi`, use:
 
 You can also add option `:threads 50` to config the size of server thread pool.
 
-On the client side, define facades for the remote functions.
-The `use-remote` function is convenience for importing all functions
-under a remote namespace.
-
-``` clojure
-(use 'slacker.client)
-(def sc (slackerc "localhost:2104"))
-(use-remote 'sc 'slapi)
-(timestamp)
-```
-
-You can also use `defn-remote` to create facade one by one. Remember
+On the client side, to define facades for the remote functions, you
+can use `defn-remote` to create facade one by one. Remember
 to add remote namespace here as facade name, `slapi/timestamp`,
 eg. Otherwise, the name of current namespace will be treated as remote
 namespace.
 
 ``` clojure
+(use 'slacker.client)
+(def sc (slackerc "localhost:2104"))
 (defn-remote sc slapi/timestamp)
+(timestamp)
+```
+
+Also the `use-remote` function is convenience for importing all functions
+under a remote namespace.
+
+``` clojure
+(use-remote 'sc 'slapi)
 (timestamp)
 ```
 
@@ -80,7 +80,7 @@ By checking the metadata of `timestamp`, you can get some useful
 information:
 
 ``` clojure
-(meta timestamp)
+(slacker-meta timestamp)
 => {:slacker-remote-name "timestamp", :slacker-remote-fn true,
 :slacker-client #<SlackerClient
 slacker.client.common.SlackerClient@575752>, :slacker-remote-ns
