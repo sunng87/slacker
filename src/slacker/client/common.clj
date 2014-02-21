@@ -149,7 +149,7 @@
    & {:keys [async? callback]
       :or {async? false callback nil}
       :as options}]
-  (let [sc (or *sc* sc) ;; allow local binding to override client
+  (let [sc @(or *sc* sc) ;; allow local binding to override client
         [nsname fname args] remote-call-info]
     (if (or async? (not (nil? callback)))
       (async-call-remote sc nsname fname args callback options)
@@ -161,7 +161,7 @@
   (let [fname (if (fn? f)
                 (name (:name (meta f)))
                 (str f))]
-    (inspect sc :meta fname)))
+    (inspect @sc :meta fname)))
 
 (defn host-port
   "get host and port from connection string"

@@ -16,10 +16,10 @@
   (let [factory (or @slacker-client-factory
                     (swap! slacker-client-factory (fn [_] (create-client-factory ssl-context))))
         [host port] (host-port addr)]
-    (create-client factory host port content-type)))
+    (delay (create-client factory host port content-type))))
 
 (defn close-slackerc [client]
-  (close client))
+  (close @client))
 
 (defn close-all-slackerc []
   (when @slacker-client-factory
@@ -48,11 +48,10 @@
               (apply invoke-slacker ~sc
                      [~remote-ns ~remote-name (into [] args#)]
                      (flatten (into [] ~options))))
-            (merge (meta-remote ~sc (str ~remote-ns "/" ~remote-name))
-                   {:slacker-remote-fn true
-                    :slacker-client ~sc
-                    :slacker-remote-ns ~remote-ns
-                    :slacker-remote-name ~remote-name}))))))
+            {:slacker-remote-fn true
+             :slacker-client ~sc
+             :slacker-remote-ns ~remote-ns
+             :slacker-remote-name ~remote-name})))))
 
 (defn- defn-remote*
   [sc-sym fname]
@@ -83,3 +82,13 @@
   used to declare the function"
   [sc & body]
   `(binding [*sc* ~sc] ~@body))
+
+(defn slacker-meta [f]
+  (let [metadata (meta f)
+        {sc :slacker-client
+         remote-ns :slacker-remote-ns
+         remote-fn :slacker-remote-name} metadata]
+    (if sc
+      (merge metadata
+             (meta-remote sc (str remote-ns "/" remote-fn)))
+      metadata)))
