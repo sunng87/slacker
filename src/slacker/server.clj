@@ -125,12 +125,13 @@
                           client-info inspect-handler)))
 
 ;; async section
-(defonce request-channel (async/chan (async/sliding-buffer 300)))
-(defonce response-channel (async/chan (async/sliding-buffer 300)))
+(defonce ^{:const true} buffer-size 300)
+(defonce request-channel (async/chan (async/sliding-buffer buffer-size)))
+(defonce response-channel (async/chan (async/sliding-buffer buffer-size)))
 
 (defn start-ioc-loop! [handle-request*]
   (async/go-loop []
-                 (let [[ch client-info data] (async/<! request-channel)]
+                 (let [[ch data client-info] (async/<! request-channel)]
                    (async/go
                     (let [result (handle-request* data client-info)]
                       (async/>! response-channel [ch result]))))
