@@ -9,7 +9,8 @@
                  [cheshire "5.3.1"]
                  [slingshot "0.10.3"]
                  [org.clojure/java.jmx "0.2.0"]
-                 [org.clojure/tools.logging "0.2.6"]]
+                 [org.clojure/tools.logging "0.2.6"]
+                 [org.clojure/core.async "0.1.278.0-76b25b-alpha"]]
   :profiles {:example {:source-paths ["examples"]}
              :1.3 {:dependencies [org.clojure/clojure "1.3.0"]}}
   :plugins [[lein-exec "0.3.1"]
