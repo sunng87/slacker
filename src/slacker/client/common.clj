@@ -6,8 +6,10 @@
   (:use [link.tcp])
   (:use [slingshot.slingshot :only [throw+]])
   (:require [clojure.tools.logging :as log])
-  (:import [java.net ConnectException])
-  (:import [java.nio.channels ClosedChannelException]))
+  (:import [java.net ConnectException]
+           [java.nio.channels ClosedChannelException]
+           [java.util.concurrent ScheduledThreadPoolExecutor
+            TimeUnit ScheduledFuture]))
 
 (defn- handle-valid-response [response]
   (let [[content-type code data] (second response)]
@@ -21,12 +23,6 @@
                        (.setStackTrace e (:stacktrace einfo))
                        (throw+ e))))
       (throw+ {:code :invalid-result-code}))))
-
-(defn handle-response [response]
-  (case (first response)
-    :type-response (handle-valid-response response)
-    :type-error (throw+ {:code (-> response second first)})
-    nil))
 
 (defn make-request [tid content-type func-name params]
   (let [serialized-params (serialize content-type params)]
@@ -43,10 +39,19 @@
                         first)
                :string))
 
+(defn handle-response [response]
+  (case (first response)
+    :type-response (handle-valid-response response)
+    :type-inspect-ack (parse-inspect-response response)
+    :type-pong (log/debug "pong")
+    :type-error (throw+ {:code (-> response second first)})
+    nil))
+
 (defprotocol SlackerClientProtocol
   (sync-call-remote [this ns-name func-name params options])
   (async-call-remote [this ns-name func-name params cb options])
   (inspect [this cmd args])
+  (ping [this])
   (close [this]))
 
 (defn- next-trans-id [trans-id-gen]
@@ -63,7 +68,7 @@
       (send conn request)
       (deref prms *timeout* nil)
       (if (realized? prms)
-        (handle-response @prms)
+        @prms
         (do
           (swap! rmap dissoc tid)
           (throw+ {:error :timeout})))))
@@ -83,7 +88,13 @@
       (send conn request)
       (deref prms *timeout* nil)
       (if (realized? prms)
-        (parse-inspect-response @prms))))
+        @prms
+        (do
+          (swap! rmap dissoc tid)
+          (throw+ {:error :timeout})))))
+  (ping [this]
+    (send conn ping-packet)
+    (log/debug "ping"))
   (close [this]
     (link.core/close conn)))
 
@@ -93,21 +104,23 @@
   (create-handler
    (on-message [_ msg]
                (let [tid (second msg)
+                     msg-body (nth msg 2)
                      callback (get @rmap tid)]
                  (swap! rmap dissoc tid)
-                 (when-not (nil? callback)
-                   (let [msg-body (nth msg 2)]
-                     (if (:async? callback)
-                       ;; async callback should run in another thread
-                       ;; that won't block or hang the worker thread
-                       (future
-                         (let [result (handle-response msg-body)]
-                           (deliver (:promise callback) result)
-                           (if-let [cb (:callback callback)]
-                             (cb result))))
-                       ;; sync request need to decode ths message in
-                       ;; caller thread
-                       (deliver (:promise callback) msg-body))))))
+                 (if-not (nil? callback)
+                   (if (:async? callback)
+                     ;; async callback should run in another thread
+                     ;; that won't block or hang the worker thread
+                     (future
+                       (let [result (handle-response msg-body)]
+                         (deliver (:promise callback) result)
+                         (when-let [cb (:callback callback)]
+                           (cb result))))
+                     ;; sync request need to decode ths message in
+                     ;; caller thread
+                     (deliver (:promise callback)
+                              (handle-response msg-body)))
+                   (handle-response msg-body))))
    (on-error [_ ^Exception exc]
              (if (or
                   (instance? ConnectException exc)
@@ -168,3 +181,23 @@
   [connection-string]
   (let [[host port] (split connection-string #":")]
     [host (Integer/valueOf ^String port)]))
+
+(defonce scheduled-clients (atom {}))
+(defonce schedule-pool
+  (ScheduledThreadPoolExecutor.
+   (.availableProcessors (Runtime/getRuntime))))
+
+(defn schedule-ping [delayed-client interval]
+  (let [cancelable (.scheduleAtFixedRate
+                    ^ScheduledThreadPoolExecutor schedule-pool
+                    #(when (realized? delayed-client)
+                       (ping @delayed-client))
+                    0 ;; initial delay
+                    interval
+                    TimeUnit/SECONDS)]
+    (swap! scheduled-clients assoc delayed-client cancelable)
+    cancelable))
+
+(defn cancel-ping [client]
+  (when-let [cancelable (@scheduled-clients client)]
+    (.cancel ^ScheduledFuture cancelable true)))
