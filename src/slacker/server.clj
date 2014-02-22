@@ -185,11 +185,13 @@
         server-pipeline (build-server-pipeline
                           funcs interceptors)]
     (fn [req]
-      (let [curried-handler (fn [req] (handle-request server-pipeline
-                                                     nil
-                                                     acl
-                                                     req
-                                                     (http-client-info req)))]
+      (let [curried-handler (fn [req] (async/<!!
+                                      (async/go
+                                       (handle-request server-pipeline
+                                                       nil
+                                                       acl
+                                                       req
+                                                       (http-client-info req)))))]
         (-> req
             ring-req->slacker-req
             curried-handler
@@ -217,10 +219,9 @@
       :as options}]
   (let [exposed-ns (if (coll? exposed-ns) exposed-ns [exposed-ns])
         funcs (apply merge (map ns-funcs exposed-ns))
-        executor (new-executor threads)
+;;        executor (new-executor threads)
         handler (create-server-handler funcs interceptors acl)
-        handler-spec {:handler handler
-                      :executor executor}]
+        handler-spec {:handler handler}]
     (when *debug* (doseq [f (keys funcs)] (println f)))
 
     (let [the-tcp-server (tcp-server port handler-spec
@@ -230,7 +231,6 @@
           the-http-server (when-not (nil? http)
                             (http-server http (apply slacker-ring-app exposed-ns
                                                      (flatten (into [] options)))
-                                         :executor executor
                                          :ssl-context ssl-context))]
       [the-tcp-server the-http-server])))
 
