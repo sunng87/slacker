@@ -5,7 +5,8 @@
   (:use [slacker.acl.core])
   (:use [link core tcp http threads])
   (:use [slingshot.slingshot :only [try+]])
-  (:require [clojure.tools.logging :as log])
+  (:require [clojure.tools.logging :as log]
+            [clojure.core.async :as async])
   (:import [java.util.concurrent Executors]))
 
 ;; pipeline functions for server request handling
@@ -108,7 +109,7 @@
 (defmethod -handle-request :default [p & _]
   (invalid-type-packet (second p)))
 
-(defn handle-request [server-pipeline req client-info inspect-handler acl]
+(defn handle-request [server-pipeline inspect-handler acl req client-info]
   (cond
    (not= version (first req))
    (protocol-mismatch-packet 0)
@@ -123,19 +124,35 @@
    :else (-handle-request req server-pipeline
                           client-info inspect-handler)))
 
+;; async section
+(defonce ^{:const true} buffer-size 300)
+(defonce request-channel (async/chan (async/sliding-buffer buffer-size)))
+(defonce response-channel (async/chan (async/sliding-buffer buffer-size)))
+
+(defn start-ioc-loop! [handle-request*]
+  (async/go-loop []
+                 (let [[ch data client-info] (async/<! request-channel)]
+                   (async/go
+                    (let [result (handle-request* data client-info)]
+                      (async/>! response-channel [ch result]))))
+                 (recur))
+  (async/go-loop []
+                 (let [[ch result] (async/<! response-channel)]
+                   (send ch result))
+                 (recur)))
+
 (defn- create-server-handler [funcs interceptors acl]
   (let [server-pipeline (build-server-pipeline funcs interceptors)
-        inspect-handler (build-inspect-handler funcs)]
+        inspect-handler (build-inspect-handler funcs)
+        handle-request* (partial handle-request
+                                 server-pipeline
+                                 inspect-handler
+                                 acl)]
+    (start-ioc-loop! handle-request*)
     (create-handler
      (on-message [ch data]
-                 (let [client-info {:remote-addr (remote-addr ch)}
-                       result (handle-request
-                               server-pipeline
-                               data
-                               client-info
-                               inspect-handler
-                               acl)]
-                   (send ch result)))
+                 (let [client-info {:remote-addr (remote-addr ch)}]
+                   (async/>!! request-channel [ch data client-info])))
      (on-error [ch ^Exception e]
                (log/error e "Unexpected error in event loop")
                (close ch)))))
@@ -168,12 +185,13 @@
         server-pipeline (build-server-pipeline
                           funcs interceptors)]
     (fn [req]
-      (let [client-info (http-client-info req)
-            curried-handler (fn [req] (handle-request server-pipeline
-                                                     req
-                                                     client-info
-                                                     nil
-                                                     acl))]
+      (let [curried-handler (fn [req] (async/<!!
+                                      (async/go
+                                       (handle-request server-pipeline
+                                                       nil
+                                                       acl
+                                                       req
+                                                       (http-client-info req)))))]
         (-> req
             ring-req->slacker-req
             curried-handler
@@ -201,10 +219,9 @@
       :as options}]
   (let [exposed-ns (if (coll? exposed-ns) exposed-ns [exposed-ns])
         funcs (apply merge (map ns-funcs exposed-ns))
-        executor (new-executor threads)
+;;        executor (new-executor threads)
         handler (create-server-handler funcs interceptors acl)
-        handler-spec {:handler handler
-                      :executor executor}]
+        handler-spec {:handler handler}]
     (when *debug* (doseq [f (keys funcs)] (println f)))
 
     (let [the-tcp-server (tcp-server port handler-spec
@@ -214,7 +231,6 @@
           the-http-server (when-not (nil? http)
                             (http-server http (apply slacker-ring-app exposed-ns
                                                      (flatten (into [] options)))
-                                         :executor executor
                                          :ssl-context ssl-context))]
       [the-tcp-server the-http-server])))
 
