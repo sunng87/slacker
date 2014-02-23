@@ -122,7 +122,6 @@
                               (handle-response msg-body)))
                    (handle-response msg-body))))
    (on-error [_ ^Exception exc]
-             (println 123)
              (if (or
                   (instance? ConnectException exc)
                   (instance? ClosedChannelException exc))
@@ -194,8 +193,7 @@
                     #(try+
                        (when (realized? delayed-client)
                          (ping @delayed-client))
-                       (catch Exception e
-                         (.printStackTrace e)))
+                       (catch Exception e nil))
                     0 ;; initial delay
                     interval
                     TimeUnit/SECONDS)]
