@@ -4,7 +4,7 @@
   (:use [slacker serialization common protocol])
   (:use [link.core :exclude [close]])
   (:use [link.tcp])
-  (:use [slingshot.slingshot :only [throw+]])
+  (:use [slingshot.slingshot :only [throw+ try+]])
   (:require [clojure.tools.logging :as log])
   (:import [java.net ConnectException]
            [java.nio.channels ClosedChannelException]
@@ -122,6 +122,7 @@
                               (handle-response msg-body)))
                    (handle-response msg-body))))
    (on-error [_ ^Exception exc]
+             (println 123)
              (if (or
                   (instance? ConnectException exc)
                   (instance? ClosedChannelException exc))
@@ -190,8 +191,11 @@
 (defn schedule-ping [delayed-client interval]
   (let [cancelable (.scheduleAtFixedRate
                     ^ScheduledThreadPoolExecutor schedule-pool
-                    #(when (realized? delayed-client)
-                       (ping @delayed-client))
+                    #(try+
+                       (when (realized? delayed-client)
+                         (ping @delayed-client))
+                       (catch Exception e
+                         (.printStackTrace e)))
                     0 ;; initial delay
                     interval
                     TimeUnit/SECONDS)]
