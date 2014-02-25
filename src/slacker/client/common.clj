@@ -150,7 +150,7 @@
                         :ssl-context ssl-context)))
 
 (defn create-client [client-factory host port content-type]
-  (let [client (tcp-client client-factory host port)]
+  (let [client (tcp-client client-factory host port :lazy-connect true)]
     (SlackerClient. client request-map transaction-id-counter content-type)))
 
 (def ^:dynamic *sc* nil)
@@ -162,7 +162,7 @@
    & {:keys [async? callback]
       :or {async? false callback nil}
       :as options}]
-  (let [sc @(or *sc* sc) ;; allow local binding to override client
+  (let [sc @(or *sc* sc)  ;; allow local binding to override client
         [nsname fname args] remote-call-info]
     (if (or async? (not (nil? callback)))
       (async-call-remote sc nsname fname args callback options)
