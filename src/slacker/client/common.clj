@@ -109,13 +109,10 @@
                  (swap! rmap dissoc tid)
                  (if-not (nil? callback)
                    (if (:async? callback)
-                     ;; async callback should run in another thread
-                     ;; that won't block or hang the worker thread
-                     (future
-                       (let [result (handle-response msg-body)]
-                         (deliver (:promise callback) result)
-                         (when-let [cb (:callback callback)]
-                           (cb result))))
+                     (let [result (handle-response msg-body)]
+                       (deliver (:promise callback) result)
+                       (when-let [cb (:callback callback)]
+                         (cb result)))
                      ;; sync request need to decode ths message in
                      ;; caller thread
                      (deliver (:promise callback)
