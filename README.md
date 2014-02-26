@@ -4,7 +4,10 @@
 
 **"Superman is a slacker."**
 
-slacker is a simple RPC framework designed for Clojure and created by Clojure.
+slacker is a simple RPC framework designed for Clojure and created by
+Clojure.
+
+[![Build Status](https://travis-ci.org/sunng87/slacker.png?branch=master)](https://travis-ci.org/sunng87/slacker)
 
 ## Features
 
