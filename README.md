@@ -29,7 +29,8 @@ source code.
 
 ### Leiningen
 
-`[slacker "0.10.3"]`
+
+![latest version on clojars](https://clojars.org/slacker/slacker/latest-version.svg)
 
 ### Basic Usage
 
