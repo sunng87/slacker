@@ -1,3 +1,3 @@
 language: clojure
 lein: lein2
-script: "lein check && lein test"
+script: "lein2 check && lein2 test"
