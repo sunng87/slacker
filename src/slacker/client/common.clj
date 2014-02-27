@@ -9,7 +9,8 @@
   (:import [java.net ConnectException]
            [java.nio.channels ClosedChannelException]
            [java.util.concurrent ScheduledThreadPoolExecutor
-            TimeUnit ScheduledFuture]))
+            TimeUnit ScheduledFuture]
+           [clojure.lang IDeref IBlockingDeref IPending]))
 
 (defn- handle-valid-response [response]
   (let [[content-type code data] (second response)]
@@ -43,7 +44,7 @@
     :type-response (handle-valid-response response)
     :type-inspect-ack (parse-inspect-response response)
     :type-pong (log/debug "pong")
-    :type-error (throw+ {:code (-> response second first)})
+    :type-error {:cause {:code (-> response second first)}}
     nil))
 
 (defprotocol SlackerClientProtocol
@@ -105,18 +106,20 @@
    (on-message [_ msg]
                (let [tid (second msg)
                      msg-body (nth msg 2)
-                     callback (get @rmap tid)]
+                     handler (get @rmap tid)]
                  (swap! rmap dissoc tid)
-                 (if-not (nil? callback)
-                   (if (:async? callback)
+                 (if-not (nil? handler)
+                   (if (:async? handler)
                      (let [result (handle-response msg-body)]
-                       (deliver (:promise callback) result)
-                       (when-let [cb (:callback callback)]
+                       (when (nil? (:cause result))
+                         (deliver (:promise handler) result))
+                       (when-let [cb (:callback handler)]
                          (cb result)))
                      ;; sync request need to decode ths message in
                      ;; caller thread
-                     (deliver (:promise callback)
+                     (deliver (:promise handler)
                               (handle-response msg-body)))
+                   ;; pong
                    (handle-response msg-body))))
    (on-error [_ ^Exception exc]
              (if (or
@@ -150,6 +153,32 @@
   (let [client (tcp-client client-factory host port :lazy-connect true)]
     (SlackerClient. client request-map transaction-id-counter content-type)))
 
+(defn process-call-result [call-result]
+  (if (nil? (:cause call-result))
+    (:result call-result)
+    (if (and (= :exception (-> call-result :cause :code))
+             (map? (-> call-result :cause :error)))
+      (throw+ (parse-exception (-> call-result :cause :error)))
+      (throw+ (:cause call-result)))))
+
+(deftype ExceptionEnabledPromise [prms]
+  IDeref
+  (deref [_]
+    (process-call-result @prms))
+  IBlockingDeref
+  (deref [_ timeout timeout-var]
+    (deref prms timeout nil)
+    (if (realized? prms)
+      (deref _)
+      timeout-var))
+  IPending
+  (isRealized [_]
+    (realized? prms)))
+
+(defn exception-enabled-promise
+  ([] (exception-enabled-promise (promise)))
+  ([prms] (ExceptionEnabledPromise. prms)))
+
 (def ^:dynamic *sc* nil)
 (defn invoke-slacker
   "Invoke remote function with given slacker connection.
@@ -162,14 +191,16 @@
   (let [sc @(or *sc* sc)  ;; allow local binding to override client
         [nsname fname args] remote-call-info]
     (if (or async? (not (nil? callback)))
-      (async-call-remote sc nsname fname args callback options)
+      ;; async
+      (let [sys-cb (fn [call-result]
+                     (let [user-cb (or callback (constantly true))]
+                       (user-cb (:cause call-result) (:result call-result))))]
+        (exception-enabled-promise
+         (async-call-remote sc nsname fname args sys-cb options)))
+
+      ;; sync
       (let [call-result (sync-call-remote sc nsname fname args options)]
-        (if-not (:cause call-result)
-          (:result call-result)
-          (if (and (= :exception (-> call-result :cause :code))
-                   (map? (-> call-result :cause :error)))
-            (throw+ (parse-exception (-> call-result :cause :error)))
-            (throw+ (:cause call-result))))))))
+        (process-call-result call-result)))))
 
 (defn meta-remote
   "get metadata of a remote function by inspect api"

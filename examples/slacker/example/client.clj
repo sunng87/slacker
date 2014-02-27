@@ -12,7 +12,7 @@
   :remote-ns "slacker.example.api")
 (defn-remote conn get-m2
   :remote-name "get-m"
-  :callback #(prn "Async get-m ==> " %)
+  :callback #(prn "Async get-m ==> " %2)
   :remote-ns "slacker.example.api")
 (defn-remote conn slacker.example.api/rand-ints)
 (defn-remote conn slacker.example.api/make-error)
