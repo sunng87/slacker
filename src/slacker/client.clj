@@ -77,7 +77,7 @@
                       (not-empty exclude)
                       #(not (contains? (set (map name-fn exclude)) %))
                       :else (constantly true))
-           all-functions (inspect @@(resolve sc-sym) :functions (str rns))]
+           all-functions (functions-remote @(resolve sc-sym) (str rns))]
        (dorun (map defn-remote*
                    (repeat sc-sym)
                    (filter filter-fn all-functions))))))

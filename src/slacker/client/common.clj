@@ -33,11 +33,12 @@
 (defn make-inspect-request [tid cmd args]
   [version tid [:type-inspect-req
                 [cmd (serialize :clj args :string)]]])
+
 (defn parse-inspect-response [response]
-  (deserialize :clj (-> response
-                        second
-                        first)
-               :string))
+  {:result (deserialize :clj (-> response
+                                 second
+                                 first)
+                        :string)})
 
 (defn handle-response [response]
   (case (first response)
@@ -91,7 +92,7 @@
         @prms
         (do
           (swap! rmap dissoc tid)
-          (throw+ {:error :timeout})))))
+          {:cause {:error :timeout}}))))
   (ping [this]
     (send conn ping-packet)
     (log/debug "ping"))
@@ -208,7 +209,18 @@
   (let [fname (if (fn? f)
                 (name (:name (meta f)))
                 (str f))]
-    (inspect @sc :meta fname)))
+    (let [call-result (inspect @sc :meta fname)]
+      (if (nil? (:cause call-result))
+        (:result call-result)
+        (throw+ (:cause call-result))))))
+
+(defn functions-remote
+  "get functions of a remote namespace"
+  [sc n]
+  (let [call-result (inspect @sc :functions n)]
+    (if (nil? (:cause call-result))
+      (:result call-result)
+      (throw+ (:cause call-result)))))
 
 (defn host-port
   "get host and port from connection string"
