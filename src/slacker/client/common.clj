@@ -2,11 +2,12 @@
   (:refer-clojure :exclude [send])
   (:use [clojure.string :only [split]])
   (:use [slacker serialization common protocol])
+  (:use [slacker.client.state])
   (:use [link.core :exclude [close]])
   (:use [link.tcp])
   (:use [slingshot.slingshot :only [throw+ try+]])
   (:require [clojure.tools.logging :as log])
-  (:import [java.net ConnectException]
+  (:import [java.net ConnectException InetSocketAddress InetAddress]
            [java.nio.channels ClosedChannelException]
            [java.util.concurrent ScheduledThreadPoolExecutor
             TimeUnit ScheduledFuture]
@@ -55,6 +56,12 @@
   (ping [this])
   (close [this]))
 
+(defn- channel-hostport [ch]
+  (let [addr (link.core/remote-addr ch)]
+    (str (.getHostAddress ^InetAddress
+                          (.getAddress ^InetSocketAddress addr))
+         ":" (.getPort ^InetSocketAddress addr))))
+
 (defn- next-trans-id [trans-id-gen]
   (swap! trans-id-gen unchecked-inc))
 
@@ -97,39 +104,42 @@
     (send conn ping-packet)
     (log/debug "ping"))
   (close [this]
-    (reset! rmap {})
+    (let [k (channel-hostport conn)]
+      (when (<= (swap! (:refs (@server-requests k)) dec) 0)
+        (swap! server-requests dissoc k)))
     (link.core/close conn)))
 
 (defn- create-link-handler
   "The event handler for client"
-  [rmap]
+  []
   (create-handler
-   (on-message [_ msg]
-               (let [tid (second msg)
-                     msg-body (nth msg 2)
-                     handler (get @rmap tid)]
-                 (swap! rmap dissoc tid)
-                 (if-not (nil? handler)
-                   (if (:async? handler)
-                     (let [result (handle-response msg-body)]
-                       (when (nil? (:cause result))
-                         (deliver (:promise handler) result))
-                       (when-let [cb (:callback handler)]
-                         (cb result)))
-                     ;; sync request need to decode ths message in
-                     ;; caller thread
-                     (deliver (:promise handler)
-                              (handle-response msg-body)))
-                   ;; pong
-                   (handle-response msg-body))))
-   (on-error [_ ^Exception exc]
+   (on-message [ch msg]
+               (when-let [rmap (-> ch
+                                   (channel-hostport)
+                                   (@server-requests)
+                                   :pendings)]
+                 (let [tid (second msg)
+                       msg-body (nth msg 2)
+                       handler (get @rmap tid)]
+                   (swap! rmap dissoc tid)
+                   (if-not (nil? handler)
+                     (if (:async? handler)
+                       (let [result (handle-response msg-body)]
+                         (when (nil? (:cause result))
+                           (deliver (:promise handler) result))
+                         (when-let [cb (:callback handler)]
+                           (cb result)))
+                       ;; sync request need to decode ths message in
+                       ;; caller thread
+                       (deliver (:promise handler)
+                                (handle-response msg-body)))
+                     ;; pong
+                     (handle-response msg-body)))))
+   (on-error [ch ^Exception exc]
              (if (or
                   (instance? ConnectException exc)
                   (instance? ClosedChannelException exc))
-               ;; remove all pending requests
-               (do
-                 (log/warn "Failed to connect to server or connection lost.")
-                 (reset! rmap {}))
+               (log/warn "Failed to connect to server or connection lost.")
                (log/error exc "Unexpected error in event loop")))))
 
 (def ^:dynamic *options*
@@ -140,19 +150,26 @@
    :write-buffer-low-water-mark (int 0xFFF)       ; 4kB
    :connect-timeout-millis (int 5000)})
 
-(defonce request-map (atom {}));; shared between multiple connections
-(defonce transaction-id-counter (atom 0))
-
 (defn create-client-factory [ssl-context]
-  (let [handler (create-link-handler request-map)]
+  (let [handler (create-link-handler)]
     (tcp-client-factory handler
                         :codec slacker-base-codec
                         :options *options*
                         :ssl-context ssl-context)))
 
 (defn create-client [client-factory host port content-type]
-  (let [client (tcp-client client-factory host port :lazy-connect true)]
-    (SlackerClient. client request-map transaction-id-counter content-type)))
+  (let [client (tcp-client client-factory host port :lazy-connect true)
+        k (str host ":" port)]
+    (if-not (@server-requests k)
+      (swap! server-requests assoc k
+             {:pendings (atom {})
+              :idgen (atom (long 0))
+              :refs (atom 1)})
+      (swap! (-> @server-requests (get k) :refs) inc))
+    (SlackerClient. client
+                    (:pendings (@server-requests k))
+                    (:idgen (@server-requests k))
+                    content-type)))
 
 (defn process-call-result [call-result]
   (if (nil? (:cause call-result))
@@ -228,7 +245,6 @@
   (let [[host port] (split connection-string #":")]
     [host (Integer/valueOf ^String port)]))
 
-(defonce scheduled-clients (atom {}))
 (defonce schedule-pool
   (ScheduledThreadPoolExecutor.
    (.availableProcessors (Runtime/getRuntime))))

@@ -36,4 +36,5 @@
     (make-error)
     (catch [:code :exception] {:keys [error]} (println error)))
 
-  (close-all-slackerc))
+  (close-all-slackerc)
+  (shutdown-agents))

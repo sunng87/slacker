@@ -22,8 +22,9 @@
     delayed-client))
 
 (defn close-slackerc [client]
-  (cancel-ping client)
-  (close @client))
+  (when (realized? client)
+    (cancel-ping client)
+    (close @client)))
 
 (defn close-all-slackerc []
   (when @slacker-client-factory
