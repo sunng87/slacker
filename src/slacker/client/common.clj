@@ -14,15 +14,14 @@
 (defn- handle-valid-response [response]
   (let [[content-type code data] (second response)]
     (case code
-      :success (deserialize content-type data)
-      :not-found (throw+ {:code code})
-      :exception (let [einfo (deserialize content-type data)]
-                   (if-not (map? einfo)
-                     (throw+ {:code code :error einfo})
-                     (let [e (Exception. ^String (:msg einfo))]
-                       (.setStackTrace e (:stacktrace einfo))
-                       (throw+ e))))
-      (throw+ {:code :invalid-result-code}))))
+      :success {:result (deserialize content-type data)}
+      :not-found {:cause {:code code}}
+      :exception {:cause {:code code :error (deserialize content-type data)}}
+      {:cause {:code :invalid-result-code}})))
+
+(defn- parse-exception [einfo]
+  (doto (Exception. ^String (:msg einfo))
+    (.setStackTrace (:stacktrace einfo))))
 
 (defn make-request [tid content-type func-name params]
   (let [serialized-params (serialize content-type params)]
@@ -71,7 +70,7 @@
         @prms
         (do
           (swap! rmap dissoc tid)
-          (throw+ {:error :timeout})))))
+          {:cause {:error :timeout}}))))
   (async-call-remote [this ns-name func-name params cb options]
     (let [fname (str ns-name "/" func-name)
           tid (next-trans-id trans-id-gen)
@@ -164,7 +163,13 @@
         [nsname fname args] remote-call-info]
     (if (or async? (not (nil? callback)))
       (async-call-remote sc nsname fname args callback options)
-      (sync-call-remote sc nsname fname args options))))
+      (let [call-result (sync-call-remote sc nsname fname args options)]
+        (if-not (:cause call-result)
+          (:result call-result)
+          (if (and (= :exception (-> call-result :cause :code))
+                   (map? (-> call-result :cause :error)))
+            (throw+ (parse-exception (-> call-result :cause :error)))
+            (throw+ (:cause call-result))))))))
 
 (defn meta-remote
   "get metadata of a remote function by inspect api"
