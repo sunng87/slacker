@@ -96,6 +96,7 @@
     (send conn ping-packet)
     (log/debug "ping"))
   (close [this]
+    (reset! rmap {})
     (link.core/close conn)))
 
 (defn- create-link-handler
