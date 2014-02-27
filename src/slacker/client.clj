@@ -1,6 +1,6 @@
 (ns slacker.client
   (:use [slacker common])
-  (:use [slacker.client common])
+  (:use [slacker.client common state])
   (:use [clojure.string :only [split]])
   (:use [link.tcp :only [stop-clients]]))
 
@@ -28,6 +28,8 @@
 
 (defn close-all-slackerc []
   (when @slacker-client-factory
+    (doseq [c (keys @scheduled-clients)]
+      (close-slackerc c))
     (stop-clients @slacker-client-factory)))
 
 (defmacro defn-remote
