@@ -116,7 +116,7 @@ deref it by yourself to get the return value.
 You can also assign a callback for an async facade.
 
 ``` clojure
-(defn-remote sc slapi/timestamp :callback #(println %))
+(defn-remote sc slapi/timestamp :callback #(println (:result %)))
 (timestamp)
 ```
 
