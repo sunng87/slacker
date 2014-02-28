@@ -80,12 +80,15 @@
         (do
           (swap! rmap dissoc tid)
           {:cause {:error :timeout}}))))
-  (async-call-remote [this ns-name func-name params cb options]
+  (async-call-remote [this ns-name func-name params user-cb options]
     (let [fname (str ns-name "/" func-name)
           tid (next-trans-id trans-id-gen)
           request (make-request tid content-type fname params)
+          sys-cb (fn [call-result]
+                   (let [user-cb (or user-cb (constantly true))]
+                     (user-cb (:cause call-result) (:result call-result))))
           prms (promise)]
-      (swap! rmap assoc tid {:promise prms :callback cb :async? true})
+      (swap! rmap assoc tid {:promise prms :callback sys-cb :async? true})
       (send conn request)
       prms))
   (inspect [this cmd args]
@@ -210,15 +213,11 @@
         [nsname fname args] remote-call-info]
     (if (or async? (not (nil? callback)))
       ;; async
-      (let [sys-cb (fn [call-result]
-                     (let [user-cb (or callback (constantly true))]
-                       (user-cb (:cause call-result) (:result call-result))))]
-        (exception-enabled-promise
-         (async-call-remote sc nsname fname args sys-cb options)))
+      (exception-enabled-promise
+       (async-call-remote sc nsname fname args callback options))
 
       ;; sync
-      (let [call-result (sync-call-remote sc nsname fname args options)]
-        (process-call-result call-result)))))
+      (process-call-result (sync-call-remote sc nsname fname args options)))))
 
 (defn meta-remote
   "get metadata of a remote function by inspect api"
