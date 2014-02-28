@@ -21,10 +21,6 @@
       :exception {:cause {:code code :error (deserialize content-type data)}}
       {:cause {:code :invalid-result-code}})))
 
-(defn- parse-exception [einfo]
-  (doto (Exception. ^String (:msg einfo))
-    (.setStackTrace (:stacktrace einfo))))
-
 (defn make-request [tid content-type func-name params]
   (let [serialized-params (serialize content-type params)]
     [version tid [:type-request [content-type func-name serialized-params]]]))
@@ -80,13 +76,10 @@
         (do
           (swap! rmap dissoc tid)
           {:cause {:error :timeout}}))))
-  (async-call-remote [this ns-name func-name params user-cb options]
+  (async-call-remote [this ns-name func-name params sys-cb options]
     (let [fname (str ns-name "/" func-name)
           tid (next-trans-id trans-id-gen)
           request (make-request tid content-type fname params)
-          sys-cb (fn [call-result]
-                   (let [user-cb (or user-cb (constantly true))]
-                     (user-cb (:cause call-result) (:result call-result))))
           prms (promise)]
       (swap! rmap assoc tid {:promise prms :callback sys-cb :async? true})
       (send conn request)
@@ -174,13 +167,21 @@
                     (:idgen (@server-requests k))
                     content-type)))
 
+(defn- parse-exception [einfo]
+  (doto (Exception. ^String (:msg einfo))
+    (.setStackTrace (:stacktrace einfo))))
+
+(defn user-friendly-cause [call-result]
+  (when (:cause call-result)
+    (if (and (= :exception (-> call-result :cause :code))
+             (map? (-> call-result :cause :error)))
+      (parse-exception (-> call-result :cause :error))
+      (:cause call-result))))
+
 (defn process-call-result [call-result]
   (if (nil? (:cause call-result))
     (:result call-result)
-    (if (and (= :exception (-> call-result :cause :code))
-             (map? (-> call-result :cause :error)))
-      (throw+ (parse-exception (-> call-result :cause :error)))
-      (throw+ (:cause call-result)))))
+    (throw+ (user-friendly-cause call-result))))
 
 (deftype ExceptionEnabledPromise [prms]
   IDeref
@@ -213,8 +214,12 @@
         [nsname fname args] remote-call-info]
     (if (or async? (not (nil? callback)))
       ;; async
-      (exception-enabled-promise
-       (async-call-remote sc nsname fname args callback options))
+      (let [sys-cb (fn [call-result]
+                     (let [cb (or callback (constantly true))]
+                       (cb (assoc call-result
+                             :cause (user-friendly-cause call-result)))))]
+        (exception-enabled-promise
+         (async-call-remote sc nsname fname args sys-cb options)))
 
       ;; sync
       (process-call-result (sync-call-remote sc nsname fname args options)))))
