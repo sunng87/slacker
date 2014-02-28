@@ -118,19 +118,15 @@
                        msg-body (nth msg 2)
                        handler (get @rmap tid)]
                    (swap! rmap dissoc tid)
-                   (if-not (nil? handler)
-                     (if (:async? handler)
-                       (let [result (handle-response msg-body)]
-                         (when (nil? (:cause result))
-                           (deliver (:promise handler) result))
-                         (when-let [cb (:callback handler)]
-                           (cb result)))
-                       ;; sync request need to decode ths message in
-                       ;; caller thread
-                       (deliver (:promise handler)
-                                (handle-response msg-body)))
-                     ;; pong
-                     (handle-response msg-body)))))
+                   (let [result (handle-response msg-body)]
+                     (if-not (nil? handler)
+                       (do
+                         (deliver (:promise handler) result)
+                         (when (:async? handler)
+                           (when-let [cb (:callback handler)]
+                             (cb result))))
+                       ;; pong
+                       result)))))
    (on-error [ch ^Exception exc]
              (if (or
                   (instance? ConnectException exc)
