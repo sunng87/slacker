@@ -1,6 +1,5 @@
 (ns slacker.example.client
-  (:use slacker.client)
-  (:use [slingshot.slingshot :only [try+]]))
+  (:use slacker.client))
 
 (def conn (slackerc "127.0.0.1:2104"))
 (def conn2 (slackerc "127.0.0.1:2104" :content-type :json))
@@ -32,9 +31,10 @@
   ;; call a function with another client
   (println (with-slackerc conn2 (timestamp)))
 
-  (try+
+  (try
     (make-error)
-    (catch [:code :exception] {:keys [error]} (println error)))
+    (catch Exception e
+      (println (ex-data e))))
 
   (close-all-slackerc)
   (shutdown-agents))

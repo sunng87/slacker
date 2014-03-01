@@ -4,7 +4,6 @@
   (:use [slacker.server http])
   (:use [slacker.acl.core])
   (:use [link core tcp http threads])
-  (:use [slingshot.slingshot :only [try+]])
   (:require [clojure.tools.logging :as log])
   (:import [java.util.concurrent Executors]))
 
@@ -30,7 +29,7 @@
 
 (defn- do-invoke [req]
   (if (nil? (:code req))
-    (try+
+    (try
       (let [{f :func args :args} req
             r0 (apply f args)
             r (if (seq? r0) (doall r0) r0)]

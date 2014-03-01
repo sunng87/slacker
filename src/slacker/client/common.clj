@@ -5,7 +5,6 @@
   (:use [slacker.client.state])
   (:use [link.core :exclude [close]])
   (:use [link.tcp])
-  (:use [slingshot.slingshot :only [throw+ try+]])
   (:require [clojure.tools.logging :as log])
   (:import [java.net ConnectException InetSocketAddress InetAddress]
            [java.nio.channels ClosedChannelException]
@@ -17,9 +16,10 @@
   (let [[content-type code data] (second response)]
     (case code
       :success {:result (deserialize content-type data)}
-      :not-found {:cause {:code code}}
-      :exception {:cause {:code code :error (deserialize content-type data)}}
-      {:cause {:code :invalid-result-code}})))
+      :not-found {:cause {:error code}}
+      :exception {:cause {:error code
+                          :exception (deserialize content-type data)}}
+      {:cause {:error :invalid-result-code}})))
 
 (defn make-request [tid content-type func-name params]
   (let [serialized-params (serialize content-type params)]
@@ -42,7 +42,7 @@
     :type-response (handle-valid-response response)
     :type-inspect-ack (parse-inspect-response response)
     :type-pong (log/debug "pong")
-    :type-error {:cause {:code (-> response second first)}}
+    :type-error {:cause {:error (-> response second first)}}
     nil))
 
 (defprotocol SlackerClientProtocol
@@ -169,15 +169,18 @@
 
 (defn user-friendly-cause [call-result]
   (when (:cause call-result)
-    (if (and (= :exception (-> call-result :cause :code))
-             (map? (-> call-result :cause :error)))
-      (parse-exception (-> call-result :cause :error))
+    (if (and (= :exception (-> call-result :cause :error))
+             (map? (-> call-result :cause :exception)))
+      (parse-exception (-> call-result :cause :exception))
       (:cause call-result))))
 
 (defn process-call-result [call-result]
   (if (nil? (:cause call-result))
     (:result call-result)
-    (throw+ (user-friendly-cause call-result))))
+    (let [e (user-friendly-cause call-result)]
+      (if (instance? Throwable e)
+        (throw (ex-info "Slacker client exception" {:error :exception} e))
+        (throw (ex-info "Slacker client error" e))))))
 
 (deftype ExceptionEnabledPromise [prms]
   IDeref
@@ -229,7 +232,8 @@
     (let [call-result (inspect @sc :meta fname)]
       (if (nil? (:cause call-result))
         (:result call-result)
-        (throw+ (:cause call-result))))))
+        (throw (ex-info "Slacker client error"
+                        (user-friendly-cause call-result)))))))
 
 (defn functions-remote
   "get functions of a remote namespace"
@@ -237,7 +241,8 @@
   (let [call-result (inspect @sc :functions n)]
     (if (nil? (:cause call-result))
       (:result call-result)
-      (throw+ (:cause call-result)))))
+      (throw (ex-info "Slacker client error"
+                      (user-friendly-cause call-result))))))
 
 (defn host-port
   "get host and port from connection string"
@@ -252,7 +257,7 @@
 (defn schedule-ping [delayed-client interval]
   (let [cancelable (.scheduleAtFixedRate
                     ^ScheduledThreadPoolExecutor schedule-pool
-                    #(try+
+                    #(try
                        (when (realized? delayed-client)
                          (ping @delayed-client))
                        (catch Exception e nil))

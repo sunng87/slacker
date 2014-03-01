@@ -7,7 +7,6 @@
                  [link "0.5.6-SNAPSHOT"]
                  [info.sunng/carbonite "0.2.3"]
                  [cheshire "5.3.1"]
-                 [slingshot "0.10.3"]
                  [org.clojure/java.jmx "0.2.0"]
                  [org.clojure/tools.logging "0.2.6"]]
   :profiles {:example {:source-paths ["examples"]}
