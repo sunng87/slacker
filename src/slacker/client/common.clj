@@ -212,8 +212,8 @@
       ;; async
       (let [sys-cb (fn [call-result]
                      (let [cb (or callback (constantly true))]
-                       (cb (assoc call-result
-                             :cause (user-friendly-cause call-result)))))]
+                       (cb (user-friendly-cause call-result)
+                           (:result call-result))))]
         (exception-enabled-promise
          (async-call-remote sc nsname fname args sys-cb options)))
 
