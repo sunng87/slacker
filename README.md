@@ -120,6 +120,15 @@ You can also assign a callback for an async facade.
 (timestamp)
 ```
 
+The callback accepts to arguments
+
+* error
+* result
+
+You need to check (nil? error) because reading the result. Also note
+that doing blocking tasks in callback function could ruin system
+performance.
+
 #### Serialiation
 
 ##### Serializing custom types
