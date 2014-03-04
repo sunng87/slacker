@@ -1,6 +1,5 @@
 (ns slacker.example.client
-  (:use slacker.client)
-  (:use [slingshot.slingshot :only [try+]]))
+  (:use slacker.client))
 
 (def conn (slackerc "127.0.0.1:2104"))
 (def conn2 (slackerc "127.0.0.1:2104" :content-type :json))
@@ -12,7 +11,7 @@
   :remote-ns "slacker.example.api")
 (defn-remote conn get-m2
   :remote-name "get-m"
-  :callback #(prn "Async get-m ==> " %)
+  :callback #(prn "Async get-m ==> " %2)
   :remote-ns "slacker.example.api")
 (defn-remote conn slacker.example.api/rand-ints)
 (defn-remote conn slacker.example.api/make-error)
@@ -32,8 +31,10 @@
   ;; call a function with another client
   (println (with-slackerc conn2 (timestamp)))
 
-  (try+
+  (try
     (make-error)
-    (catch [:code :exception] {:keys [error]} (println error)))
+    (catch Exception e
+      (println (ex-data e))))
 
-  (close-all-slackerc))
+  (close-all-slackerc)
+  (shutdown-agents))

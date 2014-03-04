@@ -1,6 +1,6 @@
 (ns slacker.client
   (:use [slacker common])
-  (:use [slacker.client common])
+  (:use [slacker.client common state])
   (:use [clojure.string :only [split]])
   (:use [link.tcp :only [stop-clients]]))
 
@@ -9,20 +9,27 @@
 (defn slackerc
   "Create connection to a slacker server."
   [addr
-   & {:keys [content-type ssl-context]
+   & {:keys [content-type ssl-context ping-interval]
       :or {content-type :carb
            ssl-context nil}
       :as _}]
   (let [factory (or @slacker-client-factory
                     (swap! slacker-client-factory (fn [_] (create-client-factory ssl-context))))
-        [host port] (host-port addr)]
-    (create-client factory host port content-type)))
+        [host port] (host-port addr)
+        delayed-client (delay (create-client factory host port content-type))]
+    (when ping-interval
+      (schedule-ping delayed-client ping-interval))
+    delayed-client))
 
 (defn close-slackerc [client]
-  (close client))
+  (when (realized? client)
+    (cancel-ping client)
+    (close @client)))
 
 (defn close-all-slackerc []
   (when @slacker-client-factory
+    (doseq [c (keys @scheduled-clients)]
+      (close-slackerc c))
     (stop-clients @slacker-client-factory)))
 
 (defmacro defn-remote
@@ -48,18 +55,18 @@
               (apply invoke-slacker ~sc
                      [~remote-ns ~remote-name (into [] args#)]
                      (flatten (into [] ~options))))
-            (merge (meta-remote ~sc (str ~remote-ns "/" ~remote-name))
-                   {:slacker-remote-fn true
-                    :slacker-client ~sc
-                    :slacker-remote-ns ~remote-ns
-                    :slacker-remote-name ~remote-name}))))))
+            {:slacker-remote-fn true
+             :slacker-client ~sc
+             :slacker-remote-ns ~remote-ns
+             :slacker-remote-name ~remote-name})))))
 
 (defn- defn-remote*
   [sc-sym fname]
   (eval (list 'defn-remote sc-sym (symbol fname))))
 
 (defn use-remote
-  "import remote functions the current namespace"
+  "import remote functions the current namespace, this function
+  will generate remote call, use it carefully in a declarative style."
   ([sc-sym] (use-remote sc-sym (ns-name *ns*)))
   ([sc-sym rns & {:keys [only exclude]
                   :or {only [] exclude []}}]
@@ -73,7 +80,7 @@
                       (not-empty exclude)
                       #(not (contains? (set (map name-fn exclude)) %))
                       :else (constantly true))
-           all-functions (inspect @(resolve sc-sym) :functions (str rns))]
+           all-functions (functions-remote @(resolve sc-sym) (str rns))]
        (dorun (map defn-remote*
                    (repeat sc-sym)
                    (filter filter-fn all-functions))))))
@@ -83,3 +90,13 @@
   used to declare the function"
   [sc & body]
   `(binding [*sc* ~sc] ~@body))
+
+(defn slacker-meta [f]
+  (let [metadata (meta f)
+        {sc :slacker-client
+         remote-ns :slacker-remote-ns
+         remote-fn :slacker-remote-name} metadata]
+    (if sc
+      (merge metadata
+             (meta-remote sc (str remote-ns "/" remote-fn)))
+      metadata)))
