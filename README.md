@@ -2,8 +2,6 @@
 
 ![slacker](http://i.imgur.com/Jd02f.png)
 
-**"Superman is a slacker."**
-
 slacker is a simple RPC framework designed for Clojure and created by
 Clojure.
 
@@ -284,6 +282,10 @@ Duo CPU E7400 @ 2.80GHz, 8G memory), without any special JVM optimization.
 **200,000** calls with **50** threads is completed in **21923.806054
 msecs**, which means slacker could handle more than **9000** calls per
 second on this machine.
+
+## Change logs
+
+See [wiki page](https://github.com/sunng87/slacker/wiki/VersionHistory)
 
 ## Contributors
 
