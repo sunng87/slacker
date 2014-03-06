@@ -9,14 +9,15 @@
 (defn slackerc
   "Create connection to a slacker server."
   [addr
-   & {:keys [content-type ssl-context ping-interval]
+   & {:keys [content-type ssl-context ping-interval timeout]
       :or {content-type :carb
            ssl-context nil}
       :as _}]
   (let [factory (or @slacker-client-factory
                     (swap! slacker-client-factory (fn [_] (create-client-factory ssl-context))))
         [host port] (host-port addr)
-        delayed-client (delay (create-client factory host port content-type))]
+        delayed-client (delay (create-client factory host port content-type
+                                             {:timeout timeout}))]
     (when ping-interval
       (schedule-ping delayed-client ping-interval))
     delayed-client))

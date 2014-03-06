@@ -61,22 +61,22 @@
 (defn- next-trans-id [trans-id-gen]
   (swap! trans-id-gen unchecked-inc))
 
-(deftype SlackerClient [conn rmap trans-id-gen content-type]
+(deftype SlackerClient [conn rmap trans-id-gen content-type options]
   SlackerClientProtocol
-  (sync-call-remote [this ns-name func-name params options]
+  (sync-call-remote [this ns-name func-name params call-options]
     (let [fname (str ns-name "/" func-name)
           tid (next-trans-id trans-id-gen)
           request (make-request tid content-type fname params)
           prms (promise)]
       (swap! rmap assoc tid {:promise prms})
       (send conn request)
-      (deref prms *timeout* nil)
+      (deref prms (or (:timeout options) *timeout*) nil)
       (if (realized? prms)
         @prms
         (do
           (swap! rmap dissoc tid)
           {:cause {:error :timeout}}))))
-  (async-call-remote [this ns-name func-name params sys-cb options]
+  (async-call-remote [this ns-name func-name params sys-cb call-options]
     (let [fname (str ns-name "/" func-name)
           tid (next-trans-id trans-id-gen)
           request (make-request tid content-type fname params)
@@ -90,7 +90,7 @@
           prms (promise)]
       (swap! rmap assoc tid {:promise prms :type :inspect})
       (send conn request)
-      (deref prms *timeout* nil)
+      (deref prms (or (:timeout options) *timeout*) nil)
       (if (realized? prms)
         @prms
         (do
@@ -149,7 +149,7 @@
                         :options *options*
                         :ssl-context ssl-context)))
 
-(defn create-client [client-factory host port content-type]
+(defn create-client [client-factory host port content-type options]
   (let [client (tcp-client client-factory host port :lazy-connect true)
         k (str host ":" port)]
     (if-not (@server-requests k)
@@ -161,7 +161,8 @@
     (SlackerClient. client
                     (:pendings (@server-requests k))
                     (:idgen (@server-requests k))
-                    content-type)))
+                    content-type
+                    options)))
 
 (defn- parse-exception [einfo]
   (doto (Exception. ^String (:msg einfo))
