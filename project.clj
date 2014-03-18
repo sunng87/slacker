@@ -1,4 +1,4 @@
-(defproject slacker "0.11.2"
+(defproject slacker "0.12.0-SNAPSHOT"
   :description "Transparent, non-invasive RPC by clojure and for clojure"
   :url "http://github.com/sunng87/slacker"
   :license {:name "Eclipse Public License"
@@ -9,8 +9,7 @@
                  [cheshire "5.3.1"]
                  [org.clojure/java.jmx "0.2.0"]
                  [org.clojure/tools.logging "0.2.6"]]
-  :profiles {:example {:source-paths ["examples"]}
-             :1.3 {:dependencies [org.clojure/clojure "1.3.0"]}}
+  :profiles {:example {:source-paths ["examples"]}}
   :plugins [[lein-exec "0.3.1"]
             [codox "0.6.7"]]
   :global-vars {*warn-on-reflection* true}
