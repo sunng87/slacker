@@ -1,6 +1,6 @@
 (ns slacker.client
   (:use [slacker common])
-  (:use [slacker.client common state])
+  (:use [slacker.client common])
   (:use [clojure.string :only [split]])
   (:use [link.tcp :only [stop-clients]]))
 
@@ -19,19 +19,20 @@
         delayed-client (delay (create-client factory host port content-type
                                              {:timeout timeout}))]
     (when ping-interval
-      (schedule-ping delayed-client ping-interval))
+      (schedule-ping @slacker-client-factory
+                     delayed-client ping-interval))
     delayed-client))
 
 (defn close-slackerc [client]
   (when (realized? client)
-    (cancel-ping client)
+    (cancel-ping @slacker-client-factory client)
     (close @client)))
 
 (defn close-all-slackerc []
   (when @slacker-client-factory
-    (doseq [c (keys @scheduled-clients)]
+    (doseq [c (keys @(nth @slacker-client-factory 2))]
       (close-slackerc c))
-    (stop-clients @slacker-client-factory)))
+    (stop-clients (first @slacker-client-factory))))
 
 (defmacro defn-remote
   "Define a facade for remote function. You have to provide the

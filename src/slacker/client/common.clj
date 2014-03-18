@@ -2,7 +2,6 @@
   (:refer-clojure :exclude [send])
   (:use [clojure.string :only [split]])
   (:use [slacker serialization common protocol])
-  (:use [slacker.client.state])
   (:use [link.core :exclude [close]])
   (:use [link.tcp])
   (:require [clojure.tools.logging :as log])
@@ -61,53 +60,54 @@
 (defn- next-trans-id [trans-id-gen]
   (swap! trans-id-gen unchecked-inc))
 
-(deftype SlackerClient [conn rmap trans-id-gen content-type options]
+(deftype SlackerClient [conn state content-type options]
   SlackerClientProtocol
   (sync-call-remote [this ns-name func-name params call-options]
     (let [fname (str ns-name "/" func-name)
-          tid (next-trans-id trans-id-gen)
+          tid (next-trans-id (:idgen state))
           request (make-request tid content-type fname params)
           prms (promise)]
-      (swap! rmap assoc tid {:promise prms})
+      (swap! (:pendings state) assoc tid {:promise prms})
       (send conn request)
       (deref prms (or (:timeout options) *timeout*) nil)
       (if (realized? prms)
         @prms
         (do
-          (swap! rmap dissoc tid)
+          (swap! (:pendings state) dissoc tid)
           {:cause {:error :timeout}}))))
   (async-call-remote [this ns-name func-name params sys-cb call-options]
     (let [fname (str ns-name "/" func-name)
-          tid (next-trans-id trans-id-gen)
+          tid (next-trans-id (:idgen state))
           request (make-request tid content-type fname params)
           prms (promise)]
-      (swap! rmap assoc tid {:promise prms :callback sys-cb :async? true})
+      (swap! (:pendings state) assoc
+             tid {:promise prms :callback sys-cb :async? true})
       (send conn request)
       prms))
   (inspect [this cmd args]
-    (let [tid (next-trans-id trans-id-gen)
+    (let [tid (next-trans-id (:idgen state))
           request (make-inspect-request tid cmd args)
           prms (promise)]
-      (swap! rmap assoc tid {:promise prms :type :inspect})
+      (swap! (:pendings state) assoc tid {:promise prms :type :inspect})
       (send conn request)
       (deref prms (or (:timeout options) *timeout*) nil)
       (if (realized? prms)
         @prms
         (do
-          (swap! rmap dissoc tid)
+          (swap! (:pendings state) dissoc tid)
           {:cause {:error :timeout}}))))
   (ping [this]
     (send conn ping-packet)
     (log/debug "ping"))
   (close [this]
     (let [k (channel-hostport conn)]
-      (when (<= (swap! (:refs (@server-requests k)) dec) 0)
-        (swap! server-requests dissoc k)))
+      (when (<= (swap! (:refs state) dec) 0)
+        (reset! (:pendings state) {})))
     (link.core/close conn)))
 
 (defn- create-link-handler
   "The event handler for client"
-  []
+  [server-requests]
   (create-handler
    (on-message [ch msg]
                (when-let [rmap (-> ch
@@ -139,18 +139,26 @@
    :so-reuseaddr true
    :so-keepalive true
    :write-buffer-high-water-mark (int 0xFFFF) ; 65kB
-   :write-buffer-low-water-mark (int 0xFFF)       ; 4kB
+   :write-buffer-low-water-mark (int 0xFFF) ; 4kB
    :connect-timeout-millis (int 5000)})
 
 (defn create-client-factory [ssl-context]
-  (let [handler (create-link-handler)]
-    (tcp-client-factory handler
+  (let [server-requests (atom {})
+        handler (create-link-handler server-requests)
+        scheduled-clients (atom {})
+        schedule-pool (ScheduledThreadPoolExecutor.
+                       (.availableProcessors (Runtime/getRuntime)))]
+    [(tcp-client-factory handler
                         :codec slacker-base-codec
                         :options *options*
-                        :ssl-context ssl-context)))
+                        :ssl-context ssl-context)
+     schedule-pool
+     scheduled-clients
+     server-requests]))
 
-(defn create-client [client-factory host port content-type options]
-  (let [client (tcp-client client-factory host port :lazy-connect true)
+(defn create-client [slacker-client-factory host port content-type options]
+  (let [[tcp-factory pool clients server-requests] slacker-client-factory
+        client (tcp-client tcp-factory host port :lazy-connect true)
         k (str host ":" port)]
     (if-not (@server-requests k)
       (swap! server-requests assoc k
@@ -159,8 +167,7 @@
               :refs (atom 1)})
       (swap! (-> @server-requests (get k) :refs) inc))
     (SlackerClient. client
-                    (:pendings (@server-requests k))
-                    (:idgen (@server-requests k))
+                    (@server-requests k)
                     content-type
                     options)))
 
@@ -251,12 +258,9 @@
   (let [[host port] (split connection-string #":")]
     [host (Integer/valueOf ^String port)]))
 
-(defonce schedule-pool
-  (ScheduledThreadPoolExecutor.
-   (.availableProcessors (Runtime/getRuntime))))
-
-(defn schedule-ping [delayed-client interval]
-  (let [cancelable (.scheduleAtFixedRate
+(defn schedule-ping [slacker-factory delayed-client interval]
+  (let [[_ schedule-pool scheduled-clients _] slacker-factory
+        cancelable (.scheduleAtFixedRate
                     ^ScheduledThreadPoolExecutor schedule-pool
                     #(try
                        (when (realized? delayed-client)
@@ -268,6 +272,7 @@
     (swap! scheduled-clients assoc delayed-client cancelable)
     cancelable))
 
-(defn cancel-ping [client]
-  (when-let [cancelable (@scheduled-clients client)]
-    (.cancel ^ScheduledFuture cancelable true)))
+(defn cancel-ping [factory client]
+  (let [[_ _ scheduled-clients _] factory]
+    (when-let [cancelable (@scheduled-clients client)]
+      (.cancel ^ScheduledFuture cancelable true))))
