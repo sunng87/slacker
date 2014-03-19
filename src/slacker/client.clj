@@ -4,35 +4,30 @@
   (:use [clojure.string :only [split]])
   (:use [link.tcp :only [stop-clients]]))
 
-(defonce slacker-client-factory (atom nil))
+(defonce cached-slacker-client-factory
+  (delay (create-client-factory nil)))
+
+(defn slacker-client-factory [ssl-context]
+  (create-client-factory ssl-context))
 
 (defn slackerc
   "Create connection to a slacker server."
   [addr
-   & {:keys [content-type ssl-context ping-interval timeout]
+   & {:keys [content-type factory ping-interval timeout]
       :or {content-type :carb
-           ssl-context nil}
+           factory @cached-slacker-client-factory}
       :as _}]
-  (let [factory (or @slacker-client-factory
-                    (swap! slacker-client-factory (fn [_] (create-client-factory ssl-context))))
-        [host port] (host-port addr)
-        delayed-client (delay (create-client factory host port content-type
-                                             {:timeout timeout}))]
-    (when ping-interval
-      (schedule-ping @slacker-client-factory
-                     delayed-client ping-interval))
-    delayed-client))
+  (delay (create-client factory addr content-type
+                        {:timeout timeout
+                         :ping-interval ping-interval})))
 
 (defn close-slackerc [client]
   (when (realized? client)
-    (cancel-ping @slacker-client-factory client)
     (close @client)))
 
-(defn close-all-slackerc []
-  (when @slacker-client-factory
-    (doseq [c (keys @(nth @slacker-client-factory 2))]
-      (close-slackerc c))
-    (stop-clients (first @slacker-client-factory))))
+(defn shutdown-slacker-client-factory
+  ([] (shutdown-factory @cached-slacker-client-factory))
+  ([factory] (shutdown-factory factory)))
 
 (defmacro defn-remote
   "Define a facade for remote function. You have to provide the

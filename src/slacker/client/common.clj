@@ -48,8 +48,13 @@
   (sync-call-remote [this ns-name func-name params options])
   (async-call-remote [this ns-name func-name params cb options])
   (inspect [this cmd args])
+  (server-addr [this])
   (ping [this])
   (close [this]))
+
+(defprotocol KeepAliveClientProtocol
+  (schedule-ping [this ping-interval])
+  (cancel-ping [this]))
 
 (defn- channel-hostport [ch]
   (let [addr (link.core/remote-addr ch)]
@@ -60,10 +65,11 @@
 (defn- next-trans-id [trans-id-gen]
   (swap! trans-id-gen unchecked-inc))
 
-(deftype SlackerClient [conn state content-type options]
+(deftype SlackerClient [addr conn factory content-type options]
   SlackerClientProtocol
   (sync-call-remote [this ns-name func-name params call-options]
-    (let [fname (str ns-name "/" func-name)
+    (let [state (@(nth factory 2) (server-addr this))
+          fname (str ns-name "/" func-name)
           tid (next-trans-id (:idgen state))
           request (make-request tid content-type fname params)
           prms (promise)]
@@ -76,7 +82,8 @@
           (swap! (:pendings state) dissoc tid)
           {:cause {:error :timeout}}))))
   (async-call-remote [this ns-name func-name params sys-cb call-options]
-    (let [fname (str ns-name "/" func-name)
+    (let [state (@(nth factory 2) (server-addr this))
+          fname (str ns-name "/" func-name)
           tid (next-trans-id (:idgen state))
           request (make-request tid content-type fname params)
           prms (promise)]
@@ -85,7 +92,8 @@
       (send conn request)
       prms))
   (inspect [this cmd args]
-    (let [tid (next-trans-id (:idgen state))
+    (let [state (@(nth factory 2) (server-addr this))
+          tid (next-trans-id (:idgen state))
           request (make-inspect-request tid cmd args)
           prms (promise)]
       (swap! (:pendings state) assoc tid {:promise prms :type :inspect})
@@ -100,10 +108,38 @@
     (send conn ping-packet)
     (log/debug "ping"))
   (close [this]
-    (let [k (channel-hostport conn)]
-      (when (<= (swap! (:refs state) dec) 0)
-        (reset! (:pendings state) {})))
-    (link.core/close conn)))
+    (let [server-requests (nth factory 2)]
+      (swap! server-requests
+             (fn [snapshot]
+               (let [addr (server-addr this)
+                     refs (remove #(= this %)
+                                  (-> snapshot (get addr) :refs))]
+                 (if (empty? refs)
+                   (dissoc snapshot addr)
+                   (assoc snapshot :refs refs))))))
+    (cancel-ping this)
+    (link.core/close conn))
+  (server-addr [this]
+    addr)
+
+  KeepAliveClientProtocol
+  (schedule-ping [this interval]
+    (let [[_ schedule-pool server-requests] factory
+          state (@server-requests (server-addr this))
+          cancelable (.scheduleAtFixedRate
+                      ^ScheduledThreadPoolExecutor schedule-pool
+                      #(try
+                         (ping this)
+                         (catch Exception e nil))
+                      0 ;; initial delay
+                      interval
+                      TimeUnit/SECONDS)]
+      (swap! (:keep-alive state) assoc this cancelable)))
+  (cancel-ping [this]
+    (let [[_ _ server-requests] factory
+          state (@server-requests (server-addr this))]
+      (when-let [cancelable (@(:keep-alive state) this)]
+        (.cancel ^ScheduledFuture cancelable true)))))
 
 (defn- create-link-handler
   "The event handler for client"
@@ -145,31 +181,42 @@
 (defn create-client-factory [ssl-context]
   (let [server-requests (atom {})
         handler (create-link-handler server-requests)
-        scheduled-clients (atom {})
         schedule-pool (ScheduledThreadPoolExecutor.
                        (.availableProcessors (Runtime/getRuntime)))]
     [(tcp-client-factory handler
-                        :codec slacker-base-codec
-                        :options *options*
-                        :ssl-context ssl-context)
+                         :codec slacker-base-codec
+                         :options *options*
+                         :ssl-context ssl-context)
      schedule-pool
-     scheduled-clients
      server-requests]))
 
-(defn create-client [slacker-client-factory host port content-type options]
-  (let [[tcp-factory pool clients server-requests] slacker-client-factory
+(defn host-port
+  "get host and port from connection string"
+  [connection-string]
+  (let [[host port] (split connection-string #":")]
+    [host (Integer/valueOf ^String port)]))
+
+(defn create-client [slacker-client-factory addr content-type options]
+  (let [[host port] (host-port addr)
+        [tcp-factory _ server-requests] slacker-client-factory
         client (tcp-client tcp-factory host port :lazy-connect true)
-        k (str host ":" port)]
-    (if-not (@server-requests k)
-      (swap! server-requests assoc k
-             {:pendings (atom {})
-              :idgen (atom (long 0))
-              :refs (atom 1)})
-      (swap! (-> @server-requests (get k) :refs) inc))
-    (SlackerClient. client
-                    (@server-requests k)
-                    content-type
-                    options)))
+        slacker-client (SlackerClient. addr
+                                       client
+                                       slacker-client-factory
+                                       content-type
+                                       options)]
+    (swap! server-requests
+           (fn [snapshot]
+             (if (snapshot addr)
+               (update-in snapshot [addr :refs] conj slacker-client)
+               (assoc snapshot addr
+                      {:pendings (atom {})
+                       :idgen (atom 0)
+                       :keep-alive (atom {})
+                       :refs [slacker-client]}))))
+    (when-let [interval (:ping-interval options)]
+      (schedule-ping slacker-client interval))
+    slacker-client))
 
 (defn- parse-exception [einfo]
   (doto (Exception. ^String (:msg einfo))
@@ -252,27 +299,10 @@
       (throw (ex-info "Slacker client error"
                       (user-friendly-cause call-result))))))
 
-(defn host-port
-  "get host and port from connection string"
-  [connection-string]
-  (let [[host port] (split connection-string #":")]
-    [host (Integer/valueOf ^String port)]))
-
-(defn schedule-ping [slacker-factory delayed-client interval]
-  (let [[_ schedule-pool scheduled-clients _] slacker-factory
-        cancelable (.scheduleAtFixedRate
-                    ^ScheduledThreadPoolExecutor schedule-pool
-                    #(try
-                       (when (realized? delayed-client)
-                         (ping @delayed-client))
-                       (catch Exception e nil))
-                    0 ;; initial delay
-                    interval
-                    TimeUnit/SECONDS)]
-    (swap! scheduled-clients assoc delayed-client cancelable)
-    cancelable))
-
-(defn cancel-ping [factory client]
-  (let [[_ _ scheduled-clients _] factory]
-    (when-let [cancelable (@scheduled-clients client)]
-      (.cancel ^ScheduledFuture cancelable true))))
+(defn shutdown-factory [factory]
+  ;; shutdown associated clients
+  (doseq [a (map :refs (vals @(nth factory 2)))]
+    (doseq [c (flatten a)]
+      (close c)))
+  (stop-clients (first factory))
+  (.shutdown ^ScheduledThreadPoolExecutor (second factory)))

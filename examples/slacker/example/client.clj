@@ -1,7 +1,7 @@
 (ns slacker.example.client
   (:use slacker.client))
 
-(def conn (slackerc "127.0.0.1:2104"))
+(def conn (slackerc "127.0.0.1:2104" :ping-interval 5))
 (def conn2 (slackerc "127.0.0.1:2104" :content-type :json))
 (defn-remote conn slacker.example.api/timestamp)
 (defn-remote conn2 slacker.example.api/inc-m)
@@ -36,5 +36,5 @@
     (catch Exception e
       (println (ex-data e))))
 
-  (close-all-slackerc)
+  (shutdown-slacker-client-factory)
   (shutdown-agents))
