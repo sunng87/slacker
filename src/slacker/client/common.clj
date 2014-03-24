@@ -73,7 +73,7 @@
                   (task)
                   (catch Exception e nil))
                delay
-               TimeUnit/SECONDS))
+               TimeUnit/MILLISECONDS))
   (schedule-task [this task delay interval]
     (.scheduleAtFixedRate ^ScheduledThreadPoolExecutor schedule-pool
                           #(try
@@ -81,7 +81,7 @@
                              (catch Exception e nil))
                           delay
                           interval
-                          TimeUnit/SECONDS))
+                          TimeUnit/MILLISECONDS))
   (shutdown [this]
     ;; shutdown associated clients
     (doseq [a (map :refs (vals @states))]
@@ -146,10 +146,19 @@
           fname (str ns-name "/" func-name)
           tid (next-trans-id (:idgen state))
           request (make-request tid content-type fname params)
-          prms (promise)]
+          prms (promise)
+          timeout-check (fn []
+                          (when-let [handler (get @(:pendings state) tid)]
+                            (swap! (:pendings state) dissoc tid)
+                            (let [result {:cause {:error :timeout}}]
+                              (deliver (:promise handler) result)
+                              (when-let [cb (:callback handler)]
+                                (cb result)))))]
       (swap! (:pendings state) assoc
              tid {:promise prms :callback sys-cb :async? true})
       (send conn request)
+      (schedule-task factory timeout-check
+                     (or (:timeout options) *timeout*))
       prms))
   (inspect [this cmd args]
     (let [state (get-state factory (server-addr this))
@@ -198,12 +207,11 @@
                        handler (get @rmap tid)]
                    (swap! rmap dissoc tid)
                    (let [result (handle-response msg-body)]
-                     (if-not (nil? handler)
-                       (do
-                         (deliver (:promise handler) result)
-                         (when (:async? handler)
-                           (when-let [cb (:callback handler)]
-                             (cb result))))
+                     (when-not (nil? handler)
+                       (deliver (:promise handler) result)
+                       (when (:async? handler)
+                         (when-let [cb (:callback handler)]
+                           (cb result)))
                        ;; pong
                        result)))))
    (on-error [ch ^Exception exc]
@@ -249,7 +257,7 @@
                                        options)]
     (assoc-client slacker-client-factory slacker-client)
     (when-let [interval (:ping-interval options)]
-      (schedule-ping slacker-client interval))
+      (schedule-ping slacker-client (* 1000 interval)))
     slacker-client))
 
 (defn- parse-exception [einfo]
