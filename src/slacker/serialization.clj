@@ -4,6 +4,7 @@
   (:use [clojure.java.io :only [copy]])
   (:require [carbonite.api :as carb])
   (:require [cheshire.core :as json])
+  (:require [clojure.edn :as edn])
   (:import [java.io ByteArrayInputStream ByteArrayOutputStream])
   (:import [java.nio ByteBuffer])
   (:import [java.nio.charset Charset])
@@ -69,7 +70,7 @@
              :bytes (String. ^bytes ^String data "UTF-8")
              :string data)]
        (if *debug* (println (str "dbg:: " cljstr)))
-       (read-string cljstr))))
+       (edn/read-string cljstr))))
 
 (defmethod serialize :clj
   ([_ data] (serialize :clj data :buffer))
