@@ -207,7 +207,7 @@
                        handler (get @rmap tid)]
                    (swap! rmap dissoc tid)
                    (let [result (handle-response msg-body)]
-                     (when-not (nil? handler)
+                     (when (some? handler)
                        (deliver (:promise handler) result)
                        (when (:async? handler)
                          (when-let [cb (:callback handler)]
@@ -308,7 +308,7 @@
       :as options}]
   (let [sc @(or *sc* sc)  ;; allow local binding to override client
         [nsname fname args] remote-call-info]
-    (if (or async? (not (nil? callback)))
+    (if (or async? (some? callback))
       ;; async
       (let [sys-cb (fn [call-result]
                      (let [cb (or callback (constantly true))]

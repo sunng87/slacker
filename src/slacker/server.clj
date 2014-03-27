@@ -113,7 +113,7 @@
    (protocol-mismatch-packet 0)
 
    ;; acl enabled
-   (and (not (nil? acl))
+   (and (some? acl)
         (not (authorize client-info acl)))
    (acl-reject-packet (second req))
 
@@ -210,7 +210,7 @@
                                          :codec slacker-base-codec
                                          :options server-options
                                          :ssl-context ssl-context)
-          the-http-server (when-not (nil? http)
+          the-http-server (when (some? http)
                             (http-server http (apply slacker-ring-app exposed-ns
                                                      (flatten (into [] options)))
                                          :executor executor
