@@ -69,18 +69,19 @@
   SlackerClientFactoryProtocol
   (schedule-task [this task delay]
     (.schedule ^ScheduledThreadPoolExecutor schedule-pool
-               #(try
-                  (task)
-                  (catch Exception e nil))
-               delay
+               ^Runnable (cast Runnable
+                               #(try
+                                  (task)
+                                  (catch Exception e nil)))
+               (long delay)
                TimeUnit/MILLISECONDS))
   (schedule-task [this task delay interval]
     (.scheduleAtFixedRate ^ScheduledThreadPoolExecutor schedule-pool
                           #(try
                              (task)
                              (catch Exception e nil))
-                          delay
-                          interval
+                          (long delay)
+                          (long interval)
                           TimeUnit/MILLISECONDS))
   (shutdown [this]
     ;; shutdown associated clients
