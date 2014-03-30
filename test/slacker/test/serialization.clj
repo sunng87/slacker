@@ -65,6 +65,25 @@
        87742)
   (is (= "[1 2 3]" (serialize :clj [1 2 3] :string))))
 
+(deftest test-nippy-serialization
+  (are [data] (is (= data (deserialize :nippy
+                                       (serialize :nippy data))))
+       [1 2 3]
+       {:a 1 :b 2}
+       #{1 2 3}
+       "hello"
+       :world
+       87742)
+  (are [data] (is (= data (deserialize :nippy
+                                       (serialize :nippy data :bytes)
+                                       :bytes)))
+       [1 2 3]
+       {:a 1 :b 2}
+       #{1 2 3}
+       "hello"
+       :world
+       87742))
+
 (deftest test-compression
   (are [data] (is (= data (deserialize :deflate-carb
                                        (serialize :deflate-carb data))))
@@ -74,5 +93,3 @@
        "hello"
        :world
        87742))
-
-

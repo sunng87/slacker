@@ -5,6 +5,7 @@
   (:require [carbonite.api :as carb])
   (:require [cheshire.core :as json])
   (:require [clojure.edn :as edn])
+  (:require [taoensso.nippy :as nippy])
   (:import [java.io ByteArrayInputStream ByteArrayOutputStream])
   (:import [java.nio ByteBuffer])
   (:import [java.nio.charset Charset])
@@ -82,6 +83,20 @@
          :string cljstr
          :bytes (.getBytes cljstr "UTF-8")))))
 
+(defmethod deserialize :nippy
+  ([_ data] (deserialize :nippy data :buffer))
+  ([_ data ot]
+     (if (= ot :bytes)
+       (nippy/thaw data)
+       (nippy/thaw (bytebuffer-bytes data)))))
+
+(defmethod serialize :nippy
+  ([_ data] (serialize :nippy data :buffer))
+  ([_ data ot]
+     (let [bytes (nippy/freeze data)]
+       (case ot
+         :bytes bytes
+         :buffer (ByteBuffer/wrap bytes)))))
 
 (defmethod serialize :deflate
   ([dct data] (serialize dct data :buffer))

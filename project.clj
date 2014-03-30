@@ -7,7 +7,8 @@
                  [link "0.6.2"]
                  [info.sunng/carbonite "0.2.3"]
                  [cheshire "5.3.1"]
-                 [org.clojure/tools.logging "0.2.6"]]
+                 [org.clojure/tools.logging "0.2.6"]
+                 [com.taoensso/nippy "2.5.2"]]
   :profiles {:example {:source-paths ["examples"]
                        :dependencies [[org.clojure/java.jmx "0.2.0"]]}}
   :plugins [[lein-exec "0.3.1"]
