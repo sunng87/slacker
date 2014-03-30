@@ -1,6 +1,6 @@
 (ns slacker.serialization
   (:use [slacker common])
-  (:use [slacker.serialization.carbonite])
+  (:use [slacker.serialization carbonite nippy])
   (:use [clojure.java.io :only [copy]])
   (:require [carbonite.api :as carb])
   (:require [cheshire.core :as json])
