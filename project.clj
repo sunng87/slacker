@@ -4,7 +4,7 @@
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.6.0"]
-                 [link "0.6.4"]
+                 [link "0.6.5"]
                  [info.sunng/carbonite "0.2.3"]
                  [cheshire "5.3.1"]
                  [org.clojure/tools.logging "0.2.6"]
