@@ -2,6 +2,10 @@
   (:refer-clojure :exclude [byte float double])
   (:use [link.codec]))
 
+(def
+  ^{:doc "Protocol version."}
+  version (short 6))
+
 (def packet-type
   (enum (byte) {:type-request 0
                 :type-response 1
@@ -14,10 +18,11 @@
                 :type-inspect-ack 8}))
 
 (def content-type
-  (enum (byte) {:carb 0 :json 1 :clj 2
+  (enum (byte) {:carb 0 :json 1 :clj 2 :nippy 3
                 :deflate-carb 10
                 :deflate-json 11
-                :deflate-clj 12}))
+                :deflate-clj 12
+                :deflate-nippy 13}))
 
 (def result-codes
   (enum (byte) {:success 0
@@ -88,9 +93,8 @@
      :type-response slacker-response-codec
      :type-ping slacker-ping-codec
      :type-pong slacker-pong-codec
-     :type-error slacker-error-codec 
+     :type-error slacker-error-codec
      :type-auth-req slacker-auth-req-codec
      :type-auth-ack slacker-auth-ack-codec
      :type-inspect-req slacker-inspect-req-codec
      :type-inspect-ack slacker-inspect-ack-codec})))
-  

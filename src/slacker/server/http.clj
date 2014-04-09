@@ -1,7 +1,7 @@
 (ns slacker.server.http
   (:require [clojure.string :as string])
   (:require [clojure.java.io :as io])
-  (:require [slacker.common])
+  (:require [slacker.protocol])
   (:import [java.io
             ByteArrayInputStream
             ByteArrayOutputStream])
@@ -29,7 +29,7 @@
         content-type (keyword content-type)
         body (or body "[]")
         data (stream->bytebuffer body)]
-    [slacker.common/version 0 [:type-request [content-type fname data]]]))
+    [slacker.protocol/version 0 [:type-request [content-type fname data]]]))
 
 (defn slacker-resp->ring-resp
   "transform slacker response to ring response"
@@ -53,11 +53,10 @@
         {:status status
          :headers {"content-type" content-type}
          :body body}))))
-  
-    
+
+
 
 (defn http-client-info
   "Get http client information (remote IP) from ring request"
   [req]
   (select-keys req [:remote-addr]))
-

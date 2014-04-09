@@ -1,6 +1,6 @@
 (ns slacker.test.server.http
   (:use clojure.test)
-  (:use [slacker.common :only [version]] )
+  (:use [slacker.protocol :only [version]] )
   (:use slacker.server.http)
   (:use slacker.serialization)
   (:require [clojure.java.io :as io])
@@ -29,5 +29,3 @@
         resp (slacker-resp->ring-resp sresp)]
     (is (= 200 (:status resp)))
     (is (= "application/clj" (-> resp :headers (get "content-type"))))))
-
-

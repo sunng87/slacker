@@ -8,9 +8,7 @@
   ^{:doc "Timeout for synchronouse call."
     :dynamic true}
   *timeout* 10000)
-(def
-  ^{:doc "Protocol version."}
-  version (short 5))
+
 
 (def
   ^{:doc "Initial Kryo ObjectBuffer size (bytes)."

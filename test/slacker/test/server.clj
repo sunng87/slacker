@@ -1,5 +1,5 @@
 (ns slacker.test.server
-  (:use [slacker server serialization common])
+  (:use [slacker server serialization common protocol])
   (:use [clojure.test])
   (:use [clojure.string :only [split]]))
 
@@ -67,4 +67,3 @@
                 first)
         response (deserialize :clj result :string)]
     (= (map name (keys funcs)) response)))
-
