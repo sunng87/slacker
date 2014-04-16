@@ -217,7 +217,7 @@ $ curl -d "[5]" http://localhost:4104/slapi/rand-ints.clj
 ```
 
 Note that you can only use `json` or `clj` as format. Because HTTP is
-a test based protocol, so `carb` won't be supported.
+a text based protocol, so `carb` won't be supported.
 
 #### Slacker as a Ring App
 
