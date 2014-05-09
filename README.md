@@ -6,6 +6,7 @@ slacker is a simple RPC framework designed for Clojure and created by
 Clojure.
 
 [![Build Status](https://travis-ci.org/sunng87/slacker.png?branch=master)](https://travis-ci.org/sunng87/slacker)
+[![Dependency Status](https://www.versioneye.com/user/projects/5358b3e8fe0d07af35000052/badge.png)](https://www.versioneye.com/user/projects/5358b3e8fe0d07af35000052)
 
 ## Features
 
@@ -217,7 +218,7 @@ $ curl -d "[5]" http://localhost:4104/slapi/rand-ints.clj
 ```
 
 Note that you can only use `json` or `clj` as format. Because HTTP is
-a test based protocol, so `carb` won't be supported.
+a text based protocol, so `carb` won't be supported.
 
 #### Slacker as a Ring App
 
