@@ -4,7 +4,7 @@
 
 (def
   ^{:doc "Protocol version."}
-  version (short 6))
+  version (short 5))
 
 (def packet-type
   (enum (byte) {:type-request 0
