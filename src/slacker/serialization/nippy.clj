@@ -2,14 +2,14 @@
   (:require [taoensso.nippy :as nippy])
   (:import [java.io DataOutput DataInput]))
 
-(nippy/extend-freeze StackTraceElement 1
+(nippy/extend-freeze StackTraceElement 92
                      [^StackTraceElement s ^DataOutput data-output]
                      (.writeUTF data-output (.getClassName s))
                      (.writeUTF data-output (.getMethodName s))
                      (.writeUTF data-output (.getFileName s))
                      (.writeInt data-output (.getLineNumber s)))
 
-(nippy/extend-thaw 1
+(nippy/extend-thaw 92
                    [^DataInput data-input]
                    (StackTraceElement.
                     (.readUTF data-input)
