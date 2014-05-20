@@ -59,7 +59,7 @@
 
 (defn- defn-remote*
   [sc-sym fname]
-  (eval (list 'defn-remote sc-sym (symbol fname))))
+  (eval (list 'slacker.client/defn-remote sc-sym (symbol fname))))
 
 (defn use-remote
   "import remote functions the current namespace, this function
