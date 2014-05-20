@@ -1,4 +1,4 @@
-(defproject slacker "0.11.4"
+(defproject slacker "0.11.5"
   :description "Transparent, non-invasive RPC by clojure and for clojure"
   :url "http://github.com/sunng87/slacker"
   :license {:name "Eclipse Public License"
@@ -15,4 +15,7 @@
             [codox "0.6.7"]]
   :global-vars {*warn-on-reflection* true}
   :aliases {"run-example-server" ["with-profile" "default,example" "run" "-m" "slacker.example.server"]
-            "run-example-client" ["with-profile" "default,example" "run" "-m" "slacker.example.client"]})
+            "run-example-client" ["with-profile" "default,example" "run" "-m" "slacker.example.client"]}
+  :lein-release {:scm :git
+                 :deploy-via :shell
+                 :shell ["lein" "deploy" "clojars"]})
