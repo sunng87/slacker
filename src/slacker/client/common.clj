@@ -150,8 +150,8 @@
                         :ssl-context ssl-context)))
 
 (defn create-client [client-factory host port content-type options]
-  (let [client (tcp-client client-factory host port :lazy-connect true)
-        k (str host ":" port)]
+  (let [client (tcp-client client-factory host port)
+        k (channel-hostport client)]
     (if-not (@server-requests k)
       (swap! server-requests assoc k
              {:pendings (atom {})
