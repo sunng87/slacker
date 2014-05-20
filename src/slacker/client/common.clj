@@ -95,7 +95,7 @@
   (get-states [this]
     @states)
   (open-tcp-client [this host port]
-    (tcp-client tcp-factory host port :lazy-connect true))
+    (tcp-client tcp-factory host port))
   (assoc-client [this client]
     (swap! states
            (fn [snapshot]
@@ -126,7 +126,7 @@
 (defn- next-trans-id [trans-id-gen]
   (swap! trans-id-gen unchecked-inc))
 
-(deftype SlackerClient [addr conn factory content-type options]
+(deftype SlackerClient [conn factory content-type options]
   SlackerClientProtocol
   (sync-call-remote [this ns-name func-name params call-options]
     (let [state (get-state factory (server-addr this))
@@ -182,7 +182,7 @@
     (dissoc-client factory this)
     (link.core/close conn))
   (server-addr [this]
-    addr)
+    (channel-hostport conn))
 
   KeepAliveClientProtocol
   (schedule-ping [this interval]
@@ -251,8 +251,7 @@
 (defn create-client [slacker-client-factory addr content-type options]
   (let [[host port] (host-port addr)
         client (open-tcp-client slacker-client-factory host port)
-        slacker-client (SlackerClient. addr
-                                       client
+        slacker-client (SlackerClient. client
                                        slacker-client-factory
                                        content-type
                                        options)]
