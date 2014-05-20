@@ -9,7 +9,7 @@
 (defn slackerc
   "Create connection to a slacker server."
   [addr
-   & {:keys [content-type ssl-context ping-interval timeout]
+   & {:keys [content-type ssl-context ping-interval timeout eager]
       :or {content-type :carb
            ssl-context nil}
       :as _}]
@@ -20,6 +20,8 @@
                                              {:timeout timeout}))]
     (when ping-interval
       (schedule-ping delayed-client ping-interval))
+    (when eager
+      (ping @delayed-client))
     delayed-client))
 
 (defn close-slackerc [client]
