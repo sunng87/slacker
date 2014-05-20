@@ -65,8 +65,9 @@
   "import remote functions the current namespace, this function
   will generate remote call, use it carefully in a declarative style."
   ([sc-sym] (use-remote sc-sym (ns-name *ns*)))
-  ([sc-sym rns & {:keys [only exclude]
-                  :or {only [] exclude []}}]
+  ([sc-sym rns] (use-remote sc-sym rns nil))
+  ([sc-sym rns lns & {:keys [only exclude]
+                      :or {only [] exclude []}}]
      (if (and (not-empty only) (not-empty exclude))
        (throw (IllegalArgumentException.
                "do not provide :only and :exclude both")))
@@ -78,9 +79,10 @@
                       #(not (contains? (set (map name-fn exclude)) %))
                       :else (constantly true))
            all-functions (functions-remote @(resolve sc-sym) (str rns))]
-       (dorun (map defn-remote*
-                   (repeat sc-sym)
-                   (filter filter-fn all-functions))))))
+       (binding [*ns* (or lns *ns*)]
+           (dorun (map defn-remote*
+                    (repeat sc-sym)
+                    (filter filter-fn all-functions)))))))
 
 (defmacro with-slackerc
   "call the slacker remote function with a client other than the client
