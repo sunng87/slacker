@@ -26,6 +26,9 @@
 (defn return-nil []
   nil)
 
+(defn return-zero []
+  0)
+
 (defn long-running []
   (Thread/sleep 10000)
   true)
