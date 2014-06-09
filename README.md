@@ -10,13 +10,12 @@ Clojure.
 
 ## Features
 
-* Fast network infrastucture
-* Fast serialization based on Kryo (Text based serialization is also supported)
-* Security without additional policies
-* Transparent and non-invasive API
-* Extensible server with interceptor framework
-* Cluster with Zookeeper (moved to [slacker-cluster](https://github.com/sunng87/slacker-cluster))
-* Clean code
+* Fast network infrastructure
+* Fast serialization based on Kryo or Nippy (Text based serialization is also supported)
+* Transparent and non-invasive API. Remote calls is just like local
+  calls with slacker.
+* Extensible server with interceptor framework.
+* Flexible cluster with Zookeeper (moved to [slacker-cluster](https://github.com/sunng87/slacker-cluster))
 
 ## Examples
 
@@ -36,8 +35,7 @@ source code.
 
 ### Basic Usage
 
-Slacker will expose all your public functions under a given
-namespace.
+Slacker will expose all your public functions under a given namespace.
 
 ``` clojure
 (ns slapi)
@@ -49,20 +47,22 @@ namespace.
 ;; ...more functions
 ```
 
-To expose `slapi`, use:
+To expose `slapi` from port 2104, use:
 
 ``` clojure
 (use 'slacker.server)
-(start-slacker-server (the-ns 'slapi) 2104)
+(start-slacker-server [(the-ns 'slapi)] 2104)
 ```
 
-You can also add option `:threads 50` to config the size of server thread pool.
+Multiple namespaces can be exposed by appending them to the vector
 
-On the client side, to define facades for the remote functions, you
-can use `defn-remote` to create facade one by one. Remember
-to add remote namespace here as facade name, `slapi/timestamp`,
-eg. Otherwise, the name of current namespace will be treated as remote
-namespace.
+You can also add option `:threads 50` to configure the size of server
+thread pool.
+
+On the client side, You can use `defn-remote` to create facade one by
+one. Remember to add remote namespace here as facade name,
+`slapi/timestamp`, eg. Otherwise, the name of current namespace will
+be treated as remote namespace.
 
 ``` clojure
 (use 'slacker.client)
@@ -72,7 +72,8 @@ namespace.
 ```
 
 Also the `use-remote` function is convenience for importing all functions
-under a remote namespace.
+under a remote namespace. (Note that `use-remote` uses inspection
+calls to fetch remote functions, so network is required.)
 
 ``` clojure
 (use-remote 'sc 'slapi)
@@ -113,7 +114,8 @@ deref it by yourself to get the return value.
 @(timestamp)
 ```
 
-You can also assign a callback for an async facade.
+You can also assign a callback `(fn [error result])` for an
+asynchronous facade.
 
 ``` clojure
 (defn-remote sc slapi/timestamp :callback #(println %2))
@@ -131,14 +133,20 @@ performance.
 
 #### Serialiation
 
+As of 0.12, slacker is still using
+[carbonite (my fork)](https://github.com/sunng87/carbonite) by default
+to generate a binary format of data for exchange. I will switch to
+Peter Taoussanis's [nippy](https://github.com/ptaoussanis/nippy) in
+next release.
+
 ##### Serializing custom types
 
-By default, most clojure data types are registered in carbonite. (As
-kryo requires you to **register** a class before you can serialize
-its instances.) However, you may have additional types to
-transport between client and server. To add your own types, you should
-register custom serializers on *both server side and client side*. Run
-this before you start server or client:
+**(deprecated since 0.12)** By default, most clojure data types are
+registered in carbonite. (As kryo requires you to **register** a class
+before you can serialize its instances.) However, you may have
+additional types to transport between client and server. To add your
+own types, you should register custom serializers on *both server side
+and client side*. Run this before you start server or client:
 
 ``` clojure
 (use '[slacker.serialization])
@@ -170,11 +178,23 @@ just using carbonite(default and recommended).
 
 ##### EDN Serialization
 
-From slacker 0.4.0, clojure pr/read is supported. You can just
+From slacker 0.4, clojure pr/read is supported. You can just
 set content-type as `:clj`. clojure pr/read has full support on
 clojure data structures and also easy for debugging. However, it's
 much slower that carbonite so you'd better not use it if you have
 critical performance requirements.
+
+##### Nippy Serialization
+
+Slacker 0.12 has a preview of
+[nippy](https://github.com/ptaoussanis/nippy) serialization. Set the
+content-type as `:nippy` to use it. Nippy has excellent support for
+custom types, you can find detailed information on its page.
+
+Slacker is using nippy custom type code `92` for serializing
+stacktrace elements in debug mode. You'd better to avoid this code in
+your project. [I was talking with Peter about a namespaced custom type
+coded to avoid this conflict](https://github.com/ptaoussanis/nippy/issues/50).
 
 #### Server interceptors
 
@@ -195,7 +215,7 @@ page](https://github.com/sunng87/slacker/wiki/Interceptors).
 
 #### Slacker on HTTP
 
-From 0.4.0, slacker can be configured to run on HTTP protocol. To
+From 0.4, slacker can be configured to run on HTTP protocol. To
 enable HTTP transport, just add a `:http` option to your slacker
 server:
 
@@ -246,7 +266,7 @@ the ACL rule DSL.
 
 One issue with previous version of slacker is you have to define a
 remote function with a slacker client, then call this function with
-that client always. This is no flexible.
+that client always. This is inflexible.
 
 From 0.10.3, we added a macro `with-slackerc` to isolate local
 function facade and a specific client. You can call the function with
@@ -295,6 +315,6 @@ See [wiki page](https://github.com/sunng87/slacker/wiki/VersionHistory)
 
 ## License
 
-Copyright (C) 2011-2012 Sun Ning
+Copyright (C) 2011-2014 Sun Ning
 
 Distributed under the Eclipse Public License, the same as Clojure.
