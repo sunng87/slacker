@@ -16,6 +16,4 @@
   :global-vars {*warn-on-reflection* true}
   :aliases {"run-example-server" ["with-profile" "default,example" "run" "-m" "slacker.example.server"]
             "run-example-client" ["with-profile" "default,example" "run" "-m" "slacker.example.client"]}
-  :lein-release {:scm :git
-                 :deploy-via :shell
-                 :shell ["lein" "deploy" "clojars"]})
+  :deploy-repositories {"releases" :clojars})
