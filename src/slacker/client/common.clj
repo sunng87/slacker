@@ -136,7 +136,7 @@
           prms (promise)]
       (swap! (:pendings state) assoc tid {:promise prms})
       (send conn request)
-      (deref prms (or (:timeout options) *timeout*) nil)
+      (deref prms (or (:timeout call-options) (:timeout options) *timeout*) nil)
       (if (realized? prms)
         @prms
         (do
@@ -159,7 +159,7 @@
              tid {:promise prms :callback sys-cb :async? true})
       (send conn request)
       (schedule-task factory timeout-check
-                     (or (:timeout options) *timeout*))
+                     (or (:timeout call-options) (:timeout options) *timeout*))
       prms))
   (inspect [this cmd args]
     (let [state (get-state factory (server-addr this))
