@@ -7,6 +7,7 @@ Clojure.
 
 [![Build Status](https://travis-ci.org/sunng87/slacker.png?branch=master)](https://travis-ci.org/sunng87/slacker)
 [![Dependency Status](https://www.versioneye.com/user/projects/5358b3e8fe0d07af35000052/badge.png)](https://www.versioneye.com/user/projects/5358b3e8fe0d07af35000052)
+[![Gitter chat](https://badges.gitter.im/sunng87/slacker.png)](https://gitter.im/sunng87/slacker)
 
 ## Features
 
