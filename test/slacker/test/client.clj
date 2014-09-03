@@ -3,31 +3,35 @@
             [slacker.client.common :refer :all])
   (:import [java.net ServerSocket]))
 
-(defn- open-server [port p]
+(defn- open-server [port close-sync start-sync]
   (let [s (ServerSocket. port)]
+    (deliver start-sync nil)
     (.accept s)
-    @p
+    @close-sync
     (.close s)))
 
 (deftest test-slacker-factory
-  (let [sync (promise)
-        server (future (open-server 5579 sync))
+  (let [close-sync (promise)
+        start-sync (promise)
+        server (future (open-server 5579 close-sync start-sync))
         factory (create-client-factory nil)
         addr "127.0.0.1:5579"
-        client (create-client factory addr :clj {:ping-interval 10})]
+        client (or @start-sync (create-client factory addr :clj {:ping-interval 10}))]
     (is (= 1 (count (get-states factory))))
     (is (= addr (-> factory get-states keys first)))
     (is (= client (-> factory (get-state addr) :refs first)))
-    (deliver sync nil)))
+    (close client)
+    (deliver close-sync nil)))
 
 (deftest test-slacker-client
-  (let [sync (promise)
-        server (future (open-server 5779 sync))
+  (let [close-sync (promise)
+        start-sync (promise)
+        server (future (open-server 5779 close-sync start-sync))
         factory (create-client-factory nil)
         addr "127.0.0.1:5779"
-        client (create-client factory addr :clj {:ping-interval 10})]
+        client (or @start-sync (create-client factory addr :clj {:ping-interval 10}))]
     (is (= addr (server-addr client)))
     (close client)
     (is (nil? (get-state factory addr)))
     (is (zero? (count (get-states factory))))
-    (deliver sync nil)))
+    (deliver close-sync nil)))
