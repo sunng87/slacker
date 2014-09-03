@@ -2,9 +2,9 @@
   (:refer-clojure :exclude [send])
   (:use [slacker common serialization protocol])
   (:use [slacker.server http])
-  (:use [slacker.acl.core])
   (:use [link core tcp http threads])
-  (:require [clojure.tools.logging :as log])
+  (:require [clojure.tools.logging :as log]
+            [slacker.acl.core :as acl])
   (:import [java.util.concurrent Executors]))
 
 ;; pipeline functions for server request handling
@@ -113,8 +113,8 @@
    (protocol-mismatch-packet 0)
 
    ;; acl enabled
-   (and (some? acl)
-        (not (authorize client-info acl)))
+   (and (not-empty acl)
+        (not (acl/authorize client-info acl)))
    (acl-reject-packet (second req))
 
    ;; handle request
@@ -210,7 +210,7 @@
                                          :codec slacker-base-codec
                                          :options server-options
                                          :ssl-context ssl-context)
-          the-http-server (when (some? http)
+          the-http-server (when http
                             (http-server http (apply slacker-ring-app exposed-ns
                                                      (flatten (into [] options)))
                                          :executor executor
