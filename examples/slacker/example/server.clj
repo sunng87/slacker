@@ -3,7 +3,8 @@
   (:use slacker.interceptors.stats)
   (:use slacker.interceptors.exectime)
   (:use slacker.interceptors.logargs)
-  (:require [slacker.example.api]))
+  (:require [slacker.example.api]
+            [slacker.serialization.nippy]))
 
 (definterceptor log-function-calls
   :before (fn [req]
