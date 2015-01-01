@@ -19,4 +19,5 @@
   :aliases {"run-example-server" ["with-profile" "default,clojure16,example" "run" "-m" "slacker.example.server"]
             "run-example-client" ["with-profile" "default,clojure16,example" "run" "-m" "slacker.example.client"]
             "test-all" ["with-profile" "default,clojure15:default,clojure16" "test"]}
-  :deploy-repositories {"releases" :clojars})
+  :deploy-repositories {"releases" :clojars}
+  :codox {:output-dir "target/codox"})

@@ -289,6 +289,10 @@ Note that you have ensure that the function you call is also available
 to the client. Otherwise, there will be a `not-found` exception
 raised.
 
+## API Documentation
+
+[API docs](http://sunng.info/slacker/)
+
 ## Performance
 
 To test performance, just start an example server with `lein run -m
