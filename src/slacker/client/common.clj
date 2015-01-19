@@ -1,8 +1,7 @@
 (ns slacker.client.common
-  (:refer-clojure :exclude [send])
   (:use [clojure.string :only [split]])
   (:use [slacker serialization common protocol])
-  (:use [link.core :exclude [close]])
+  (:use [link.core])
   (:use [link.tcp])
   (:require [clojure.tools.logging :as log])
   (:import [java.net ConnectException InetSocketAddress InetAddress]
@@ -135,7 +134,7 @@
           request (make-request tid content-type fname params)
           prms (promise)]
       (swap! (:pendings state) assoc tid {:promise prms})
-      (send conn request)
+      (send! conn request)
       (deref prms (or (:timeout call-options) (:timeout options) *timeout*) nil)
       (if (realized? prms)
         @prms
@@ -157,7 +156,7 @@
                                 (cb result)))))]
       (swap! (:pendings state) assoc
              tid {:promise prms :callback sys-cb :async? true})
-      (send conn request)
+      (send! conn request)
       (schedule-task factory timeout-check
                      (or (:timeout call-options) (:timeout options) *timeout*))
       prms))
@@ -167,7 +166,7 @@
           request (make-inspect-request tid cmd args)
           prms (promise)]
       (swap! (:pendings state) assoc tid {:promise prms :type :inspect})
-      (send conn request)
+      (send! conn request)
       (deref prms (or (:timeout options) *timeout*) nil)
       (if (realized? prms)
         @prms
@@ -175,12 +174,12 @@
           (swap! (:pendings state) dissoc tid)
           {:cause {:error :timeout}}))))
   (ping [this]
-    (send conn ping-packet)
+    (send! conn ping-packet)
     (log/debug "ping"))
   (close [this]
     (cancel-ping this)
     (dissoc-client factory this)
-    (link.core/close conn))
+    (close! conn))
   (server-addr [this]
     (channel-hostport conn))
 

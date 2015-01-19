@@ -1,5 +1,4 @@
 (ns slacker.server
-  (:refer-clojure :exclude [send])
   (:use [slacker common serialization protocol])
   (:use [slacker.server http])
   (:use [link core tcp http threads])
@@ -134,10 +133,10 @@
                                client-info
                                inspect-handler
                                acl)]
-                   (send ch result)))
+                   (send! ch result)))
      (on-error [ch ^Exception e]
                (log/error e "Unexpected error in event loop")
-               (close ch)))))
+               (close! ch)))))
 
 
 (defn ns-funcs [n]
