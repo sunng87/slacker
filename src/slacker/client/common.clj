@@ -3,7 +3,9 @@
   (:use [slacker serialization common protocol])
   (:use [link.core])
   (:use [link.tcp])
-  (:require [clojure.tools.logging :as log])
+  (:require [clojure.tools.logging :as log]
+            [link.codec :refer [netty-encoder netty-decoder]]
+            [link.ssl :refer [ssl-handler-from-jdk-ssl-context]])
   (:import [java.net ConnectException InetSocketAddress InetAddress]
            [java.nio.channels ClosedChannelException]
            [java.util.concurrent ScheduledThreadPoolExecutor
@@ -233,12 +235,19 @@
   (let [server-requests (atom {})
         handler (create-link-handler server-requests)
         schedule-pool (ScheduledThreadPoolExecutor.
-                       (.availableProcessors (Runtime/getRuntime)))]
+                       (.availableProcessors (Runtime/getRuntime)))
+        ssl-handler (when ssl-context
+                      (ssl-handler-from-jdk-ssl-context ssl-context true))
+        handlers [(netty-encoder slacker-base-codec)
+                  (netty-decoder slacker-base-codec)
+                  handler]
+        handlers (if ssl-handler
+                   (conj (seq handlers) ssl-handler)
+                   handlers)]
     (DefaultSlackerClientFactory.
-      (tcp-client-factory handler
+      (tcp-client-factory handlers
                           :codec slacker-base-codec
-                          :options *options*
-                          :ssl-context ssl-context)
+                          :options *options*)
       schedule-pool server-requests)))
 
 (defn host-port

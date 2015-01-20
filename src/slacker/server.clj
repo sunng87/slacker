@@ -3,7 +3,9 @@
   (:use [slacker.server http])
   (:use [link core tcp http threads])
   (:require [clojure.tools.logging :as log]
-            [slacker.acl.core :as acl])
+            [slacker.acl.core :as acl]
+            [link.ssl :refer [ssl-handler-from-jdk-ssl-context]]
+            [link.codec :refer [netty-encoder netty-decoder]])
   (:import [java.util.concurrent Executors]))
 
 ;; pipeline functions for server request handling
@@ -201,14 +203,19 @@
         funcs (apply merge (map ns-funcs exposed-ns))
         executor (new-executor threads)
         handler (create-server-handler funcs interceptors acl)
+        ssl-handler (when ssl-context
+                      (ssl-handler-from-jdk-ssl-context ssl-context false))
         handler-spec {:handler handler
-                      :executor executor}]
+                      :executor executor}
+        handlers [(netty-encoder slacker-base-codec)
+                  (netty-decoder slacker-base-codec)
+                  handler-spec]
+        handlers (if ssl-handler
+                   (conj (seq handlers) ssl-handler) handlers)]
     (when *debug* (doseq [f (keys funcs)] (println f)))
 
-    (let [the-tcp-server (tcp-server port handler-spec
-                                         :codec slacker-base-codec
-                                         :options server-options
-                                         :ssl-context ssl-context)
+    (let [the-tcp-server (tcp-server port handlers
+                                         :options server-options)
           the-http-server (when http
                             (http-server http (apply slacker-ring-app exposed-ns
                                                      (flatten (into [] options)))
