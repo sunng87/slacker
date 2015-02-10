@@ -3,11 +3,11 @@
   :url "http://github.com/sunng87/slacker"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
-  :dependencies [[link "0.7.0"]
+  :dependencies [[link "0.8.1-SNAPSHOT"]
                  [info.sunng/carbonite "0.2.3"]
-                 [cheshire "5.3.1"]
-                 [org.clojure/tools.logging "0.3.0"]
-                 [com.taoensso/nippy "2.7.0-RC1"
+                 [cheshire "5.4.0"]
+                 [org.clojure/tools.logging "0.3.1"]
+                 [com.taoensso/nippy "2.7.1"
                   :exclusions [org.clojure/clojure]]]
   :profiles {:example {:source-paths ["examples"]
                        :dependencies [[org.clojure/java.jmx "0.3.0"]]}
