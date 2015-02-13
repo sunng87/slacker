@@ -9,7 +9,6 @@
     :dynamic true}
   *timeout* 10000)
 
-
 (def
   ^{:doc "Initial Kryo ObjectBuffer size (bytes)."
     :dynamic true}
@@ -19,3 +18,8 @@
   ^{:doc "Maximum Kryo ObjectBuffer size (bytes)."
     :dynamic true}
   *ob-max* (* 1024 16))
+
+(def
+  ^{:doc "Max pending requests the client can have. Set to 0 to disable flow control."
+    :dynamic true}
+  *backlog* 5000)

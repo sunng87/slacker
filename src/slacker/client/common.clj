@@ -134,20 +134,25 @@
           fname (str ns-name "/" func-name)
           tid (next-trans-id (:idgen state))
           request (make-request tid content-type fname params)
+          backlog (or (:backlog options) *backlog*)
           prms (promise)]
-      (swap! (:pendings state) assoc tid {:promise prms})
-      (send! conn request)
-      (deref prms (or (:timeout call-options) (:timeout options) *timeout*) nil)
-      (if (realized? prms)
-        @prms
+      (if-not (> (count @(:pendings state)) backlog 0)
         (do
-          (swap! (:pendings state) dissoc tid)
-          {:cause {:error :timeout}}))))
+          (swap! (:pendings state) assoc tid {:promise prms})
+          (send! conn request)
+          (deref prms (or (:timeout call-options) (:timeout options) *timeout*) nil)
+          (if (realized? prms)
+            @prms
+            (do
+              (swap! (:pendings state) dissoc tid)
+              {:cause {:error :timeout}})))
+        {:cause {:error :backlog-overflow}})))
   (async-call-remote [this ns-name func-name params sys-cb call-options]
     (let [state (get-state factory (server-addr this))
           fname (str ns-name "/" func-name)
           tid (next-trans-id (:idgen state))
           request (make-request tid content-type fname params)
+          backlog (or (:backlog options) *backlog*)
           prms (promise)
           timeout-check (fn []
                           (when-let [handler (get @(:pendings state) tid)]
@@ -156,11 +161,14 @@
                               (deliver (:promise handler) result)
                               (when-let [cb (:callback handler)]
                                 (cb result)))))]
-      (swap! (:pendings state) assoc
-             tid {:promise prms :callback sys-cb :async? true})
-      (send! conn request)
-      (schedule-task factory timeout-check
-                     (or (:timeout call-options) (:timeout options) *timeout*))
+      (if-not (> (count @(:pendings state)) backlog 0)
+        (do
+          (swap! (:pendings state) assoc
+                 tid {:promise prms :callback sys-cb :async? true})
+          (send! conn request)
+          (schedule-task factory timeout-check
+                         (or (:timeout call-options) (:timeout options) *timeout*)))
+        (deliver prms {:cause {:error :backlog-overflow}}))
       prms))
   (inspect [this cmd args]
     (let [state (get-state factory (server-addr this))
