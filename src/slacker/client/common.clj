@@ -316,6 +316,8 @@
   ([prms] (ExceptionEnabledPromise. prms)))
 
 (def ^:dynamic *sc* nil)
+(def ^:dynamic *callback* nil)
+
 (defn invoke-slacker
   "Invoke remote function with given slacker connection.
   A call-info tuple should be passed in. Usually you don't use this
@@ -326,10 +328,11 @@
       :as options}]
   (let [sc @(or *sc* sc)  ;; allow local binding to override client
         [nsname fname args] remote-call-info]
-    (if (or async? (not (nil? callback)))
+    (if (or *callback* async? callback)
       ;; async
-      (let [sys-cb (fn [call-result]
-                     (let [cb (or callback (constantly true))]
+      (let [local-cb *callback*
+            sys-cb (fn [call-result]
+                     (let [cb (or local-cb callback (constantly true))]
                        (cb (user-friendly-cause call-result)
                            (:result call-result))))]
         (exception-enabled-promise

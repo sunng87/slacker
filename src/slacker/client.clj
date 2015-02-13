@@ -90,6 +90,14 @@
   [sc & body]
   `(binding [*sc* ~sc] ~@body))
 
+(defmacro with-callback
+  "call the slacker remote function with a custom callback, and make the
+  function an async one"
+  [& body]
+  (let [cb (last body)
+        body (drop-last body)]
+    `(binding [*callback* ~cb] ~@body)))
+
 (defn slacker-meta [f]
   (let [metadata (meta f)
         {sc :slacker-client
