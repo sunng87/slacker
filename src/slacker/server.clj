@@ -1,12 +1,12 @@
 (ns slacker.server
   (:use [slacker common serialization protocol])
   (:use [slacker.server http])
-  (:use [link core tcp http threads])
+  (:use [link core tcp http])
   (:require [clojure.tools.logging :as log]
             [slacker.acl.core :as acl]
             [link.ssl :refer [ssl-handler-from-jdk-ssl-context]]
-            [link.codec :refer [netty-encoder netty-decoder]])
-  (:import [java.util.concurrent Executors]))
+            [link.codec :refer [netty-encoder netty-decoder]]
+            [link.threads :as threads]))
 
 ;; pipeline functions for server request handling
 ;; request data structure:
@@ -201,7 +201,8 @@
       :as options}]
   (let [exposed-ns (if (coll? exposed-ns) exposed-ns [exposed-ns])
         funcs (apply merge (map ns-funcs exposed-ns))
-        executor (new-executor threads)
+        executor (threads/new-executor threads
+                                       (threads/prefix-thread-factory "slacker-server-worker"))
         handler (create-server-handler funcs interceptors acl)
         ssl-handler (when ssl-context
                       (ssl-handler-from-jdk-ssl-context ssl-context false))
