@@ -20,8 +20,9 @@
   []
   (throw (RuntimeException. "Expected exception.")))
 
-(defn echo [x]
-  x)
+(defn echo
+  ([x] x)
+  ([x y] [x y]))
 
 (defn return-nil []
   nil)
