@@ -258,8 +258,9 @@
 
 (defn create-client [slacker-client-factory addr content-type options]
   (let [[host port] (host-port addr)
+        host (.. (InetSocketAddress. ^String host ^int port) (getAddress) (getHostAddress))
         client (open-tcp-client slacker-client-factory host port)
-        slacker-client (SlackerClient. addr
+        slacker-client (SlackerClient. (str host ":" port)
                                        client
                                        slacker-client-factory
                                        content-type
