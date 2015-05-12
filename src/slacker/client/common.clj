@@ -63,8 +63,8 @@
   (get-state [this addr])
   (get-states [this])
   (open-tcp-client [this host port])
-  (assoc-client [this client])
-  (dissoc-client [this client]))
+  (assoc-client! [this client])
+  (dissoc-client! [this client]))
 
 (deftype DefaultSlackerClientFactory [tcp-factory schedule-pool states]
   SlackerClientFactoryProtocol
@@ -96,8 +96,8 @@
   (get-states [this]
     @states)
   (open-tcp-client [this host port]
-    (tcp-client tcp-factory host port))
-  (assoc-client [this client]
+    (tcp-client tcp-factory host port :lazy-connect true))
+  (assoc-client! [this client]
     (swap! states
            (fn [snapshot]
              (let [addr (server-addr client)]
@@ -108,7 +108,7 @@
                          :idgen (atom 0)
                          :keep-alive (atom {})
                          :refs [client]}))))))
-  (dissoc-client [this client]
+  (dissoc-client! [this client]
     (swap! states
            (fn [snapshot]
              (let [addr (server-addr client)
@@ -127,7 +127,7 @@
 (defn- next-trans-id [trans-id-gen]
   (swap! trans-id-gen unchecked-inc))
 
-(deftype SlackerClient [conn factory content-type options]
+(deftype SlackerClient [addr conn factory content-type options]
   SlackerClientProtocol
   (sync-call-remote [this ns-name func-name params call-options]
     (let [state (get-state factory (server-addr this))
@@ -180,10 +180,10 @@
     (log/debug "ping"))
   (close [this]
     (cancel-ping this)
-    (dissoc-client factory this)
+    (dissoc-client! factory this)
     (close! conn))
   (server-addr [this]
-    (channel-hostport conn))
+    addr)
 
   KeepAliveClientProtocol
   (schedule-ping [this interval]
@@ -259,11 +259,12 @@
 (defn create-client [slacker-client-factory addr content-type options]
   (let [[host port] (host-port addr)
         client (open-tcp-client slacker-client-factory host port)
-        slacker-client (SlackerClient. client
+        slacker-client (SlackerClient. addr
+                                       client
                                        slacker-client-factory
                                        content-type
                                        options)]
-    (assoc-client slacker-client-factory slacker-client)
+    (assoc-client! slacker-client-factory slacker-client)
     (when-let [interval (:ping-interval options)]
       (schedule-ping slacker-client (* 1000 interval)))
     slacker-client))
