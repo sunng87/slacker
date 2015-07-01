@@ -12,7 +12,8 @@
   :profiles {:example {:source-paths ["examples"]
                        :dependencies [[org.clojure/java.jmx "0.3.0"]]}
              :clojure15 {:dependencies [[org.clojure/clojure "1.5.1"]]}
-             :clojure16 {:dependencies [[org.clojure/clojure "1.6.0"]]}}
+             :clojure16 {:dependencies [[org.clojure/clojure "1.6.0"]]}
+             :clojure17 {:dependencies [[org.clojure/clojure "1.7.0"]]}}
   :plugins [[lein-exec "0.3.1"]
             [codox "0.6.7"]]
   :global-vars {*warn-on-reflection* true}
