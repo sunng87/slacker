@@ -51,7 +51,7 @@
             (fn [& args#]
               (apply invoke-slacker ~sc
                      [~remote-ns ~remote-name (into [] args#)]
-                     (flatten (into [] ~options))))
+                     (mapcat vec (into [] ~options))))
             {:slacker-remote-fn true
              :slacker-client ~sc
              :slacker-remote-ns ~remote-ns
