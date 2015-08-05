@@ -4,13 +4,13 @@
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[link "0.8.4"]
-                 [info.sunng/carbonite "0.2.3"]
-                 [cheshire "5.4.0"]
-                 [org.clojure/tools.logging "0.3.1"]
-                 [com.taoensso/nippy "2.7.1"
-                  :exclusions [org.clojure/clojure]]]
+                 [org.clojure/tools.logging "0.3.1"]]
   :profiles {:example {:source-paths ["examples"]
                        :dependencies [[org.clojure/java.jmx "0.3.0"]]}
+             :dev {:dependencies [[info.sunng/carbonite "0.2.3"]
+                                  [cheshire "5.4.0"]
+                                  [com.taoensso/nippy "2.7.1"
+                                   :exclusions [org.clojure/clojure]]]}
              :clojure15 {:dependencies [[org.clojure/clojure "1.5.1"]]}
              :clojure16 {:dependencies [[org.clojure/clojure "1.6.0"]]}
              :clojure17 {:dependencies [[org.clojure/clojure "1.7.0"]]}}
