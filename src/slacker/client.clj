@@ -19,7 +19,7 @@
     (delay (create-client factory addr content-type
                           {:timeout timeout
                            :backlog backlog
-                           :ping-interval ping-interval}))))]
+                           :ping-interval ping-interval}))))
 
 (defn close-slackerc [client]
   (when (realized? client)
