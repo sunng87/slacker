@@ -122,7 +122,7 @@ asynchronous facade.
 (timestamp)
 ```
 
-The callback accepts to arguments
+The callback accepts two arguments
 
 * error
 * result
