@@ -15,7 +15,8 @@
                 :type-auth-req 5
                 :type-auth-ack 6
                 :type-inspect-req 7
-                :type-inspect-ack 8}))
+                :type-inspect-ack 8
+                :type-interrupt 9}))
 
 (def content-type
   (enum (byte) {:carb 0 :json 1 :clj 2 :nippy 3
@@ -83,6 +84,11 @@
   (frame
    (string :encoding :utf-8 :prefix (uint16))))
 
+;; type-interrupt
+(def slacker-interrupt-codec
+  (frame
+   (int32)))
+
 (def slacker-base-codec
   (frame
    (byte) ;; protocol version
@@ -97,4 +103,5 @@
      :type-auth-req slacker-auth-req-codec
      :type-auth-ack slacker-auth-ack-codec
      :type-inspect-req slacker-inspect-req-codec
-     :type-inspect-ack slacker-inspect-ack-codec})))
+     :type-inspect-ack slacker-inspect-ack-codec
+     :type-interrupt slacker-interrupt-codec})))
