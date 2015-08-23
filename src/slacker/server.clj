@@ -50,6 +50,20 @@
   [version (:tid req) [(:packet-type req)
                        (map req [:content-type :code :result])]])
 
+(defn- assoc-current-thread [req running-threads]
+  (if running-threads
+    (let [client (:client req)
+          key (str (:remote-addr client) "::" (:tid req))]
+      (swap! running-threads assoc key (Thread/currentThread))
+      (assoc req :thread-map-key key))
+    req))
+
+(defn- dissoc-current-thread [req running-threads]
+  (when running-threads
+    (let [key (:thread-map-key req)]
+      (swap! running-threads dissoc key)))
+  req)
+
 (defn pong-packet [tid]
   [version tid [:type-pong]])
 (defn protocol-mismatch-packet [tid]
@@ -62,8 +76,9 @@
   [version tid [:type-inspect-ack
             [(serialize :clj data :string)]]])
 
-(defn build-server-pipeline [funcs interceptors]
+(defn build-server-pipeline [funcs interceptors running-threads]
   #(-> %
+       (assoc-current-thread running-threads)
        (look-up-function funcs)
        ((:pre interceptors))
        deserialize-args
@@ -72,6 +87,7 @@
        ((:after interceptors))
        serialize-result
        ((:post interceptors))
+       (dissoc-current-thread running-threads)
        (assoc :packet-type :type-response)))
 
 ;; inspection handler
@@ -123,8 +139,8 @@
    :else (-handle-request req server-pipeline
                           client-info inspect-handler)))
 
-(defn- create-server-handler [funcs interceptors acl]
-  (let [server-pipeline (build-server-pipeline funcs interceptors)
+(defn- create-server-handler [funcs interceptors acl running-threads]
+  (let [server-pipeline (build-server-pipeline funcs interceptors running-threads)
         inspect-handler (build-inspect-handler funcs)]
     (create-handler
      (on-message [ch data]
@@ -166,7 +182,7 @@
   (let [exposed-ns (if (coll? exposed-ns) exposed-ns [exposed-ns])
         funcs (apply merge (map ns-funcs exposed-ns))
         server-pipeline (build-server-pipeline
-                          funcs interceptors)]
+                          funcs interceptors nil)]
     (fn [req]
       (let [client-info (http-client-info req)
             curried-handler (fn [req] (handle-request server-pipeline
@@ -203,7 +219,8 @@
         funcs (apply merge (map ns-funcs exposed-ns))
         executor (threads/new-executor threads
                                        (threads/prefix-thread-factory "slacker-server-worker"))
-        handler (create-server-handler funcs interceptors acl)
+        running-threads (atom {})
+        handler (create-server-handler funcs interceptors acl running-threads)
         ssl-handler (when ssl-context
                       (ssl-handler-from-jdk-ssl-context ssl-context false))
         handler-spec {:handler handler
