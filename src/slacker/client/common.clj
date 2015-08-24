@@ -31,6 +31,9 @@
   [version tid [:type-inspect-req
                 [cmd (serialize :clj args :string)]]])
 
+(defn make-interrupt [target-tid]
+  [version 0 [:type-interrupt [target-tid]]])
+
 (defn parse-inspect-response [response]
   {:result (deserialize :clj (-> response
                                  second
@@ -51,7 +54,8 @@
   (inspect [this cmd args])
   (server-addr [this])
   (ping [this])
-  (close [this]))
+  (close [this])
+  (interrupt [this tid]))
 
 (defprotocol KeepAliveClientProtocol
   (schedule-ping [this ping-interval])
@@ -140,12 +144,18 @@
         (do
           (swap! (:pendings state) assoc tid {:promise prms})
           (send! conn request)
-          (deref prms (or (:timeout call-options) (:timeout options) *timeout*) nil)
-          (if (realized? prms)
-            @prms
-            (do
+          (try
+            (deref prms (or (:timeout call-options) (:timeout options) *timeout*) nil)
+            (if (realized? prms)
+              @prms
+              (do
+                (swap! (:pendings state) dissoc tid)
+                {:cause {:error :timeout}}))
+            (catch InterruptedException e
+              (log/debug "Client interrupted" tid)
+              (interrupt this tid)
               (swap! (:pendings state) dissoc tid)
-              {:cause {:error :timeout}})))
+              {:cause {:error :interrupted}})))
         {:cause {:error :backlog-overflow}})))
   (async-call-remote [this ns-name func-name params sys-cb call-options]
     (let [state (get-state factory (server-addr this))
@@ -192,6 +202,9 @@
     (close! conn))
   (server-addr [this]
     addr)
+  (interrupt [this tid]
+    (log/debug "Sending interrupt." tid)
+    (send! conn (make-interrupt tid)))
 
   KeepAliveClientProtocol
   (schedule-ping [this interval]

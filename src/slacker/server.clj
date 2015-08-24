@@ -121,9 +121,12 @@
 (defn interrupt-handler [packet client-info running-threads]
   (let [[target-tid] (second (nth packet 2))
         key (thread-map-key client-info target-tid)]
+    (log/debug "About to interrupt" key)
     (when-let [thread (get @running-threads key)]
+      (log/debug "Interrupted thread" thread)
       (.interrupt thread)
-      (swap! running-threads dissoc key))))
+      (swap! running-threads dissoc key))
+    nil))
 
 (defmulti -handle-request (fn [p & _] (first (nth p 2))))
 (defmethod -handle-request :type-request [req
@@ -142,6 +145,7 @@
   (invalid-type-packet (second p)))
 
 (defn handle-request [server-pipeline req client-info inspect-handler acl running-threads]
+  (log/debug req)
   (cond
    (not= version (first req))
    (protocol-mismatch-packet 0)
@@ -161,6 +165,7 @@
         inspect-handler (build-inspect-handler funcs)]
     (create-handler
      (on-message [ch data]
+                 (log/debug "data received" data)
                  (let [client-info {:remote-addr (remote-addr ch)}
                        result (handle-request
                                server-pipeline
@@ -169,7 +174,8 @@
                                inspect-handler
                                acl
                                running-threads)]
-                   (when-not (= :interrupted (:code result))
+                   (log/debug "result" result)
+                   (when-not (or (nil? result) (= :interrupted (:code result)))
                      (send! ch result))))
      (on-error [ch ^Exception e]
                (log/error e "Unexpected error in event loop")
