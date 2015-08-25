@@ -5,8 +5,30 @@
   (:require [clojure.tools.logging :as log]
             [slacker.acl.core :as acl]
             [link.ssl :refer [ssl-handler-from-jdk-ssl-context]]
-            [link.codec :refer [netty-encoder netty-decoder]]
-            [link.threads :as threads]))
+            [link.codec :refer [netty-encoder netty-decoder]])
+  (:import [java.util.concurrent TimeUnit
+            ThreadPoolExecutor LinkedBlockingQueue RejectedExecutionHandler
+            ThreadPoolExecutor$DiscardOldestPolicy ThreadFactory]))
+
+(defn counted-thread-factory
+  [name-format daemon]
+  (let [counter (atom 0)]
+    (reify
+      ThreadFactory
+      (newThread [this runnable]
+        (doto (Thread. runnable)
+          (.setName name-format)
+          (.setDaemon daemon))))))
+
+(defn thread-pool-executor [threads backlog-queue-size]
+  (ThreadPoolExecutor. (int threads) (int threads) (long 0)
+                       TimeUnit/MILLISECONDS
+                       (LinkedBlockingQueue. backlog-queue-size)
+                       (counted-thread-factory "slacker-server-worker-%d" true)
+                       ^RejectedExecutionHandler (ThreadPoolExecutor$DiscardOldestPolicy.)))
+
+(defmacro with-executor [executor & body]
+  `(.submit ~executor (cast Runnable (fn [] ~@body))))
 
 (defn- thread-map-key [client tid]
   (str (:remote-addr client) "::" tid))
@@ -160,23 +182,24 @@
    :else (-handle-request req server-pipeline
                           client-info inspect-handler running-threads)))
 
-(defn- create-server-handler [funcs interceptors acl running-threads]
+(defn- create-server-handler [executor funcs interceptors acl running-threads]
   (let [server-pipeline (build-server-pipeline funcs interceptors running-threads)
         inspect-handler (build-inspect-handler funcs)]
     (create-handler
      (on-message [ch data]
                  (log/debug "data received" data)
-                 (let [client-info {:remote-addr (remote-addr ch)}
-                       result (handle-request
-                               server-pipeline
-                               data
-                               client-info
-                               inspect-handler
-                               acl
-                               running-threads)]
-                   (log/debug "result" result)
-                   (when-not (or (nil? result) (= :interrupted (:code result)))
-                     (send! ch result))))
+                 (with-executor executor
+                   (let [client-info {:remote-addr (remote-addr ch)}
+                         result (handle-request
+                                 server-pipeline
+                                 data
+                                 client-info
+                                 inspect-handler
+                                 acl
+                                 running-threads)]
+                     (log/debug "result" result)
+                     (when-not (or (nil? result) (= :interrupted (:code result)))
+                       (send! ch result)))))
      (on-error [ch ^Exception e]
                (log/error e "Unexpected error in event loop")
                (close! ch)))))
@@ -230,7 +253,7 @@
   * acl the acl rules defined by defrules
   * ssl-context the SSLContext object for enabling tls support"
   [exposed-ns port
-   & {:keys [http interceptors acl ssl-context threads]
+   & {:keys [http interceptors acl ssl-context threads queue-size]
       :or {http nil
            interceptors {:before identity
                          :after identity
@@ -238,21 +261,19 @@
                          :post identity}
            acl nil
            ssl-context nil
-           threads 10}
+           threads 10
+           queue-size 3000}
       :as options}]
   (let [exposed-ns (if (coll? exposed-ns) exposed-ns [exposed-ns])
         funcs (apply merge (map ns-funcs exposed-ns))
-        executor (threads/new-executor threads
-                                       (threads/prefix-thread-factory "slacker-server-worker"))
+        executor (thread-pool-executor threads queue-size)
         running-threads (atom {})
-        handler (create-server-handler funcs interceptors acl running-threads)
+        handler (create-server-handler executor funcs interceptors acl running-threads)
         ssl-handler (when ssl-context
                       (ssl-handler-from-jdk-ssl-context ssl-context false))
-        handler-spec {:handler handler
-                      :executor executor}
         handlers [(netty-encoder slacker-base-codec)
                   (netty-decoder slacker-base-codec)
-                  handler-spec]
+                  handler]
         handlers (if ssl-handler
                    (conj (seq handlers) ssl-handler) handlers)]
     (when *debug* (doseq [f (keys funcs)] (println f)))
@@ -262,7 +283,7 @@
           the-http-server (when http
                             (http-server http (apply slacker-ring-app exposed-ns
                                                      (flatten (into [] options)))
-                                         :executor executor
+                                         :threads threads
                                          :ssl-context ssl-context))]
       [the-tcp-server the-http-server])))
 
