@@ -237,7 +237,8 @@
                                                      req
                                                      client-info
                                                      nil
-                                                     acl))]
+                                                     acl
+                                                     nil))]
         (-> req
             ring-req->slacker-req
             curried-handler
