@@ -14,7 +14,7 @@
   "Create connection to a slacker server."
   [addr
    & {:keys [content-type factory ping-interval timeout backlog]
-      :or {content-type :carb}}]
+      :or {content-type :clj}}]
   (let [factory (or factory @cached-slacker-client-factory)]
     (delay (create-client factory addr content-type
                           {:timeout timeout
