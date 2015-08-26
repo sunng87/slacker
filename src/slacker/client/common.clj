@@ -19,6 +19,7 @@
       :not-found {:cause {:error code}}
       :exception {:cause {:error code
                           :exception (deserialize content-type data)}}
+      :interrupted {:cause {:error code}}
       {:cause {:error :invalid-result-code}})))
 
 (defn make-request [tid content-type func-name params]
