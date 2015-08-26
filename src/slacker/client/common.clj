@@ -140,17 +140,20 @@
           tid (next-trans-id (:idgen state))
           request (make-request tid content-type fname params)
           backlog (or (:backlog options) *backlog*)
+          call-options (merge options call-options)
           prms (promise)]
       (if-not (> (count @(:pendings state)) backlog 0)
         (do
           (swap! (:pendings state) assoc tid {:promise prms})
           (send! conn request)
           (try
-            (deref prms (or (:timeout call-options) (:timeout options) *timeout*) nil)
+            (deref prms (or (:timeout call-options) *timeout*) nil)
             (if (realized? prms)
               @prms
               (do
                 (swap! (:pendings state) dissoc tid)
+                (when (:interrupt-on-timeout call-options)
+                  (interrupt this tid))
                 {:cause {:error :timeout}}))
             (catch InterruptedException e
               (log/debug "Client interrupted" tid)
@@ -164,6 +167,7 @@
           tid (next-trans-id (:idgen state))
           request (make-request tid content-type fname params)
           backlog (or (:backlog options) *backlog*)
+          call-options (merge options call-options)
           prms (promise)
           timeout-check (fn []
                           (when-let [handler (get @(:pendings state) tid)]
@@ -171,14 +175,16 @@
                             (let [result {:cause {:error :timeout}}]
                               (deliver (:promise handler) result)
                               (when-let [cb (:callback handler)]
-                                (cb result)))))]
+                                (cb result)))
+                            (when (:interrupt-on-timeout call-options)
+                              (interrupt this tid))))]
       (if-not (> (count @(:pendings state)) backlog 0)
         (do
           (swap! (:pendings state) assoc
                  tid {:promise prms :callback sys-cb :async? true})
           (send! conn request)
           (schedule-task factory timeout-check
-                         (or (:timeout call-options) (:timeout options) *timeout*)))
+                         (or (:timeout call-options) *timeout*)))
         (deliver prms {:cause {:error :backlog-overflow}}))
       prms))
   (inspect [this cmd args]
