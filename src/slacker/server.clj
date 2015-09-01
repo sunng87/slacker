@@ -28,7 +28,10 @@
                        ^RejectedExecutionHandler (ThreadPoolExecutor$DiscardOldestPolicy.)))
 
 (defmacro with-executor [executor & body]
-  `(.submit ~executor (cast Runnable (fn [] ~@body))))
+  `(.submit ~executor
+            (cast Runnable (fn [] (try ~@body
+                                      (catch Throwable e#
+                                        (log/warn e# "Uncaught exception in Slacker executor")))))))
 
 (defn- thread-map-key [client tid]
   (str (:remote-addr client) "::" tid))
