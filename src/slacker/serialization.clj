@@ -13,7 +13,7 @@
     (.get data bs)
     bs))
 
-(defn- resolve [ns mem]
+(defn- resolve-by-name [ns mem]
   @(ns-resolve (symbol ns) (symbol mem)))
 
 (defmulti serialize
@@ -31,9 +31,9 @@
   (require '[carbonite.api])
   (require '[slacker.serialization.carbonite])
 
-  (let [read-buffer (resolve "carbonite.api" "read-buffer")
-        write-buffer (resolve "carbonite.api" "write-buffer")
-        carb-registry (resolve "slacker.serialization.carbonite" "carb-registry")]
+  (let [read-buffer (resolve-by-name "carbonite.api" "read-buffer")
+        write-buffer (resolve-by-name "carbonite.api" "write-buffer")
+        carb-registry (resolve-by-name "slacker.serialization.carbonite" "carb-registry")]
     (defmethod deserialize :carb
       ([_ data] (deserialize :carb data :buffer))
       ([_ data it]
@@ -53,8 +53,8 @@
 (try
   (require 'cheshire.core)
 
-  (let [parse-string (resolve "cheshire.core" "parse-string")
-        generate-string (resolve "cheshire.core" "generate-string")]
+  (let [parse-string (resolve-by-name "cheshire.core" "parse-string")
+        generate-string (resolve-by-name "cheshire.core" "generate-string")]
     (defmethod deserialize :json
       ([_ data] (deserialize :json data :buffer))
       ([_ data it]
@@ -105,8 +105,8 @@
   (require '[taoensso.nippy])
   (require '[slacker.serialization.nippy])
 
-  (let [thaw (resolve "taoensso.nippy" "thaw")
-        freeze (resolve "taoensso.nippy" "freeze")]
+  (let [thaw (resolve-by-name "taoensso.nippy" "thaw")
+        freeze (resolve-by-name "taoensso.nippy" "freeze")]
 
     (defmethod deserialize :nippy
       ([_ data] (deserialize :nippy data :buffer))
