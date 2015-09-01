@@ -8,7 +8,8 @@
 
 (deftest test-server-pipeline
   (let [server-pipeline (build-server-pipeline
-                         funcs {:pre identity :before identity :after identity :post identity})
+                         funcs {:pre identity :before identity :after identity :post identity}
+                         (atom {}))
         req {:content-type :carb
              :data params
              :fname "plus"}
@@ -36,7 +37,8 @@
 
 (deftest test-server-pipeline-interceptors
   (let [server-pipeline (build-server-pipeline
-                         funcs {:pre identity :before identity :after interceptor :post identity})
+                         funcs {:pre identity :before identity :after interceptor :post identity}
+                         (atom {}))
         req {:content-type :carb
              :data params
              :fname "prod"}]
@@ -45,12 +47,12 @@
 
 (deftest test-ping
   (let [request [version 0 [:type-ping]]
-        response (nth (handle-request nil request nil nil nil) 2)]
+        response (nth (handle-request nil request nil nil nil nil) 2)]
     (is (= :type-pong (nth response 0)))))
 
 (deftest test-invalid-packet
   (let [request [version 0 [:type-unknown]]
-        response (nth (handle-request nil request nil nil nil) 2)]
+        response (nth (handle-request nil request nil nil nil nil) 2)]
     (is (= :type-error (nth response 0)))
     (is (= :invalid-packet (-> response
                                second
@@ -61,7 +63,7 @@
   (let [request [version 0 [:type-inspect-req [:functions "nil"]]]
         result (->
                 (handle-request nil request nil
-                                (build-inspect-handler funcs) nil)
+                                (build-inspect-handler funcs) nil nil)
                 (nth 2)
                 second
                 first)

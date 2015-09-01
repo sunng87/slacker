@@ -13,13 +13,15 @@
 (defn slackerc
   "Create connection to a slacker server."
   [addr
-   & {:keys [content-type factory ping-interval timeout backlog]
+   & {:keys [content-type factory ping-interval timeout backlog
+             interrupt-on-timeout]
       :or {content-type :clj}}]
   (let [factory (or factory @cached-slacker-client-factory)]
     (delay (create-client factory addr content-type
                           {:timeout timeout
                            :backlog backlog
-                           :ping-interval ping-interval}))))
+                           :ping-interval ping-interval
+                           :interrupt-on-timeout interrupt-on-timeout}))))
 
 (defn close-slackerc [client]
   (when (realized? client)

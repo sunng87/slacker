@@ -31,5 +31,5 @@
   0)
 
 (defn long-running []
-  (Thread/sleep 10000)
+  (Thread/sleep 100000)
   true)
