@@ -103,7 +103,10 @@
 
 (try
   (require '[taoensso.nippy])
-  (require '[slacker.serialization.nippy])
+  (try
+    (require '[slacker.serialization.nippy])
+    (catch Throwable _
+      (logging/info "Nippy version below 2.7.1. Disable stacktrace transfer support")))
 
   (let [thaw (resolve-by-name "taoensso.nippy" "thaw")
         freeze (resolve-by-name "taoensso.nippy" "freeze")]
