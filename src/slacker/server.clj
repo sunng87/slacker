@@ -31,6 +31,7 @@
 (defn- do-invoke [req]
   (if (nil? (:code req))
     (try
+      (log/debug "Processing request:" req)
       (let [{f :func args :args} req
             r0 (apply f args)
             r (if (seq? r0) (doall r0) r0)]
@@ -128,6 +129,7 @@
         inspect-handler (build-inspect-handler funcs)]
     (create-handler
      (on-message [ch data]
+                 (log/debug "Request received:" data)
                  (let [client-info {:remote-addr (remote-addr ch)}
                        result (handle-request
                                server-pipeline
@@ -135,6 +137,7 @@
                                client-info
                                inspect-handler
                                acl)]
+                   (log/debug "Respond to send:" data)
                    (send! ch result)))
      (on-error [ch ^Exception e]
                (log/error e "Unexpected error in event loop")
