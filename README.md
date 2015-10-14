@@ -133,34 +133,21 @@ performance.
 
 #### Serialiation
 
-As of 0.12, slacker is still using
-[carbonite (my fork)](https://github.com/sunng87/carbonite) by default
-to generate a binary format of data for exchange. I will switch to
-Peter Taoussanis's [nippy](https://github.com/ptaoussanis/nippy) in
-next release.
-
-##### Serializing custom types
-
-**(deprecated since 0.12)** By default, most clojure data types are
-registered in carbonite. (As kryo requires you to **register** a class
-before you can serialize its instances.) However, you may have
-additional types to transport between client and server. To add your
-own types, you should register custom serializers on *both server side
-and client side*. Run this before you start server or client:
-
-``` clojure
-(use '[slacker.serialization])
-(register-serializers {Class Serializer)
-```
-[Carbonite](https://github.com/revelytix/carbonite "carbonite") has
-some detailed docs on how to create your own serializers.
+Slacker provides plugable serialization support. From 0.13, Slacker
+uses Clojure EDN as default serializer, because it doesn't introduce
+in additional dependencies. Also Slacker provides built-in support for
+[cheshire (json)](https://github.com/dakrone/cheshire) and
+[nippy](https://github.com/ptaoussanis/nippy). Personally I
+recommend you to use `:nippy` in real applications because it's
+fast and compact.
 
 ##### JSON Serialization
 
-Other than binary format, you can also use JSON for
-serialization. JSON is a text based format which is more friendly to
+JSON is a text based format which is more friendly to
 human beings. It may be useful for debugging, or communicating with
-external applications.
+external applications. In order to use JSON, be sure to include any
+version of cheshire in your classpath, because Slacker doesn't depend
+on it at compile time.
 
 Configure slacker client to use JSON:
 
@@ -171,30 +158,32 @@ Configure slacker client to use JSON:
 One thing you should note is the representation of keyword in
 JSON. Keywords and strings are both encoded as JSON string in
 transport. But while decoding, all map keys will be decoded to
-keyword, and all other strings will be decoded to clojure string. This
-may lead to inconsistency of your clojure data structure between server and
-client. Try to avoid this by carefully design your data structure or
-just using carbonite(default and recommended).
+keyword, and all other strings will be decoded to clojure string.
 
 ##### EDN Serialization
 
-From slacker 0.4, clojure pr/read is supported. You can just
-set content-type as `:clj`. clojure pr/read has full support on
-clojure data structures and also easy for debugging. However, it's
-much slower that carbonite so you'd better not use it if you have
-critical performance requirements.
+From slacker 0.4, clojure pr/read is supported. And then in 0.13, EDN
+becomes default serialization. You can just set content-type as
+`:clj`. clojure pr/read has full support on clojure data structures
+and also easy for debugging. However, it's much slower and verbose
+than binary format, so you'd better not use it if you have critical
+performance requirements.
 
 ##### Nippy Serialization
 
-Slacker 0.12 has a preview of
-[nippy](https://github.com/ptaoussanis/nippy) serialization. Set the
-content-type as `:nippy` to use it. Nippy has excellent support for
-custom types, you can find detailed information on its page.
+Slacker 0.13 and above has full support for
+[nippy](https://github.com/ptaoussanis/nippy) serialization. Remember
+to add nippy into your classpath and set the content-type as `:nippy`
+to use it. Nippy has excellent support for custom types, you can find
+detailed information on its page.
 
-Slacker is using nippy custom type code `92` for serializing
-stacktrace elements in debug mode. You'd better to avoid this code in
-your project. [I was talking with Peter about a namespaced custom type
-coded to avoid this conflict](https://github.com/ptaoussanis/nippy/issues/50).
+#### Your own serialization? No problem!
+
+Typically the built-in serializers could full-fill your need. But if
+you have special requirements for another serialization, you don't
+have to send pull request to me. Just look into
+[src/slacker/serialization.clj](https://github.com/sunng87/slacker/blob/master/src/slacker/serialization.clj)
+and add your own multi-method implementation in your code.
 
 #### Server interceptors
 
@@ -237,8 +226,7 @@ $ curl -d "[5]" http://localhost:4104/slapi/rand-ints.clj
 (38945142 1413770549 1361247669 1899499977 1281637740)
 ```
 
-Note that you can only use `json` or `clj` as format. Because HTTP is
-a text based protocol, so `carb` won't be supported.
+Note that you can only use `json` or `clj` as format.
 
 #### Slacker as a Ring App
 
@@ -312,13 +300,8 @@ second on this machine.
 
 See [wiki page](https://github.com/sunng87/slacker/wiki/VersionHistory)
 
-## Contributors
-
-* [lbt05](https://github.com/lbt05)
-* [johnchapin](https://github.com/johnchapin)
-
 ## License
 
-Copyright (C) 2011-2014 Sun Ning
+Copyright (C) 2011-2015 Sun Ning
 
 Distributed under the Eclipse Public License, the same as Clojure.
