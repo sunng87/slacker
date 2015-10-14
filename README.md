@@ -6,7 +6,10 @@ slacker is a simple RPC framework designed for Clojure and created by
 Clojure.
 
 [![Build Status](https://travis-ci.org/sunng87/slacker.png?branch=master)](https://travis-ci.org/sunng87/slacker)
-[![Dependency Status](https://www.versioneye.com/user/projects/5358b3e8fe0d07af35000052/badge.png)](https://www.versioneye.com/user/projects/5358b3e8fe0d07af35000052)
+[![Dependency
+Status](https://www.versioneye.com/user/projects/5358b3e8fe0d07af35000052/badge.png)](https://www.versioneye.com/user/projects/5358b3e8fe0d07af35000052)
+[![Clojars](https://img.shields.io/clojars/v/slacker/slacker.svg)](https://clojars.org/slacker)
+[![License](https://img.shields.io/badge/license-eclipse-blue.svg)](https://github.com/sunng87/slacker/blob/master/LICENSE)
 
 ## Features
 
@@ -31,7 +34,7 @@ source code.
 ### Leiningen
 
 
-![latest version on clojars](https://clojars.org/slacker/slacker/latest-version.svg)
+[![latest version on clojars](https://clojars.org/slacker/slacker/latest-version.svg)](https://clojars.org/slacker/slacker)
 
 ### Basic Usage
 
