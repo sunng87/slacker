@@ -14,7 +14,7 @@ Status](https://www.versioneye.com/user/projects/5358b3e8fe0d07af35000052/badge.
 ## Features
 
 * Fast network infrastructure
-* Fast serialization based on Kryo or Nippy (Text based serialization is also supported)
+* Plugable serialization backend, EDN, Json, Nippy are built-in.
 * Transparent and non-invasive API. Remote calls is just like local
   calls with slacker.
 * Extensible server with interceptor framework.
