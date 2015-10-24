@@ -229,7 +229,11 @@
   "Wrap slacker as a ring app that can be deployed to any ring adaptors.
   You can also configure interceptors and acl just like `start-slacker-server`"
   [exposed-ns & {:keys [interceptors acl]
-                 :or {acl nil}}]
+                 :or {acl nil
+                      interceptors {:before identity
+                                    :after identity
+                                    :pre identity
+                                    :post identity}}}]
   (let [exposed-ns (if (coll? exposed-ns) exposed-ns [exposed-ns])
         funcs (apply merge (map ns-funcs exposed-ns))
         server-pipeline (build-server-pipeline
