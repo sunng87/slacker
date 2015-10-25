@@ -256,12 +256,15 @@
   a namespace. If you have multiple namespace to expose, put
   `exposed-ns` as a vector.
   Options:
-  * interceptors add server interceptors
-  * http http port for slacker http transport
-  * acl the acl rules defined by defrules
-  * ssl-context the SSLContext object for enabling tls support"
+  * `interceptors` add server interceptors
+  * `http` http port for slacker http transport
+  * `acl` the acl rules defined by defrules
+  * `ssl-context` the SSLContext object for enabling tls support
+  * `executor` custom java.util.concurrent.Executor for tasks execution
+  * `threads` size of thread pool if no executor provided
+  * `queue-size` size of thread pool task queue if no executor provided"
   [exposed-ns port
-   & {:keys [http interceptors acl ssl-context threads queue-size]
+   & {:keys [http interceptors acl ssl-context threads queue-size executor]
       :or {http nil
            interceptors {:before identity
                          :after identity
@@ -270,11 +273,12 @@
            acl nil
            ssl-context nil
            threads 10
-           queue-size 3000}
+           queue-size 3000
+           executor nil}
       :as options}]
   (let [exposed-ns (if (coll? exposed-ns) exposed-ns [exposed-ns])
         funcs (apply merge (map ns-funcs exposed-ns))
-        executor (thread-pool-executor threads queue-size)
+        executor (or executor (thread-pool-executor threads queue-size))
         running-threads (atom {})
         handler (create-server-handler executor funcs interceptors acl running-threads)
         ssl-handler (when ssl-context
