@@ -15,16 +15,14 @@
 (defn- handle-valid-response [response]
   (let [[content-type code data] (second response)]
     (case code
-      :success {:result (deserialize content-type data)}
+      :success {:result data}
       :not-found {:cause {:error code}}
-      :exception {:cause {:error code
-                          :exception (deserialize content-type data)}}
+      :exception {:cause {:error code :exception data}}
       :interrupted {:cause {:error code}}
       {:cause {:error :invalid-result-code}})))
 
 (defn make-request [tid content-type func-name params]
-  (let [serialized-params (serialize content-type params)]
-    [version tid [:type-request [content-type func-name serialized-params]]]))
+  [version tid [:type-request [content-type func-name params]]])
 
 (def ping-packet [version 0 [:type-ping]])
 
@@ -132,42 +130,67 @@
 (defn- next-trans-id [trans-id-gen]
   (swap! trans-id-gen unchecked-inc))
 
+(defn serialize-params [req]
+  (assoc req :args (serialize (:content-type req) (:data req))))
+
+(defn deserialize-results [resp]
+  (-> resp
+      (assoc :result (when-let [data (:result resp)] (deserialize (:content-type resp) data)))
+      (assoc :cause (when-let [cause (:cause resp)]
+                      (update-in cause [:exception] deserialize (:content-type resp))))))
+
 (deftype SlackerClient [addr conn factory content-type options]
   SlackerClientProtocol
   (sync-call-remote [this ns-name func-name params call-options]
-    (let [state (get-state factory (server-addr this))
+    (let [call-options (merge options call-options)
+          state (get-state factory (server-addr this))
           fname (str ns-name "/" func-name)
           tid (next-trans-id (:idgen state))
-          request (make-request tid content-type fname params)
+          req-data (-> {:fname fname :data params :content-type content-type}
+                       ((:pre (:interceptors call-options)))
+                       (serialize-params)
+                       ((:before (:interceptors call-options))))
+          request (make-request tid (:content-type req-data) (:fname req-data) (:data req-data))
           backlog (or (:backlog options) *backlog*)
-          call-options (merge options call-options)
-          prms (promise)]
-      (if-not (> (count @(:pendings state)) backlog 0)
-        (do
-          (swap! (:pendings state) assoc tid {:promise prms})
-          (send! conn request)
-          (try
-            (deref prms (or (:timeout call-options) *timeout*) nil)
-            (if (realized? prms)
-              @prms
-              (do
-                (swap! (:pendings state) dissoc tid)
-                (when (:interrupt-on-timeout call-options)
-                  (interrupt this tid))
-                {:cause {:error :timeout}}))
-            (catch InterruptedException e
-              (log/debug "Client interrupted" tid)
-              (interrupt this tid)
-              (swap! (:pendings state) dissoc tid)
-              {:cause {:error :interrupted}})))
-        {:cause {:error :backlog-overflow}})))
+          prms (promise)
+
+          resp (if-not (> (count @(:pendings state)) backlog 0)
+                 (do
+                   (swap! (:pendings state) assoc tid {:promise prms})
+                   (send! conn request)
+                   (try
+                     (deref prms (or (:timeout call-options) *timeout*) nil)
+                     (if (realized? prms)
+                       @prms
+                       (do
+                         (swap! (:pendings state) dissoc tid)
+                         (when (:interrupt-on-timeout call-options)
+                           (interrupt this tid))
+                         {:cause {:error :timeout}}))
+                     (catch InterruptedException e
+                       (log/debug "Client interrupted" tid)
+                       (interrupt this tid)
+                       (swap! (:pendings state) dissoc tid)
+                       {:cause {:error :interrupted}})))
+                 {:cause {:error :backlog-overflow}})]
+      (-> (assoc req-data :cause (:cause resp) :result (:result resp))
+          ((:after (:interceptors call-options)))
+          (deserialize-results)
+          ((:pro (:interceptors call-options))))))
   (async-call-remote [this ns-name func-name params sys-cb call-options]
-    (let [state (get-state factory (server-addr this))
+    (let [call-options (merge options call-options)
+          state (get-state factory (server-addr this))
           fname (str ns-name "/" func-name)
           tid (next-trans-id (:idgen state))
-          request (make-request tid content-type fname params)
+
+          req-data (-> {:fname fname :data params :content-type content-type}
+                       ((:pre (:interceptors call-options)))
+                       (serialize-params)
+                       ((:before (:interceptors call-options))))
+
+          request (make-request tid (:content-type req-data) (:fname req-data) (:data req-data))
           backlog (or (:backlog options) *backlog*)
-          call-options (merge options call-options)
+
           prms (promise)
           timeout-check (fn []
                           (when-let [handler (get @(:pendings state) tid)]
