@@ -16,12 +16,12 @@
              :clojure15 {:dependencies [[org.clojure/clojure "1.5.1"]]}
              :clojure16 {:dependencies [[org.clojure/clojure "1.6.0"]]}
              :clojure17 {:dependencies [[org.clojure/clojure "1.7.0"]]}
-             :clojure18 {:dependencies [[org.clojure/clojure "1.8.0-beta1"]]}}
+             :clojure18 {:dependencies [[org.clojure/clojure "1.8.0-beta2"]]}}
   :plugins [[lein-exec "0.3.1"]
             [codox "0.8.15"]]
   :global-vars {*warn-on-reflection* true}
-  :aliases {"run-example-server" ["with-profile" "default,clojure16,example" "run" "-m" "slacker.example.server"]
-            "run-example-client" ["with-profile" "default,clojure16,example" "run" "-m" "slacker.example.client"]
+  :aliases {"run-example-server" ["with-profile" "default,clojure17,example" "run" "-m" "slacker.example.server"]
+            "run-example-client" ["with-profile" "default,clojure17,example" "run" "-m" "slacker.example.client"]
             "test-all" ["with-profile" "default,clojure15:default,clojure16:default,clojure17:default,clojure18" "test"]}
   :deploy-repositories {"releases" :clojars}
   :codox {:output-dir "target/codox"})
