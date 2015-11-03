@@ -9,7 +9,7 @@
   (:import [java.net ConnectException InetSocketAddress InetAddress]
            [java.nio.channels ClosedChannelException]
            [java.util.concurrent ScheduledThreadPoolExecutor
-            TimeUnit ScheduledFuture]
+            TimeUnit ScheduledFuture ExecutorService]
            [clojure.lang IFn IDeref IBlockingDeref IPending]))
 
 (defn- handle-valid-response [response]
@@ -158,10 +158,10 @@
         (throw (ex-info "Slacker client exception" {:error :exception} e))
         (throw (ex-info "Slacker client error" e))))))
 
-(deftype PostDerefPromise [prms post-hook]
+(deftype PostDerefPromise [prms post-hook deliver-callback ^ExecutorService deliver-callback-executor]
   IDeref
   (deref [_]
-    (post-hook @prms))
+    (process-call-result (post-hook @prms)))
   IBlockingDeref
   (deref [_ timeout timeout-var]
     (deref prms timeout nil)
@@ -173,11 +173,19 @@
     (realized? prms))
   IFn
   (invoke [_ x]
-    (prms x)))
+    (prms x)
+    (when deliver-callback
+      (let [call-cb (fn []
+                      (let [r (post-hook x)]
+                        (deliver-callback (user-friendly-cause r) (:result r))))]
+        (if deliver-callback-executor
+         (.submit deliver-callback-executor ^Runnable (cast Runnable call-cb))
+         (call-cb))))))
 
 (defn post-deref-promise
-  ([post-hook] (post-deref-promise (promise) post-hook))
-  ([prms post-hook] (PostDerefPromise. prms post-hook)))
+  ([post-hook] (post-deref-promise (promise) post-hook nil nil))
+  ([prms post-hook] (post-deref-promise prms post-hook nil nil))
+  ([prms post-hook cb cb-executor] (PostDerefPromise. prms post-hook cb cb-executor)))
 
 (deftype SlackerClient [addr conn factory content-type options]
   SlackerClientProtocol
@@ -220,7 +228,7 @@
           ((:post (:interceptors call-options)))
           process-call-result)))
 
-  (async-call-remote [this ns-name func-name params sys-cb call-options]
+  (async-call-remote [this ns-name func-name params cb call-options]
     (let [call-options (merge options call-options)
           state (get-state factory (server-addr this))
           fname (str ns-name "/" func-name)
@@ -238,23 +246,20 @@
                       (-> (assoc req-data :cause (:cause result) :result (:result result))
                           ((:after (:interceptors call-options)))
                           (deserialize-results)
-                          ((:post (:interceptors call-options)))
-                          process-call-result))
+                          ((:post (:interceptors call-options)))))
 
-          prms (post-deref-promise post-hook)
+          prms (post-deref-promise (promise) post-hook cb (:callback-executor call-options))
           timeout-check (fn []
                           (when-let [handler (get @(:pendings state) tid)]
                             (swap! (:pendings state) dissoc tid)
                             (let [result {:cause {:error :timeout}}]
-                              (deliver (:promise handler) result)
-                              (when-let [cb (:callback handler)]
-                                (cb result)))
+                              (deliver (:promise handler) result))
                             (when (:interrupt-on-timeout call-options)
                               (interrupt this tid))))]
       (if-not (> (count @(:pendings state)) backlog 0)
         (do
           (swap! (:pendings state) assoc
-                 tid {:promise prms :callback sys-cb :async? true})
+                 tid {:promise prms :async? true})
           (send! conn request)
           (schedule-task factory timeout-check
                          (or (:timeout call-options) *timeout*)))
@@ -312,9 +317,6 @@
                    (let [result (handle-response msg-body)]
                      (when (not-empty handler)
                        (deliver (:promise handler) result)
-                       (when (:async? handler)
-                         (when-let [cb (:callback handler)]
-                           (cb result)))
                        ;; pong
                        result)))))
    (on-error [ch ^Exception exc]
@@ -386,12 +388,7 @@
         [nsname fname args] remote-call-info]
     (if (or *callback* async? callback)
       ;; async
-      (let [local-cb *callback*
-            sys-cb (fn [call-result]
-                     (let [cb (or local-cb callback (constantly true))]
-                       (cb (user-friendly-cause call-result)
-                           (:result call-result))))]
-        (async-call-remote sc nsname fname args sys-cb options))
+      (async-call-remote sc nsname fname args (or *callback* callback) options)
 
       ;; sync
       (sync-call-remote sc nsname fname args options))))

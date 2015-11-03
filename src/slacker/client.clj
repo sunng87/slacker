@@ -15,7 +15,7 @@
   "Create connection to a slacker server."
   [addr
    & {:keys [content-type factory ping-interval timeout backlog
-             interrupt-on-timeout interceptors]
+             interrupt-on-timeout interceptors callback-executor]
       :or {content-type :clj
            interceptors interceptor/default-interceptors}}]
   (let [factory (or factory @cached-slacker-client-factory)]
@@ -24,7 +24,8 @@
                            :backlog backlog
                            :ping-interval ping-interval
                            :interrupt-on-timeout interrupt-on-timeout
-                           :interceptors interceptors}))))
+                           :interceptors interceptors
+                           :callback-executor callback-executor}))))
 
 (defn close-slackerc [client]
   (when (realized? client)
