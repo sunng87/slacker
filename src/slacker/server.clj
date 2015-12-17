@@ -17,7 +17,7 @@
       ThreadFactory
       (newThread [this runnable]
         (doto (Thread. runnable)
-          (.setName name-format)
+          (.setName (format name-format (swap! counter inc)))
           (.setDaemon daemon))))))
 
 (defn thread-pool-executor [threads backlog-queue-size]
