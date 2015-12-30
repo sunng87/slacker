@@ -1,22 +1,22 @@
-(defproject slacker "0.13.4-SNAPSHOT"
+(defproject slacker "0.14.0-SNAPSHOT"
   :description "Transparent, non-invasive RPC by clojure and for clojure"
   :url "http://github.com/sunng87/slacker"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
-  :dependencies [[link "0.8.4"]
+  :dependencies [[link "0.8.14"]
                  [org.clojure/tools.logging "0.3.1"]]
   :profiles {:example {:source-paths ["examples"]
                        :dependencies [[org.clojure/java.jmx "0.3.0"]]}
              :dev {:dependencies [[org.clojure/clojure "1.7.0"]
                                   [info.sunng/carbonite "0.2.3"]
-                                  [cheshire "5.4.0"]
-                                  [com.taoensso/nippy "2.7.1"
+                                  [cheshire "5.5.0"]
+                                  [com.taoensso/nippy "2.10.0"
                                    :exclusions [org.clojure/clojure]]
                                   [log4j "1.2.17"]]}
              :clojure15 {:dependencies [[org.clojure/clojure "1.5.1"]]}
              :clojure16 {:dependencies [[org.clojure/clojure "1.6.0"]]}
              :clojure17 {:dependencies [[org.clojure/clojure "1.7.0"]]}
-             :clojure18 {:dependencies [[org.clojure/clojure "1.8.0-beta2"]]}}
+             :clojure18 {:dependencies [[org.clojure/clojure "1.8.0-beta4"]]}}
   :plugins [[lein-exec "0.3.1"]
             [codox "0.8.15"]]
   :global-vars {*warn-on-reflection* true}
