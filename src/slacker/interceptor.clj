@@ -32,3 +32,9 @@
                          (reverse intercs)))
     :post #(-> % ~@(map (fn [x] `((fn [y#] ((get ~x :post identity) y#))))
                          (reverse intercs)))})
+
+(def default-interceptors
+  {:pre identity
+   :before identity
+   :after identity
+   :post identity})

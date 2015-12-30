@@ -9,22 +9,20 @@
   (:import [java.net ConnectException InetSocketAddress InetAddress]
            [java.nio.channels ClosedChannelException]
            [java.util.concurrent ScheduledThreadPoolExecutor
-            TimeUnit ScheduledFuture]
-           [clojure.lang IDeref IBlockingDeref IPending]))
+            TimeUnit ScheduledFuture ExecutorService]
+           [clojure.lang IFn IDeref IBlockingDeref IPending]))
 
 (defn- handle-valid-response [response]
   (let [[content-type code data] (second response)]
     (case code
-      :success {:result (deserialize content-type data)}
+      :success {:result data}
       :not-found {:cause {:error code}}
-      :exception {:cause {:error code
-                          :exception (deserialize content-type data)}}
+      :exception {:cause {:error code :exception data}}
       :interrupted {:cause {:error code}}
       {:cause {:error :invalid-result-code}})))
 
 (defn make-request [tid content-type func-name params]
-  (let [serialized-params (serialize content-type params)]
-    [version tid [:type-request [content-type func-name serialized-params]]]))
+  [version tid [:type-request [content-type func-name params]]])
 
 (def ping-packet [version 0 [:type-ping]])
 
@@ -132,56 +130,136 @@
 (defn- next-trans-id [trans-id-gen]
   (swap! trans-id-gen unchecked-inc))
 
+(defn serialize-params [req]
+  (assoc req :args (serialize (:content-type req) (:data req))))
+
+(defn deserialize-results [resp]
+  (-> resp
+      (assoc :result (when-let [data (:result resp)] (deserialize (:content-type resp) data)))
+      (assoc :cause (when-let [cause (:cause resp)]
+                      (update-in cause [:exception] deserialize (:content-type resp))))))
+
+(defn- parse-exception [einfo]
+  (doto (Exception. ^String (:msg einfo))
+    (.setStackTrace (:stacktrace einfo))))
+
+(defn user-friendly-cause [call-result]
+  (when (:cause call-result)
+    (if (and (= :exception (-> call-result :cause :error))
+             (map? (-> call-result :cause :exception)))
+      (parse-exception (-> call-result :cause :exception))
+      (:cause call-result))))
+
+(defn process-call-result [call-result]
+  (if (nil? (:cause call-result))
+    (:result call-result)
+    (let [e (user-friendly-cause call-result)]
+      (if (instance? Throwable e)
+        (throw (ex-info "Slacker client exception" {:error :exception} e))
+        (throw (ex-info "Slacker client error" e))))))
+
+(deftype PostDerefPromise [prms post-hook deliver-callback ^ExecutorService deliver-callback-executor]
+  IDeref
+  (deref [_]
+    (process-call-result (post-hook @prms)))
+  IBlockingDeref
+  (deref [_ timeout timeout-var]
+    (deref prms timeout nil)
+    (if (realized? prms)
+      (deref _)
+      timeout-var))
+  IPending
+  (isRealized [_]
+    (realized? prms))
+  IFn
+  (invoke [_ x]
+    (prms x)
+    (when deliver-callback
+      (let [call-cb (fn []
+                      (let [r (post-hook x)]
+                        (deliver-callback (user-friendly-cause r) (:result r))))]
+        (if deliver-callback-executor
+         (.submit deliver-callback-executor ^Runnable (cast Runnable call-cb))
+         (call-cb))))))
+
+(defn post-deref-promise
+  ([post-hook] (post-deref-promise (promise) post-hook nil nil))
+  ([prms post-hook] (post-deref-promise prms post-hook nil nil))
+  ([prms post-hook cb cb-executor] (PostDerefPromise. prms post-hook cb cb-executor)))
+
 (deftype SlackerClient [addr conn factory content-type options]
   SlackerClientProtocol
   (sync-call-remote [this ns-name func-name params call-options]
-    (let [state (get-state factory (server-addr this))
+    (let [call-options (merge options call-options)
+          state (get-state factory (server-addr this))
           fname (str ns-name "/" func-name)
           tid (next-trans-id (:idgen state))
-          request (make-request tid content-type fname params)
+          req-data (-> {:fname fname :data params :content-type content-type}
+                       ((:pre (:interceptors call-options)))
+                       (serialize-params)
+                       ((:before (:interceptors call-options))))
+          request (make-request tid (:content-type req-data) (:fname req-data) (:args req-data))
           backlog (or (:backlog options) *backlog*)
-          call-options (merge options call-options)
-          prms (promise)]
-      (if-not (> (count @(:pendings state)) backlog 0)
-        (do
-          (swap! (:pendings state) assoc tid {:promise prms})
-          (send! conn request)
-          (try
-            (deref prms (or (:timeout call-options) *timeout*) nil)
-            (if (realized? prms)
-              @prms
-              (do
-                (swap! (:pendings state) dissoc tid)
-                (when (:interrupt-on-timeout call-options)
-                  (interrupt this tid))
-                {:cause {:error :timeout}}))
-            (catch InterruptedException e
-              (log/debug "Client interrupted" tid)
-              (interrupt this tid)
-              (swap! (:pendings state) dissoc tid)
-              {:cause {:error :interrupted}})))
-        {:cause {:error :backlog-overflow}})))
-  (async-call-remote [this ns-name func-name params sys-cb call-options]
-    (let [state (get-state factory (server-addr this))
-          fname (str ns-name "/" func-name)
-          tid (next-trans-id (:idgen state))
-          request (make-request tid content-type fname params)
-          backlog (or (:backlog options) *backlog*)
-          call-options (merge options call-options)
           prms (promise)
+
+          resp (if-not (> (count @(:pendings state)) backlog 0)
+                 (do
+                   (swap! (:pendings state) assoc tid {:promise prms})
+                   (send! conn request)
+                   (try
+                     (deref prms (or (:timeout call-options) *timeout*) nil)
+                     (if (realized? prms)
+                       @prms
+                       (do
+                         (swap! (:pendings state) dissoc tid)
+                         (when (:interrupt-on-timeout call-options)
+                           (interrupt this tid))
+                         {:cause {:error :timeout}}))
+                     (catch InterruptedException e
+                       (log/debug "Client interrupted" tid)
+                       (interrupt this tid)
+                       (swap! (:pendings state) dissoc tid)
+                       {:cause {:error :interrupted}})))
+                 {:cause {:error :backlog-overflow}})]
+
+      (-> (assoc req-data :cause (:cause resp) :result (:result resp))
+          ((:after (:interceptors call-options)))
+          (deserialize-results)
+          ((:post (:interceptors call-options)))
+          process-call-result)))
+
+  (async-call-remote [this ns-name func-name params cb call-options]
+    (let [call-options (merge options call-options)
+          state (get-state factory (server-addr this))
+          fname (str ns-name "/" func-name)
+          tid (next-trans-id (:idgen state))
+
+          req-data (-> {:fname fname :data params :content-type content-type}
+                       ((:pre (:interceptors call-options)))
+                       (serialize-params)
+                       ((:before (:interceptors call-options))))
+
+          request (make-request tid (:content-type req-data) (:fname req-data) (:args req-data))
+          backlog (or (:backlog options) *backlog*)
+
+          post-hook (fn [result]
+                      (-> (assoc req-data :cause (:cause result) :result (:result result))
+                          ((:after (:interceptors call-options)))
+                          (deserialize-results)
+                          ((:post (:interceptors call-options)))))
+
+          prms (post-deref-promise (promise) post-hook cb (:callback-executor call-options))
           timeout-check (fn []
                           (when-let [handler (get @(:pendings state) tid)]
                             (swap! (:pendings state) dissoc tid)
                             (let [result {:cause {:error :timeout}}]
-                              (deliver (:promise handler) result)
-                              (when-let [cb (:callback handler)]
-                                (cb result)))
+                              (deliver (:promise handler) result))
                             (when (:interrupt-on-timeout call-options)
                               (interrupt this tid))))]
       (if-not (> (count @(:pendings state)) backlog 0)
         (do
           (swap! (:pendings state) assoc
-                 tid {:promise prms :callback sys-cb :async? true})
+                 tid {:promise prms :async? true})
           (send! conn request)
           (schedule-task factory timeout-check
                          (or (:timeout call-options) *timeout*)))
@@ -239,9 +317,6 @@
                    (let [result (handle-response msg-body)]
                      (when (not-empty handler)
                        (deliver (:promise handler) result)
-                       (when (:async? handler)
-                         (when-let [cb (:callback handler)]
-                           (cb result)))
                        ;; pong
                        result)))))
    (on-error [ch ^Exception exc]
@@ -298,43 +373,6 @@
       (schedule-ping slacker-client (* 1000 interval)))
     slacker-client))
 
-(defn- parse-exception [einfo]
-  (doto (Exception. ^String (:msg einfo))
-    (.setStackTrace (:stacktrace einfo))))
-
-(defn user-friendly-cause [call-result]
-  (when (:cause call-result)
-    (if (and (= :exception (-> call-result :cause :error))
-             (map? (-> call-result :cause :exception)))
-      (parse-exception (-> call-result :cause :exception))
-      (:cause call-result))))
-
-(defn process-call-result [call-result]
-  (if (nil? (:cause call-result))
-    (:result call-result)
-    (let [e (user-friendly-cause call-result)]
-      (if (instance? Throwable e)
-        (throw (ex-info "Slacker client exception" {:error :exception} e))
-        (throw (ex-info "Slacker client error" e))))))
-
-(deftype ExceptionEnabledPromise [prms]
-  IDeref
-  (deref [_]
-    (process-call-result @prms))
-  IBlockingDeref
-  (deref [_ timeout timeout-var]
-    (deref prms timeout nil)
-    (if (realized? prms)
-      (deref _)
-      timeout-var))
-  IPending
-  (isRealized [_]
-    (realized? prms)))
-
-(defn exception-enabled-promise
-  ([] (exception-enabled-promise (promise)))
-  ([prms] (ExceptionEnabledPromise. prms)))
-
 (def ^:dynamic *sc* nil)
 (def ^:dynamic *callback* nil)
 
@@ -350,16 +388,10 @@
         [nsname fname args] remote-call-info]
     (if (or *callback* async? callback)
       ;; async
-      (let [local-cb *callback*
-            sys-cb (fn [call-result]
-                     (let [cb (or local-cb callback (constantly true))]
-                       (cb (user-friendly-cause call-result)
-                           (:result call-result))))]
-        (exception-enabled-promise
-         (async-call-remote sc nsname fname args sys-cb options)))
+      (async-call-remote sc nsname fname args (or *callback* callback) options)
 
       ;; sync
-      (process-call-result (sync-call-remote sc nsname fname args options)))))
+      (sync-call-remote sc nsname fname args options))))
 
 (defn meta-remote
   "get metadata of a remote function by inspect api"

@@ -4,6 +4,7 @@
   (:use [link core tcp http])
   (:require [clojure.tools.logging :as log]
             [slacker.acl.core :as acl]
+            [slacker.interceptor :as interceptor]
             [link.ssl :refer [ssl-handler-from-jdk-ssl-context]]
             [link.codec :refer [netty-encoder netty-decoder]])
   (:import [java.util.concurrent TimeUnit
@@ -229,11 +230,7 @@
   "Wrap slacker as a ring app that can be deployed to any ring adaptors.
   You can also configure interceptors and acl just like `start-slacker-server`"
   [exposed-ns & {:keys [interceptors acl]
-                 :or {acl nil
-                      interceptors {:before identity
-                                    :after identity
-                                    :pre identity
-                                    :post identity}}}]
+                 :or {interceptors interceptor/default-interceptors}}]
   (let [exposed-ns (if (coll? exposed-ns) exposed-ns [exposed-ns])
         funcs (apply merge (map ns-funcs exposed-ns))
         server-pipeline (build-server-pipeline
@@ -265,13 +262,7 @@
   * `queue-size` size of thread pool task queue if no executor provided"
   [exposed-ns port
    & {:keys [http interceptors acl ssl-context threads queue-size executor]
-      :or {http nil
-           interceptors {:before identity
-                         :after identity
-                         :pre identity
-                         :post identity}
-           acl nil
-           ssl-context nil
+      :or {interceptors interceptor/default-interceptors
            threads 10
            queue-size 3000
            executor nil}

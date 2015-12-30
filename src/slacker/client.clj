@@ -1,6 +1,7 @@
 (ns slacker.client
   (:use [slacker common])
   (:use [slacker.client common])
+  (:require [slacker.interceptor :as interceptor])
   (:use [clojure.string :only [split]])
   (:use [link.tcp :only [stop-clients]]))
 
@@ -14,14 +15,17 @@
   "Create connection to a slacker server."
   [addr
    & {:keys [content-type factory ping-interval timeout backlog
-             interrupt-on-timeout]
-      :or {content-type :clj}}]
+             interrupt-on-timeout interceptors callback-executor]
+      :or {content-type :clj
+           interceptors interceptor/default-interceptors}}]
   (let [factory (or factory @cached-slacker-client-factory)]
     (delay (create-client factory addr content-type
                           {:timeout timeout
                            :backlog backlog
                            :ping-interval ping-interval
-                           :interrupt-on-timeout interrupt-on-timeout}))))
+                           :interrupt-on-timeout interrupt-on-timeout
+                           :interceptors interceptors
+                           :callback-executor callback-executor}))))
 
 (defn close-slackerc [client]
   (when (realized? client)
