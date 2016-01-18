@@ -7,7 +7,7 @@
             [slacker.interceptor :as interceptor]
             [link.ssl :refer [ssl-handler-from-jdk-ssl-context]]
             [link.codec :refer [netty-encoder netty-decoder]])
-  (:import [java.util.concurrent TimeUnit
+  (:import [java.util.concurrent TimeUnit ExecutorService
             ThreadPoolExecutor LinkedBlockingQueue RejectedExecutionHandler
             ThreadPoolExecutor$DiscardOldestPolicy ThreadFactory]))
 
@@ -257,7 +257,7 @@
   * `http` http port for slacker http transport
   * `acl` the acl rules defined by defrules
   * `ssl-context` the SSLContext object for enabling tls support
-  * `executor` custom java.util.concurrent.Executor for tasks execution
+  * `executor` custom java.util.concurrent.ExecutorService for tasks execution, note this executor will be shutdown when you stop the slacker server
   * `threads` size of thread pool if no executor provided
   * `queue-size` size of thread pool task queue if no executor provided"
   [exposed-ns port
@@ -288,10 +288,14 @@
                                                      (flatten (into [] options)))
                                          :threads threads
                                          :ssl-context ssl-context))]
-      [the-tcp-server the-http-server])))
+      [the-tcp-server the-http-server executor])))
 
 (defn stop-slacker-server [server]
   "Takes the value returned by start-slacker-server and stop both tcp and http server if any"
-  (doseq [sub-server server]
-    (when (not-empty sub-server)
-      (stop-server sub-server))))
+  (let [[the-tcp-server the-http-server ^ExecutorService executor] server]
+    (.shutdown executor)
+    (.awaitTermination executor *timeout*)
+    (when (not-empty the-tcp-server)
+      (stop-server the-tcp-server))
+    (when (not-empty the-http-server)
+      (stop-server the-http-server))))
