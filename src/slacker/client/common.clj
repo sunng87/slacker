@@ -122,7 +122,6 @@
   (assoc req :args (serialize (:content-type req) (:data req))))
 
 (defn deserialize-results [resp]
-  (println resp)
   (-> resp
       (assoc :result (when-let [data (:result resp)] (deserialize (:content-type resp) data)))
       (assoc :cause
