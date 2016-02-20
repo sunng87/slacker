@@ -136,8 +136,10 @@
 (defn deserialize-results [resp]
   (-> resp
       (assoc :result (when-let [data (:result resp)] (deserialize (:content-type resp) data)))
-      (assoc :cause (when-let [cause (:cause resp)]
-                      (update-in cause [:exception] deserialize (:content-type resp))))))
+      (assoc :cause
+             (when-let [cause (:cause resp)]
+               (update-in cause [:exception]
+                          #(when % (deserialize (:content-type resp) %)))))))
 
 (defn- parse-exception [einfo]
   (doto (Exception. ^String (:msg einfo))
