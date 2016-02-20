@@ -5,11 +5,11 @@
   (:use [link.tcp])
   (:require [clojure.tools.logging :as log]
             [link.codec :refer [netty-encoder netty-decoder]]
-            [link.ssl :refer [ssl-handler-from-jdk-ssl-context]])
+            [link.ssl :refer [ssl-handler-from-jdk-ssl-context]]
+            [rigui.core :as rigui])
   (:import [java.net ConnectException InetSocketAddress InetAddress]
            [java.nio.channels ClosedChannelException]
-           [java.util.concurrent ScheduledThreadPoolExecutor
-            TimeUnit ScheduledFuture ExecutorService]
+           [java.util.concurrent ExecutorService]
            [clojure.lang IFn IDeref IBlockingDeref IPending]))
 
 (defn- handle-valid-response [response]
@@ -69,31 +69,19 @@
   (assoc-client! [this client])
   (dissoc-client! [this client]))
 
-(deftype DefaultSlackerClientFactory [tcp-factory schedule-pool states]
+(deftype DefaultSlackerClientFactory [tcp-factory timer states]
   SlackerClientFactoryProtocol
   (schedule-task [this task delay]
-    (.schedule ^ScheduledThreadPoolExecutor schedule-pool
-               ^Runnable (cast Runnable
-                               #(try
-                                  (task)
-                                  (catch Exception e nil)))
-               (long delay)
-               TimeUnit/MILLISECONDS))
+    (rigui/schedule! timer task delay))
   (schedule-task [this task delay interval]
-    (.scheduleAtFixedRate ^ScheduledThreadPoolExecutor schedule-pool
-                          #(try
-                             (task)
-                             (catch Exception e nil))
-                          (long delay)
-                          (long interval)
-                          TimeUnit/MILLISECONDS))
+    (rigui/schedule-interval! timer task delay interval))
   (shutdown [this]
     ;; shutdown associated clients
     (doseq [a (map :refs (vals @states))]
       (doseq [c (flatten a)]
         (close c)))
     (stop-clients tcp-factory)
-    (.shutdown ^ScheduledThreadPoolExecutor schedule-pool))
+    (rigui/stop timer))
   (get-state [this addr]
     (@states addr))
   (get-states [this]
@@ -134,6 +122,7 @@
   (assoc req :args (serialize (:content-type req) (:data req))))
 
 (defn deserialize-results [resp]
+  (println resp)
   (-> resp
       (assoc :result (when-let [data (:result resp)] (deserialize (:content-type resp) data)))
       (assoc :cause
@@ -189,7 +178,7 @@
   ([prms post-hook] (post-deref-promise prms post-hook nil nil))
   ([prms post-hook cb cb-executor] (PostDerefPromise. prms post-hook cb cb-executor)))
 
-(deftype SlackerClient [addr conn factory content-type options]
+(deftype SlackerClient [addr conn ^DefaultSlackerClientFactory factory content-type options]
   SlackerClientProtocol
   (sync-call-remote [this ns-name func-name params call-options]
     (let [call-options (merge options call-options)
@@ -301,7 +290,7 @@
   (cancel-ping [this]
     (when-let [state (get-state factory (server-addr this))]
       (when-let [cancelable (@(:keep-alive state) this)]
-        (.cancel ^ScheduledFuture cancelable true)))))
+        (rigui/cancel! (.-timer factory) cancelable)))))
 
 (defn- create-link-handler
   "The event handler for client"
@@ -339,8 +328,7 @@
 (defn create-client-factory [ssl-context]
   (let [server-requests (atom {})
         handler (create-link-handler server-requests)
-        schedule-pool (ScheduledThreadPoolExecutor.
-                       (.availableProcessors (Runtime/getRuntime)))
+        timer (rigui/start 5 10 (fn [f] (f)))
         ssl-handler (when ssl-context
                       (ssl-handler-from-jdk-ssl-context ssl-context true))
         handlers [(netty-encoder slacker-base-codec)
@@ -353,7 +341,7 @@
       (tcp-client-factory handlers
                           :codec slacker-base-codec
                           :options *options*)
-      schedule-pool server-requests)))
+      timer server-requests)))
 
 (defn host-port
   "get host and port from connection string"
