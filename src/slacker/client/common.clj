@@ -63,13 +63,13 @@
 (defprotocol SlackerClientFactoryProtocol
   (schedule-task [this task delay] [this task delay interval])
   (shutdown [this])
-  (get-state [this addr])
-  (get-states [this])
+  (get-purgatory [this addr])
+  (get-purgatory-all [this])
   (open-tcp-client [this host port])
   (assoc-client! [this client])
   (dissoc-client! [this client]))
 
-(deftype DefaultSlackerClientFactory [tcp-factory timer states]
+(deftype DefaultSlackerClientFactory [tcp-factory timer purgatory]
   SlackerClientFactoryProtocol
   (schedule-task [this task delay]
     (rigui/later! timer task delay))
@@ -77,19 +77,19 @@
     (rigui/every! timer task delay interval))
   (shutdown [this]
     ;; shutdown associated clients
-    (doseq [a (map :refs (vals @states))]
+    (doseq [a (map :refs (vals @purgatory))]
       (doseq [c (flatten a)]
         (close c)))
     (stop-clients tcp-factory)
     (rigui/stop timer))
-  (get-state [this addr]
-    (@states addr))
-  (get-states [this]
-    @states)
+  (get-purgatory [this addr]
+    (@purgatory addr))
+  (get-purgatory-all [this]
+    @purgatory)
   (open-tcp-client [this host port]
     (tcp-client tcp-factory host port :lazy-connect true))
   (assoc-client! [this client]
-    (swap! states
+    (swap! purgatory
            (fn [snapshot]
              (let [addr (server-addr client)]
                (if (snapshot addr)
@@ -100,7 +100,7 @@
                          :keep-alive (atom {})
                          :refs [client]}))))))
   (dissoc-client! [this client]
-    (swap! states
+    (swap! purgatory
            (fn [snapshot]
              (let [addr (server-addr client)
                    refs (remove #(= client %)
@@ -181,7 +181,7 @@
   SlackerClientProtocol
   (sync-call-remote [this ns-name func-name params call-options]
     (let [call-options (merge options call-options)
-          state (get-state factory (server-addr this))
+          state (get-purgatory factory (server-addr this))
           fname (str ns-name "/" func-name)
           tid (next-trans-id (:idgen state))
           req-data (-> {:fname fname :data params :content-type content-type}
@@ -220,7 +220,7 @@
 
   (async-call-remote [this ns-name func-name params cb call-options]
     (let [call-options (merge options call-options)
-          state (get-state factory (server-addr this))
+          state (get-purgatory factory (server-addr this))
           fname (str ns-name "/" func-name)
           tid (next-trans-id (:idgen state))
 
@@ -256,7 +256,7 @@
         (deliver prms {:cause {:error :backlog-overflow}}))
       prms))
   (inspect [this cmd args]
-    (let [state (get-state factory (server-addr this))
+    (let [state (get-purgatory factory (server-addr this))
           tid (next-trans-id (:idgen state))
           request (make-inspect-request tid cmd args)
           prms (promise)]
@@ -284,10 +284,10 @@
   KeepAliveClientProtocol
   (schedule-ping [this interval]
     (let [cancelable (schedule-task factory #(ping this) 0 interval)
-          state (get-state factory (server-addr this))]
+          state (get-purgatory factory (server-addr this))]
       (swap! (:keep-alive state) assoc this cancelable)))
   (cancel-ping [this]
-    (when-let [state (get-state factory (server-addr this))]
+    (when-let [state (get-purgatory factory (server-addr this))]
       (when-let [cancelable (@(:keep-alive state) this)]
         (rigui/cancel! (.-timer factory) cancelable)))))
 
