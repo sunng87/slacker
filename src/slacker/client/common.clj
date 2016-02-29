@@ -72,9 +72,9 @@
 (deftype DefaultSlackerClientFactory [tcp-factory timer states]
   SlackerClientFactoryProtocol
   (schedule-task [this task delay]
-    (rigui/schedule! timer task delay))
+    (rigui/later! timer task delay))
   (schedule-task [this task delay interval]
-    (rigui/schedule-interval! timer task delay interval))
+    (rigui/every! timer task delay interval))
   (shutdown [this]
     ;; shutdown associated clients
     (doseq [a (map :refs (vals @states))]

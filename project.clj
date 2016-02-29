@@ -4,7 +4,7 @@
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[link "0.8.14"]
-                 [rigui "0.5.0-SNAPSHOT"]
+                 [rigui "0.5.0"]
                  [org.clojure/tools.logging "0.3.1"]]
   :profiles {:example {:source-paths ["examples"]
                        :dependencies [[org.clojure/java.jmx "0.3.1"]]}
