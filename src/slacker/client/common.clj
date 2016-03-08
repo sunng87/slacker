@@ -5,11 +5,11 @@
   (:use [link.tcp])
   (:require [clojure.tools.logging :as log]
             [link.codec :refer [netty-encoder netty-decoder]]
-            [link.ssl :refer [ssl-handler-from-jdk-ssl-context]])
+            [link.ssl :refer [ssl-handler-from-jdk-ssl-context]]
+            [rigui.core :as rigui])
   (:import [java.net ConnectException InetSocketAddress InetAddress]
            [java.nio.channels ClosedChannelException]
-           [java.util.concurrent ScheduledThreadPoolExecutor
-            TimeUnit ScheduledFuture ExecutorService]
+           [java.util.concurrent ExecutorService]
            [clojure.lang IFn IDeref IBlockingDeref IPending]))
 
 (defn- handle-valid-response [response]
@@ -63,45 +63,33 @@
 (defprotocol SlackerClientFactoryProtocol
   (schedule-task [this task delay] [this task delay interval])
   (shutdown [this])
-  (get-state [this addr])
-  (get-states [this])
+  (get-purgatory [this addr])
+  (get-purgatory-all [this])
   (open-tcp-client [this host port])
   (assoc-client! [this client])
   (dissoc-client! [this client]))
 
-(deftype DefaultSlackerClientFactory [tcp-factory schedule-pool states]
+(deftype DefaultSlackerClientFactory [tcp-factory timer purgatory]
   SlackerClientFactoryProtocol
   (schedule-task [this task delay]
-    (.schedule ^ScheduledThreadPoolExecutor schedule-pool
-               ^Runnable (cast Runnable
-                               #(try
-                                  (task)
-                                  (catch Exception e nil)))
-               (long delay)
-               TimeUnit/MILLISECONDS))
+    (rigui/later! timer task delay))
   (schedule-task [this task delay interval]
-    (.scheduleAtFixedRate ^ScheduledThreadPoolExecutor schedule-pool
-                          #(try
-                             (task)
-                             (catch Exception e nil))
-                          (long delay)
-                          (long interval)
-                          TimeUnit/MILLISECONDS))
+    (rigui/every! timer task delay interval))
   (shutdown [this]
     ;; shutdown associated clients
-    (doseq [a (map :refs (vals @states))]
+    (doseq [a (map :refs (vals @purgatory))]
       (doseq [c (flatten a)]
         (close c)))
     (stop-clients tcp-factory)
-    (.shutdown ^ScheduledThreadPoolExecutor schedule-pool))
-  (get-state [this addr]
-    (@states addr))
-  (get-states [this]
-    @states)
+    (rigui/stop timer))
+  (get-purgatory [this addr]
+    (@purgatory addr))
+  (get-purgatory-all [this]
+    @purgatory)
   (open-tcp-client [this host port]
     (tcp-client tcp-factory host port :lazy-connect true))
   (assoc-client! [this client]
-    (swap! states
+    (swap! purgatory
            (fn [snapshot]
              (let [addr (server-addr client)]
                (if (snapshot addr)
@@ -112,7 +100,7 @@
                          :keep-alive (atom {})
                          :refs [client]}))))))
   (dissoc-client! [this client]
-    (swap! states
+    (swap! purgatory
            (fn [snapshot]
              (let [addr (server-addr client)
                    refs (remove #(= client %)
@@ -189,11 +177,11 @@
   ([prms post-hook] (post-deref-promise prms post-hook nil nil))
   ([prms post-hook cb cb-executor] (PostDerefPromise. prms post-hook cb cb-executor)))
 
-(deftype SlackerClient [addr conn factory content-type options]
+(deftype SlackerClient [addr conn ^DefaultSlackerClientFactory factory content-type options]
   SlackerClientProtocol
   (sync-call-remote [this ns-name func-name params call-options]
     (let [call-options (merge options call-options)
-          state (get-state factory (server-addr this))
+          state (get-purgatory factory (server-addr this))
           fname (str ns-name "/" func-name)
           tid (next-trans-id (:idgen state))
           req-data (-> {:fname fname :data params :content-type content-type}
@@ -232,7 +220,7 @@
 
   (async-call-remote [this ns-name func-name params cb call-options]
     (let [call-options (merge options call-options)
-          state (get-state factory (server-addr this))
+          state (get-purgatory factory (server-addr this))
           fname (str ns-name "/" func-name)
           tid (next-trans-id (:idgen state))
 
@@ -268,7 +256,7 @@
         (deliver prms {:cause {:error :backlog-overflow}}))
       prms))
   (inspect [this cmd args]
-    (let [state (get-state factory (server-addr this))
+    (let [state (get-purgatory factory (server-addr this))
           tid (next-trans-id (:idgen state))
           request (make-inspect-request tid cmd args)
           prms (promise)]
@@ -296,12 +284,12 @@
   KeepAliveClientProtocol
   (schedule-ping [this interval]
     (let [cancelable (schedule-task factory #(ping this) 0 interval)
-          state (get-state factory (server-addr this))]
+          state (get-purgatory factory (server-addr this))]
       (swap! (:keep-alive state) assoc this cancelable)))
   (cancel-ping [this]
-    (when-let [state (get-state factory (server-addr this))]
+    (when-let [state (get-purgatory factory (server-addr this))]
       (when-let [cancelable (@(:keep-alive state) this)]
-        (.cancel ^ScheduledFuture cancelable true)))))
+        (rigui/cancel! (.-timer factory) cancelable)))))
 
 (defn- create-link-handler
   "The event handler for client"
@@ -339,8 +327,7 @@
 (defn create-client-factory [ssl-context]
   (let [server-requests (atom {})
         handler (create-link-handler server-requests)
-        schedule-pool (ScheduledThreadPoolExecutor.
-                       (.availableProcessors (Runtime/getRuntime)))
+        timer (rigui/start 5 10 (fn [f] (f)))
         ssl-handler (when ssl-context
                       (ssl-handler-from-jdk-ssl-context ssl-context true))
         handlers [(netty-encoder slacker-base-codec)
@@ -353,7 +340,7 @@
       (tcp-client-factory handlers
                           :codec slacker-base-codec
                           :options *options*)
-      schedule-pool server-requests)))
+      timer server-requests)))
 
 (defn host-port
   "get host and port from connection string"

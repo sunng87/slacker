@@ -17,9 +17,9 @@
         factory (create-client-factory nil)
         addr "127.0.0.1:5579"
         client (or @start-sync (create-client factory addr :clj {:ping-interval 10}))]
-    (is (= 1 (count (get-states factory))))
-    (is (= addr (-> factory get-states keys first)))
-    (is (= client (-> factory (get-state addr) :refs first)))
+    (is (= 1 (count (get-purgatory-all factory))))
+    (is (= addr (-> factory get-purgatory-all keys first)))
+    (is (= client (-> factory (get-purgatory addr) :refs first)))
     (close client)
     (deliver close-sync nil)))
 
@@ -32,6 +32,6 @@
         client (or @start-sync (create-client factory addr :clj {:ping-interval 10}))]
     (is (= addr (server-addr client)))
     (close client)
-    (is (nil? (get-state factory addr)))
-    (is (zero? (count (get-states factory))))
+    (is (nil? (get-purgatory factory addr)))
+    (is (zero? (count (get-purgatory-all factory))))
     (deliver close-sync nil)))
