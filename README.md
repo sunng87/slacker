@@ -11,11 +11,10 @@ Clojure.
 
 ## Features
 
-* Fast network infrastructure
-* Plugable serialization backend, EDN, Json, Nippy are built-in.
-* Transparent and non-invasive API. Remote calls is just like local
-  calls with slacker.
-* Extensible server with interceptor framework.
+* Fast network infrastructure, fully asynchronous
+* Plugable serialization backend, EDN, JSON and Nippy are built-in.
+* Transparent and non-invasive API. Calling remote just like local invocation.
+* Extensible server and client with interceptor framework.
 * Flexible cluster with Zookeeper (moved to [slacker-cluster](https://github.com/sunng87/slacker-cluster))
 
 ## Examples
