@@ -2,9 +2,12 @@
   (:refer-clojure :exclude [byte float double])
   (:use [link.codec]))
 
-(def
-  ^{:doc "Protocol version."}
-  version (short 5))
+(def ^:const v5 5)
+(def ^:const v6 6)
+
+(def versions
+  (enum (byte) {v5 5
+                v6 6}))
 
 (def packet-type
   (enum (byte) {:type-request 0
@@ -31,7 +34,7 @@
                 :exception 12
                 :protocol-mismatch 20
                 :invalid-packet 21
-                :acl-rejct 22}))
+                :acl-reject 22}))
 
 ;; :type-request
 (def slacker-request-codec
@@ -89,9 +92,8 @@
   (frame
    (int32)))
 
-(def slacker-base-codec
+(def slacker-v5-codec
   (frame
-   (byte) ;; protocol version
    (int32) ;; transaction id
    (header
     packet-type
@@ -105,3 +107,9 @@
      :type-inspect-req slacker-inspect-req-codec
      :type-inspect-ack slacker-inspect-ack-codec
      :type-interrupt slacker-interrupt-codec})))
+
+(def slacker-root-codec
+  (frame
+   (header
+    versions
+    {v5 slacker-v5-codec})))
