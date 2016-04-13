@@ -109,7 +109,6 @@
      :type-interrupt slacker-interrupt-codec})))
 
 (def slacker-root-codec
-  (frame
-   (header
+  (header
     versions
-    {v5 slacker-v5-codec})))
+    {v5 slacker-v5-codec}))

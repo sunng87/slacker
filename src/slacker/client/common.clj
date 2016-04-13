@@ -3,6 +3,7 @@
             [clojure.string :refer [split]]
             [link.core :refer :all]
             [link.tcp :refer :all]
+            [slacker.protocol :as protocol]
             [link.codec :refer [netty-encoder netty-decoder]]
             [link.ssl :refer [ssl-handler-from-jdk-ssl-context]]
             [rigui.core :as rigui]
@@ -24,22 +25,20 @@
       {:cause {:error :invalid-result-code}})))
 
 (defn make-request [tid content-type func-name params]
-  [version tid [:type-request [content-type func-name params]]])
+  [protocol/v5 [tid [:type-request [content-type func-name params]]]])
 
-(def ping-packet [version 0 [:type-ping]])
+(def ping-packet [protocol/v5 [0 [:type-ping]]])
 
 (defn make-inspect-request [tid cmd args]
-  [version tid [:type-inspect-req
-                [cmd (serialize :clj args :string)]]])
+  [protocol/v5 [tid [:type-inspect-req
+                     [cmd (serialize :clj args :string)]]]])
 
 (defn make-interrupt [target-tid]
-  [version 0 [:type-interrupt [target-tid]]])
+  [protocol/v5 [0 [:type-interrupt [target-tid]]]])
 
 (defn parse-inspect-response [response]
-  {:result (deserialize :clj (-> response
-                                 second
-                                 first)
-                        :string)})
+  (let [[_ [_ [_ data]]] response]
+    {:result (deserialize :clj data :string)}))
 
 (defn handle-response [response]
   (case (first response)
@@ -201,6 +200,7 @@
           resp (if-not (> (count @(:pendings state)) backlog 0)
                  (do
                    (swap! (:pendings state) assoc tid {:promise prms})
+                   (println request)
                    (send! conn request)
                    (try
                      (deref prms (or (:timeout call-options) *timeout*) nil)
@@ -312,8 +312,7 @@
                                    (channel-hostport)
                                    (@server-requests)
                                    :pendings)]
-                 (let [tid (second msg)
-                       msg-body (nth msg 2)
+                 (let [[_ [tid msg-body]] msg
                        handler (get @rmap tid)]
                    (swap! rmap dissoc tid)
                    (let [result (handle-response msg-body)]
@@ -352,16 +351,14 @@
         timer (rigui/start 5 10 (fn [f] (f)))
         ssl-handler (when ssl-context
                       (ssl-handler-from-jdk-ssl-context ssl-context true))
-        handlers [(netty-encoder slacker-base-codec)
-                  (netty-decoder slacker-base-codec)
+        handlers [(netty-encoder protocol/slacker-root-codec)
+                  (netty-decoder protocol/slacker-root-codec)
                   handler]
         handlers (if ssl-handler
                    (conj (seq handlers) ssl-handler)
                    handlers)]
     (DefaultSlackerClientFactory.
-      (tcp-client-factory handlers
-                          :codec slacker-base-codec
-                          :options *options*)
+     (tcp-client-factory handlers :options *options*)
       timer server-requests)))
 
 (defn host-port

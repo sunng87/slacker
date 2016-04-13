@@ -10,4 +10,4 @@
         (= data (codec/decode* slacker-root-codec
                                (codec/encode* slacker-root-codec data buf))))
 
-    [[v5 [10 [:type-ping []]]]]))
+    [v5 [10 [:type-ping []]]]))

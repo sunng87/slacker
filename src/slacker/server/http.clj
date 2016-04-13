@@ -1,7 +1,7 @@
 (ns ^:no-doc slacker.server.http
   (:require [clojure.string :as string]
             [clojure.java.io :as io]
-            [slacker.protocol])
+            [slacker.protocol :as protocol])
   (:import [java.io ByteArrayInputStream ByteArrayOutputStream]
            [java.nio ByteBuffer]))
 
@@ -27,12 +27,12 @@
         content-type (keyword content-type)
         body (or body "[]")
         data (stream->bytebuffer body)]
-    [slacker.protocol/version 0 [:type-request [content-type fname data]]]))
+    [protocol/v5 [0 [:type-request [content-type fname data]]]]))
 
 (defn slacker-resp->ring-resp
   "transform slacker response to ring response"
   [resp]
-  (let [resp-body (nth resp 2)
+  (let [[_ [_ resp-body]] resp
         packet-type (first resp-body)]
     (if (and (= :type-error packet-type)
              (= :acl-reject (-> resp-body second first)))

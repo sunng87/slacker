@@ -5,7 +5,7 @@
             [link.http :refer :all]
             [slacker.common :refer :all]
             [slacker.serialization :refer [serialize deserialize]]
-            [slacker.protocol :refer :all]
+            [slacker.protocol :as protocol]
             [slacker.acl.core :as acl]
             [slacker.server.http :refer :all]
             [slacker.interceptor :as interceptor]
@@ -46,9 +46,10 @@
 ;; request data structure:
 ;; [version transaction-id [request-type [content-type func-name params]]]
 (defn- map-req-fields [req]
-  (assoc (zipmap [:content-type :fname :data]
-                 (second (nth req 2)))
-    :tid (second req)))
+  (let [[_ [tid [_ data]]] req]
+    (println req)
+    (assoc (zipmap [:content-type :fname :data] data)
+           :tid tid)))
 
 (defn- look-up-function [req funcs]
   (if-let [func (funcs (:fname req))]
@@ -84,8 +85,8 @@
   (assoc req :result (serialize (:content-type req) (:result req))))
 
 (defn- map-response-fields [req]
-  [version (:tid req) [(:packet-type req)
-                       (map req [:content-type :code :result])]])
+  [protocol/v5 [(:tid req) [(:packet-type req)
+                            (map req [:content-type :code :result])]]])
 
 (defn- assoc-current-thread [req running-threads]
   (if running-threads
@@ -105,7 +106,7 @@
 
 (defmacro ^:private def-packet-fn [name args & content]
   `(defn- ~name [tid# ~@args]
-     [version tid# [~@content]]))
+     [protocol/v5 tid# [~@content]]))
 
 (def-packet-fn pong-packet []
   :type-pong)
@@ -137,8 +138,7 @@
 ;; [version tid  [request-type [cmd data]]]
 (defn ^:no-doc build-inspect-handler [funcs]
   (fn [req]
-    (let [tid (second req)
-          [cmd data] (second (nth req 2))
+    (let [[_ [tid [_ [cmd data]]]] req
           data (deserialize :clj data :string)]
       (make-inspect-ack
        tid
@@ -153,7 +153,7 @@
          nil)))))
 
 (defn- interrupt-handler [packet client-info running-threads]
-  (let [[target-tid] (second (nth packet 2))
+  (let [[_ [_ [_ [target-tid]]]] packet
         key (thread-map-key client-info target-tid)]
     (log/debug "About to interrupt" key)
     (when-let [thread (get @running-threads key)]
@@ -162,7 +162,8 @@
       (swap! running-threads dissoc key))
     nil))
 
-(defmulti ^:private -handle-request (fn [p & _] (first (nth p 2))))
+;; p: [version [tid [type ...]]]
+(defmulti ^:private -handle-request (fn [p & _] (let [[_ [_ [t]]] p] t)))
 (defmethod -handle-request :type-request [req
                                           server-pipeline
                                           client-info
@@ -182,9 +183,6 @@
   [server-pipeline req client-info inspect-handler acl running-threads]
   (log/debug req)
   (cond
-   (not= version (first req))
-   (protocol-mismatch-packet 0)
-
    ;; acl enabled
    (and (not-empty acl)
         (not (acl/authorize client-info acl)))
@@ -200,6 +198,7 @@
         inspect-handler (build-inspect-handler funcs)]
     (create-handler
      (on-message [ch data]
+                 (println "====" data)
                  (log/debug "data received" data)
                  (with-executor ^ExecutorService executor
                    (let [client-info {:remote-addr (remote-addr ch)}
@@ -302,8 +301,8 @@
         handler (create-server-handler executor funcs interceptors acl running-threads)
         ssl-handler (when ssl-context
                       (ssl-handler-from-jdk-ssl-context ssl-context false))
-        handlers [(netty-encoder slacker-base-codec)
-                  (netty-decoder slacker-base-codec)
+        handlers [(netty-encoder protocol/slacker-root-codec)
+                  (netty-decoder protocol/slacker-root-codec)
                   handler]
         handlers (if ssl-handler
                    (conj (seq handlers) ssl-handler) handlers)]

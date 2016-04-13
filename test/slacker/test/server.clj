@@ -1,7 +1,10 @@
 (ns slacker.test.server
-  (:use [slacker server serialization common protocol])
-  (:use [clojure.test])
-  (:use [clojure.string :only [split]]))
+  (:require [slacker.server :refer :all]
+            [slacker.serialization :refer :all]
+            [slacker.common :refer :all]
+            [slacker.protocol :as protocol]
+            [clojure.test :refer :all]
+            [clojure.string :refer [split]]))
 
 (def funcs {"plus" + "minus" - "prod" * "div" /})
 (def params (serialize :carb [100 0]))
@@ -46,13 +49,13 @@
     (is (= "0" (deserialize :carb (:result (server-pipeline req)))))))
 
 (deftest test-ping
-  (let [request [version 0 [:type-ping]]
-        response (nth (handle-request nil request nil nil nil nil) 2)]
+  (let [request [protocol/v5 [0 [:type-ping]]]
+        [_ [_ response]] (handle-request nil request nil nil nil nil)]
     (is (= :type-pong (nth response 0)))))
 
 (deftest test-invalid-packet
-  (let [request [version 0 [:type-unknown]]
-        response (nth (handle-request nil request nil nil nil nil) 2)]
+  (let [request [protocol/v5 [0 [:type-unknown]]]
+        [_ [_ response]] (handle-request nil request nil nil nil nil)]
     (is (= :type-error (nth response 0)))
     (is (= :invalid-packet (-> response
                                second
@@ -60,13 +63,9 @@
 
 
 (deftest test-functions-inspect
-  (let [request [version 0 [:type-inspect-req [:functions "nil"]]]
-        result (->
-                (handle-request nil request nil
-                                (build-inspect-handler funcs) nil nil)
-                (nth 2)
-                second
-                first)
+  (let [request [protocol/v5 [0 [:type-inspect-req [:functions "nil"]]]]
+        [_ [_ [_ [result]]]] (handle-request nil request nil
+                                             (build-inspect-handler funcs) nil nil)
         response (deserialize :clj result :string)]
     (= (map name (keys funcs)) response)))
 
