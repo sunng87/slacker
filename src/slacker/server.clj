@@ -24,7 +24,7 @@
 (defn thread-pool-executor [threads backlog-queue-size]
   (ThreadPoolExecutor. (int threads) (int threads) (long 0)
                        TimeUnit/MILLISECONDS
-                       (LinkedBlockingQueue. backlog-queue-size)
+                       (LinkedBlockingQueue. ^long backlog-queue-size)
                        (counted-thread-factory "slacker-server-worker-%d" true)
                        ^RejectedExecutionHandler (ThreadPoolExecutor$DiscardOldestPolicy.)))
 
@@ -294,7 +294,7 @@
   "Takes the value returned by start-slacker-server and stop both tcp and http server if any"
   (let [[the-tcp-server the-http-server ^ExecutorService executor] server]
     (.shutdown executor)
-    (.awaitTermination executor *timeout*)
+    (.awaitTermination executor *timeout* TimeUnit/MILLISECONDS)
     (when (not-empty the-tcp-server)
       (stop-server the-tcp-server))
     (when (not-empty the-http-server)
