@@ -314,7 +314,17 @@
                   (instance? ConnectException exc)
                   (instance? ClosedChannelException exc))
                (log/warn "Failed to connect to server or connection lost.")
-               (log/error exc "Unexpected error in event loop")))))
+               (log/error exc "Unexpected error in event loop")))
+   (on-inactive [ch]
+                (let [rmap (-> ch
+                               (channel-hostport)
+                               (@server-requests)
+                               :pendings)]
+                  (doseq [handler (vals @rmap)]
+                    (when (not-empty handler)
+                      (deliver (:promise handler)
+                               {:cause {:error :connection-broken}})))
+                  (reset! rmap {})))))
 
 (def ^:dynamic *options*
   {:tcp-nodelay true
