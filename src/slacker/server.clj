@@ -30,9 +30,10 @@
 
 (defmacro with-executor [executor & body]
   `(.submit ~executor
-            (cast Runnable (fn [] (try ~@body
-                                      (catch Throwable e#
-                                        (log/warn e# "Uncaught exception in Slacker executor")))))))
+            ^Runnable (cast Runnable
+                            (fn [] (try ~@body
+                                       (catch Throwable e#
+                                         (log/warn e# "Uncaught exception in Slacker executor")))))))
 
 (defn- thread-map-key [client tid]
   (str (:remote-addr client) "::" tid))
@@ -150,7 +151,7 @@
     (log/debug "About to interrupt" key)
     (when-let [thread (get @running-threads key)]
       (log/debug "Interrupted thread" thread)
-      (.interrupt thread)
+      (.interrupt ^Thread thread)
       (swap! running-threads dissoc key))
     nil))
 
@@ -192,7 +193,7 @@
     (create-handler
      (on-message [ch data]
                  (log/debug "data received" data)
-                 (with-executor executor
+                 (with-executor ^ExecutorService executor
                    (let [client-info {:remote-addr (remote-addr ch)}
                          result (handle-request
                                  server-pipeline

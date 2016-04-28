@@ -72,9 +72,9 @@
        (let [jsonstr (generate-string data)]
          (if *debug* (println (str "dbg:: " jsonstr)))
          (case ot
-           :buffer (.encode (Charset/forName "UTF-8") jsonstr)
+           :buffer (.encode ^Charset (Charset/forName "UTF-8") ^String jsonstr)
            :string jsonstr
-           :bytes (.getBytes jsonstr "UTF-8"))))))
+           :bytes (.getBytes ^String jsonstr "UTF-8"))))))
 
   (catch Throwable _
     (logging/info  "Disable cheshire (json) support.")))
