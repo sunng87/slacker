@@ -184,6 +184,7 @@
           state (get-purgatory factory (server-addr this))
           fname (str ns-name "/" func-name)
           tid (next-trans-id (:idgen state))
+          content-type (:content-type call-options content-type)
           req-data (-> {:fname fname :data params :content-type content-type}
                        ((:pre (:interceptors call-options)))
                        (serialize-params)
@@ -223,6 +224,7 @@
           state (get-purgatory factory (server-addr this))
           fname (str ns-name "/" func-name)
           tid (next-trans-id (:idgen state))
+          content-type (:content-type call-options content-type)
 
           req-data (-> {:fname fname :data params :content-type content-type}
                        ((:pre (:interceptors call-options)))
