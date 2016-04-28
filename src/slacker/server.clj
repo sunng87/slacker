@@ -210,15 +210,17 @@
                (close! ch)))))
 
 
-(defn ns-funcs [n]
-  (let [nsname (ns-name n)]
-    (into {}
-          (for [[k v] (ns-publics n)
-                :when (let [md (meta v)]
-                        (and (not (:macro md))
-                             (not (:no-slacker md))
-                             (fn? @v)))]
-            [(str nsname "/" (name k)) v]))))
+(defn parse-funcs [n]
+  (if (map? n)
+    n
+    (let [nsname (ns-name n)]
+      (into {}
+            (for [[k v] (ns-publics n)
+                  :when (let [md (meta v)]
+                          (and (not (:macro md))
+                               (not (:no-slacker md))
+                               (fn? @v)))]
+              [(str nsname "/" (name k)) v])))))
 
 (def
   ^{:doc "Default options"}
@@ -236,8 +238,8 @@
   You can also configure interceptors and acl just like `start-slacker-server`"
   [exposed-ns & {:keys [interceptors acl]
                  :or {interceptors interceptor/default-interceptors}}]
-  (let [exposed-ns (if (coll? exposed-ns) exposed-ns [exposed-ns])
-        funcs (apply merge (map ns-funcs exposed-ns))
+  (let [exposed-ns (if (vector? exposed-ns) exposed-ns [exposed-ns])
+        funcs (apply merge (map parse-funcs exposed-ns))
         server-pipeline (build-server-pipeline
                           funcs interceptors nil)]
     (fn [req]
@@ -272,8 +274,8 @@
            queue-size 3000
            executor nil}
       :as options}]
-  (let [exposed-ns (if (coll? exposed-ns) exposed-ns [exposed-ns])
-        funcs (apply merge (map ns-funcs exposed-ns))
+  (let [exposed-ns (if (vector? exposed-ns) exposed-ns [exposed-ns])
+        funcs (apply merge (map parse-funcs exposed-ns))
         executor (or executor (thread-pool-executor threads queue-size))
         running-threads (atom {})
         handler (create-server-handler executor funcs interceptors acl running-threads)

@@ -12,7 +12,9 @@
             req))
 
 (defn -main [& args]
-  (let [server (start-slacker-server (the-ns 'slacker.example.api) 2104
+  (let [server (start-slacker-server [(the-ns 'slacker.example.api)
+                                      {"slacker.example.api/echo2" (fn [n] n)}]
+                                     2104
                                      :interceptors (interceptors [log-function-calls
                                                                   function-call-stats])
                                      :http 4104)]
