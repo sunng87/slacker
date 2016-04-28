@@ -213,7 +213,11 @@
 (defn ns-funcs [n]
   (let [nsname (ns-name n)]
     (into {}
-          (for [[k v] (ns-publics n) :when (fn? @v)]
+          (for [[k v] (ns-publics n)
+                :when (let [md (meta v)]
+                        (and (not (:macro md))
+                             (not (:no-slacker md))
+                             (fn? @v)))]
             [(str nsname "/" (name k)) v]))))
 
 (def

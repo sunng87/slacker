@@ -33,3 +33,5 @@
 (defn long-running []
   (Thread/sleep 100000)
   true)
+
+(defn ^:no-slacker unreachable [] true)
