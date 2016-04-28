@@ -138,9 +138,10 @@
     (let [state (get-state factory (server-addr this))
           fname (str ns-name "/" func-name)
           tid (next-trans-id (:idgen state))
-          request (make-request tid content-type fname params)
-          backlog (or (:backlog options) *backlog*)
           call-options (merge options call-options)
+          backlog (or (:backlog options) *backlog*)
+          content-type (:content-type call-options content-type)
+          request (make-request tid content-type fname params)
           prms (promise)]
       (if-not (> (count @(:pendings state)) backlog 0)
         (do
@@ -165,9 +166,10 @@
     (let [state (get-state factory (server-addr this))
           fname (str ns-name "/" func-name)
           tid (next-trans-id (:idgen state))
-          request (make-request tid content-type fname params)
-          backlog (or (:backlog options) *backlog*)
           call-options (merge options call-options)
+          backlog (or (:backlog options) *backlog*)
+          content-type (:content-type call-options content-type)
+          request (make-request tid content-type fname params)
           prms (promise)
           timeout-check (fn []
                           (when-let [handler (get @(:pendings state) tid)]
