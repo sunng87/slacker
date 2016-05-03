@@ -216,8 +216,7 @@
       (-> (assoc req-data :cause (:cause resp) :result (:result resp))
           ((:after (:interceptors call-options)))
           (deserialize-results)
-          ((:post (:interceptors call-options)))
-          process-call-result)))
+          ((:post (:interceptors call-options))))))
 
   (async-call-remote [this ns-name func-name params cb call-options]
     (let [call-options (merge options call-options)
@@ -382,7 +381,7 @@
       (async-call-remote sc nsname fname args (or *callback* callback) options)
 
       ;; sync
-      (sync-call-remote sc nsname fname args options))))
+      (process-call-result (sync-call-remote sc nsname fname args options)))))
 
 (defn meta-remote
   "get metadata of a remote function by inspect api"
