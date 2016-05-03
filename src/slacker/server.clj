@@ -236,10 +236,10 @@
 (defn slacker-ring-app
   "Wrap slacker as a ring app that can be deployed to any ring adaptors.
   You can also configure interceptors and acl just like `start-slacker-server`"
-  [exposed-ns & {:keys [interceptors acl]
-                 :or {interceptors interceptor/default-interceptors}}]
-  (let [exposed-ns (if (vector? exposed-ns) exposed-ns [exposed-ns])
-        funcs (apply merge (map parse-funcs exposed-ns))
+  [fn-coll & {:keys [interceptors acl]
+              :or {interceptors interceptor/default-interceptors}}]
+  (let [fn-coll (if (vector? fn-coll) fn-coll [fn-coll])
+        funcs (apply merge (map parse-funcs fn-coll))
         server-pipeline (build-server-pipeline
                           funcs interceptors nil)]
     (fn [req]
@@ -257,8 +257,16 @@
 
 (defn start-slacker-server
   "Start a slacker server to expose all public functions under
-  a namespace. If you have multiple namespace to expose, put
-  `exposed-ns` as a vector.
+  a namespace, or a map or functions. If you have multiple namespace or map
+  to expose, put `fn-coll` as a vector.
+
+  `fn-coll` examples:
+  * `(the-ns 'slacker.example.api)`: expose all public functions under
+    `slacker.example.api`, except those marked with `^:no-slacker`
+  * `{\"slacker.example.api2/echo2\" (fn [a] a) ...}` expose all functions
+    in this map
+  * `[(the-ns 'slacker.example.api) {...}]` a vector of normal function collection
+
   Options:
   * `interceptors` add server interceptors
   * `http` http port for slacker http transport
@@ -267,15 +275,15 @@
   * `executor` custom java.util.concurrent.ExecutorService for tasks execution, note this executor will be shutdown when you stop the slacker server
   * `threads` size of thread pool if no executor provided
   * `queue-size` size of thread pool task queue if no executor provided"
-  [exposed-ns port
+  [fn-coll port
    & {:keys [http interceptors acl ssl-context threads queue-size executor]
       :or {interceptors interceptor/default-interceptors
            threads 10
            queue-size 3000
            executor nil}
       :as options}]
-  (let [exposed-ns (if (vector? exposed-ns) exposed-ns [exposed-ns])
-        funcs (apply merge (map parse-funcs exposed-ns))
+  (let [fn-coll (if (vector? fn-coll) fn-coll [fn-coll])
+        funcs (apply merge (map parse-funcs fn-coll))
         executor (or executor (thread-pool-executor threads queue-size))
         running-threads (atom {})
         handler (create-server-handler executor funcs interceptors acl running-threads)
@@ -291,7 +299,7 @@
     (let [the-tcp-server (tcp-server port handlers
                                          :options server-options)
           the-http-server (when http
-                            (http-server http (apply slacker-ring-app exposed-ns
+                            (http-server http (apply slacker-ring-app fn-coll
                                                      (flatten (into [] options)))
                                          :threads threads
                                          :ssl-context ssl-context))]
