@@ -69,3 +69,20 @@
                 first)
         response (deserialize :clj result :string)]
     (= (map name (keys funcs)) response)))
+
+(deftest test-parse-functions
+  (testing "parsing function map"
+    (let [nmap {"example.api2" {"echo2" (constantly "echo2")
+                                "echo3" (constantly "echo3")
+                                "echo4" (constantly "echo4")}
+                "example.api3" {"reverse2" (constantly (reverse "reverse2"))
+                                "reverse3" (constantly (reverse "reverse3"))}}
+          parsed-results (parse-funcs nmap)]
+
+      (is (= 5 (count parsed-results)))
+      (is (= 3 (count (filter #(clojure.string/starts-with? % "example.api2/")
+                              (keys parsed-results)))))
+      (is (= 2 (count (filter #(clojure.string/starts-with? % "example.api3/")
+                              (keys parsed-results)))))
+      (is (= "echo2" ((parsed-results "example.api2/echo2"))))
+      (is (= (reverse "reverse2") ((parsed-results "example.api3/reverse2")))))))

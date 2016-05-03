@@ -212,7 +212,14 @@
 
 (defn parse-funcs [n]
   (if (map? n)
-    n
+    ;; expose via map
+    (into {}
+          (mapcat #(let [[nsname fns] %]
+                     (for [[fnname thefn] fns]
+                       [(str nsname "/" fnname) thefn]))
+                  n))
+
+    ;; expose via namespace
     (let [nsname (ns-name n)]
       (into {}
             (for [[k v] (ns-publics n)
@@ -263,7 +270,7 @@
   `fn-coll` examples:
   * `(the-ns 'slacker.example.api)`: expose all public functions under
     `slacker.example.api`, except those marked with `^:no-slacker`
-  * `{\"slacker.example.api2/echo2\" (fn [a] a) ...}` expose all functions
+  * `{\"slacker.example.api2\" {\"echo2 \" (fn [a] a) ...}}` expose all functions
     in this map
   * `[(the-ns 'slacker.example.api) {...}]` a vector of normal function collection
 

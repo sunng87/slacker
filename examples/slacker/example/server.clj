@@ -13,7 +13,7 @@
 
 (defn -main [& args]
   (let [server (start-slacker-server [(the-ns 'slacker.example.api)
-                                      {"slacker.example.api/echo2" (fn [n] n)}]
+                                      {"slacker.example.api2" {"echo2" (fn [n] n)}}]
                                      2104
                                      :interceptors (interceptors [log-function-calls
                                                                   function-call-stats])
