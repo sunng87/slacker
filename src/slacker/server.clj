@@ -47,8 +47,7 @@
 ;; [version transaction-id [request-type [content-type func-name params]]]
 (defn- map-req-fields [req]
   (let [[_ [tid [_ data]]] req]
-    (println req)
-    (assoc (zipmap [:content-type :fname :data] data)
+    (assoc (zipmap [:content-type :fname :data :extensions] data)
            :tid tid)))
 
 (defn- look-up-function [req funcs]
@@ -85,8 +84,8 @@
   (assoc req :result (serialize (:content-type req) (:result req))))
 
 (defn- map-response-fields [req]
-  [protocol/v5 [(:tid req) [(:packet-type req)
-                            (map req [:content-type :code :result])]]])
+  (protocol/protocol-6 [(:tid req) [(:packet-type req)
+                                    (map req [:content-type :code :result :extensions])]]))
 
 (defn- assoc-current-thread [req running-threads]
   (if running-threads
@@ -106,11 +105,11 @@
 
 (defmacro ^:private def-packet-fn [name args & content]
   `(defn- ~name [tid# ~@args]
-     [protocol/v5 tid# [~@content]]))
+     [protocol/v6 [tid# [~@content]]]))
 
 (def-packet-fn pong-packet []
   :type-pong)
-(def-packet-fn protocol-mismatch-packet []
+#_(def-packet-fn protocol-mismatch-packet []
   :type-error [:protocol-mismatch])
 (def-packet-fn invalid-type-packet []
   :type-error [:invalid-packet])

@@ -16,7 +16,7 @@
            [clojure.lang IFn IDeref IBlockingDeref IPending]))
 
 (defn- handle-valid-response [response]
-  (let [[content-type code data] (second response)]
+  (let [[content-type code data extensions] (second response)]
     (case code
       :success {:result data}
       :not-found {:cause {:error code}}
@@ -25,16 +25,16 @@
       {:cause {:error :invalid-result-code}})))
 
 (defn make-request [tid content-type func-name params]
-  [protocol/v5 [tid [:type-request [content-type func-name params]]]])
+  (protocol/protocol-6 [tid [:type-request [content-type func-name params []]]]))
 
-(def ping-packet [protocol/v5 [0 [:type-ping]]])
+(def ping-packet (protocol/protocol-6 [0 [:type-ping]]))
 
 (defn make-inspect-request [tid cmd args]
-  [protocol/v5 [tid [:type-inspect-req
-                     [cmd (serialize :clj args :string)]]]])
+  (protocol/protocol-6 [tid [:type-inspect-req
+                             [cmd (serialize :clj args :string)]]]))
 
 (defn make-interrupt [target-tid]
-  [protocol/v5 [0 [:type-interrupt [target-tid]]]])
+  (protocol/protocol-6 [0 [:type-interrupt [target-tid]]]))
 
 (defn parse-inspect-response [response]
   (let [[_ [_ [_ data]]] response]

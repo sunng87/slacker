@@ -36,20 +36,42 @@
                 :invalid-packet 21
                 :acl-reject 22}))
 
+(def slacker-call-extension
+  (frame
+   (int16) ;; extension id
+   (byte-block :prefix (uint16))))
+
 ;; :type-request
-(def slacker-request-codec
+(def slacker-request-codec-v5
   (frame
    content-type
    (string :encoding :utf-8 :prefix (uint16))
-   (byte-block :prefix (uint32))))
+   (byte-block :prefix (uint32))
+   (const [])))
 
 ;; :type-response
-(def slacker-response-codec
+(def slacker-response-codec-v5
   (frame
    content-type
    result-codes
-   (byte-block :prefix (uint32))))
+   (byte-block :prefix (uint32))
+   (const [])))
 
+;; :type-request
+(def slacker-request-codec-v6
+  (frame
+   content-type
+   (string :encoding :utf-8 :prefix (uint16))
+   (byte-block :prefix (uint32))
+   slacker-call-extension))
+
+;; :type-response
+(def slacker-response-codec-v6
+  (frame
+   content-type
+   result-codes
+   (byte-block :prefix (uint32))
+   slacker-call-extension))
 
 ;; :type-ping
 (def slacker-ping-codec
@@ -97,8 +119,24 @@
    (int32) ;; transaction id
    (header
     packet-type
-    {:type-request slacker-request-codec
-     :type-response slacker-response-codec
+    {:type-request slacker-request-codec-v5
+     :type-response slacker-response-codec-v5
+     :type-ping slacker-ping-codec
+     :type-pong slacker-pong-codec
+     :type-error slacker-error-codec
+     :type-auth-req slacker-auth-req-codec
+     :type-auth-ack slacker-auth-ack-codec
+     :type-inspect-req slacker-inspect-req-codec
+     :type-inspect-ack slacker-inspect-ack-codec
+     :type-interrupt slacker-interrupt-codec})))
+
+(def slacker-v6-codec
+  (frame
+   (int32)
+   (header
+    packet-type
+    {:type-request slacker-request-codec-v6
+     :type-response slacker-response-codec-v6
      :type-ping slacker-ping-codec
      :type-pong slacker-pong-codec
      :type-error slacker-error-codec
@@ -111,4 +149,10 @@
 (def slacker-root-codec
   (header
     versions
-    {v5 slacker-v5-codec}))
+    {v5 slacker-v5-codec
+     v6 slacker-v6-codec}))
+
+;; helper function
+
+(defn protocol-6 [data]
+  [v6 data])

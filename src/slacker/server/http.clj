@@ -27,7 +27,7 @@
         content-type (keyword content-type)
         body (or body "[]")
         data (stream->bytebuffer body)]
-    [protocol/v5 [0 [:type-request [content-type fname data]]]]))
+    (protocol/protocol-6 [0 [:type-request [content-type fname data []]]])))
 
 (defn slacker-resp->ring-resp
   "transform slacker response to ring response"
@@ -40,7 +40,7 @@
       {:status 403
        :body "rejected by access control list"}
       ;; normal response packet
-      (let [[ct code result] (second resp-body)
+      (let [[ct code result _] (second resp-body)
             content-type (str "application/" (name ct))
             status (case code
                      :success 200
