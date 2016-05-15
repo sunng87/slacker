@@ -63,7 +63,7 @@
    content-type
    (string :encoding :utf-8 :prefix (uint16))
    (byte-block :prefix (uint32))
-   slacker-call-extension))
+   (counted :prefix (byte) :body slacker-call-extension)))
 
 ;; :type-response
 (def slacker-response-codec-v6
@@ -71,7 +71,7 @@
    content-type
    result-codes
    (byte-block :prefix (uint32))
-   slacker-call-extension))
+   (counted :prefix (byte) :body slacker-call-extension)))
 
 ;; :type-ping
 (def slacker-ping-codec
