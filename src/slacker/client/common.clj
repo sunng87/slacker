@@ -203,7 +203,6 @@
           resp (if-not (> (count @(:pendings state)) backlog 0)
                  (do
                    (swap! (:pendings state) assoc tid {:promise prms})
-                   (println request)
                    (send! conn request)
                    (try
                      (deref prms (or (:timeout call-options) *timeout*) nil)
