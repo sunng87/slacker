@@ -27,7 +27,7 @@
         content-type (keyword content-type)
         body (or body "[]")
         data (stream->bytebuffer body)]
-    (protocol/protocol-6 [0 [:type-request [content-type fname data []]]])))
+    (protocol/of protocol/v6 [0 [:type-request [content-type fname data []]]])))
 
 (defn slacker-resp->ring-resp
   "transform slacker response to ring response"

@@ -154,5 +154,5 @@
 
 ;; helper function
 
-(defn protocol-6 [data]
-  [v6 data])
+(defn of [v data]
+  [(or v v6) data])

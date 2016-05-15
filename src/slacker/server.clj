@@ -46,9 +46,10 @@
 ;; request data structure:
 ;; [version transaction-id [request-type [content-type func-name params]]]
 (defn- map-req-fields [req]
-  (let [[_ [tid [_ data]]] req]
+  (let [[prot-ver [tid [_ data]]] req]
     (assoc (zipmap [:content-type :fname :data :extensions] data)
-           :tid tid)))
+           :tid tid
+           :protocol-version prot-ver)))
 
 (defn- look-up-function [req funcs]
   (if-let [func (funcs (:fname req))]
@@ -84,8 +85,9 @@
   (assoc req :result (serialize (:content-type req) (:result req))))
 
 (defn- map-response-fields [req]
-  (protocol/protocol-6 [(:tid req) [(:packet-type req)
-                                    (map req [:content-type :code :result :extensions])]]))
+  (protocol/of (:protocol-version req)
+               [(:tid req) [(:packet-type req)
+                            (map req [:content-type :code :result :extensions])]]))
 
 (defn- assoc-current-thread [req running-threads]
   (if running-threads
@@ -105,7 +107,7 @@
 
 (defmacro ^:private def-packet-fn [name args & content]
   `(defn- ~name [tid# ~@args]
-     [protocol/v6 [tid# [~@content]]]))
+     (protocol/of protocol/v6 [tid# [~@content]])))
 
 (def-packet-fn pong-packet []
   :type-pong)
@@ -137,9 +139,10 @@
 ;; [version tid  [request-type [cmd data]]]
 (defn ^:no-doc build-inspect-handler [funcs]
   (fn [req]
-    (let [[_ [tid [_ [cmd data]]]] req
+    (let [[prot-ver [tid [_ [cmd data]]]] req
           data (deserialize :clj data :string)]
       (make-inspect-ack
+       prot-ver
        tid
        (case cmd
          :functions
@@ -185,7 +188,7 @@
    ;; acl enabled
    (and (not-empty acl)
         (not (acl/authorize client-info acl)))
-   (acl-reject-packet (second req))
+   (acl-reject-packet (first req) (second req))
 
    ;; handle request
 

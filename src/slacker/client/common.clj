@@ -25,16 +25,16 @@
       {:cause {:error :invalid-result-code}})))
 
 (defn make-request [tid content-type func-name params]
-  (protocol/protocol-6 [tid [:type-request [content-type func-name params []]]]))
+  [tid [:type-request [content-type func-name params []]]])
 
-(def ping-packet (protocol/protocol-6 [0 [:type-ping]]))
+(def ping-packet [0 [:type-ping]])
 
 (defn make-inspect-request [tid cmd args]
-  (protocol/protocol-6 [tid [:type-inspect-req
-                             [cmd (serialize :clj args :string)]]]))
+  [tid [:type-inspect-req
+        [cmd (serialize :clj args :string)]]])
 
 (defn make-interrupt [target-tid]
-  (protocol/protocol-6 [0 [:type-interrupt [target-tid]]]))
+  [0 [:type-interrupt [target-tid]]])
 
 (defn parse-inspect-response [response]
   (let [[_ [_ [_ data]]] response]
@@ -193,7 +193,10 @@
                        ((:pre (:interceptors call-options)))
                        (serialize-params)
                        ((:before (:interceptors call-options))))
-          request (make-request tid (:content-type req-data) (:fname req-data) (:args req-data))
+          protocol-version (:protocol-version call-options)
+          request (protocol/of protocol-version
+                               (make-request tid (:content-type req-data)
+                                             (:fname req-data) (:args req-data)))
           backlog (or (:backlog options) *backlog*)
           prms (promise)
 
@@ -235,7 +238,10 @@
                        (serialize-params)
                        ((:before (:interceptors call-options))))
 
-          request (make-request tid (:content-type req-data) (:fname req-data) (:args req-data))
+          protocol-version (:protocol-version call-options)
+          request (protocol/of protocol-version
+                               (make-request tid (:content-type req-data)
+                                             (:fname req-data) (:args req-data)))
           backlog (or (:backlog options) *backlog*)
 
           post-hook (fn [result]
@@ -264,7 +270,8 @@
   (inspect [this cmd args]
     (let [state (get-purgatory factory (server-addr this))
           tid (next-trans-id (:idgen state))
-          request (make-inspect-request tid cmd args)
+          protocol-version (:protocol-version options)
+          request (protocol/of protocol-version (make-inspect-request tid cmd args))
           prms (promise)]
       (swap! (:pendings state) assoc tid {:promise prms :type :inspect})
       (send! conn request)
@@ -275,7 +282,7 @@
           (swap! (:pendings state) dissoc tid)
           {:cause {:error :timeout}}))))
   (ping [this]
-    (send! conn ping-packet)
+    (send! conn (protocol/of (:protocol-version options) ping-packet))
     (log/debug "ping"))
   (close [this]
     (cancel-ping this)
@@ -285,7 +292,7 @@
     addr)
   (interrupt [this tid]
     (log/debug "Sending interrupt." tid)
-    (send! conn (make-interrupt tid)))
+    (send! conn (protocol/of (:protocol-version options) (make-interrupt tid))))
 
   KeepAliveClientProtocol
   (schedule-ping [this interval]
