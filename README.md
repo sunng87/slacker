@@ -33,8 +33,8 @@ source code.
 
 [![latest version on clojars](https://clojars.org/slacker/slacker/latest-version.svg)](https://clojars.org/slacker/slacker)
 
-* Stable: 0.13.x
-* Development: 0.14.0-SNAPSHOT
+* Stable: 0.14.x
+* Development: 0.15.0-SNAPSHOT
 
 ### Basic Usage
 
