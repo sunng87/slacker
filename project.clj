@@ -19,10 +19,12 @@
              :clojure17 {:dependencies [[org.clojure/clojure "1.7.0"]]}
              :clojure18 {:dependencies [[org.clojure/clojure "1.8.0"]]}}
   :plugins [[lein-exec "0.3.1"]
-            [codox "0.8.15"]]
+            [lein-codox "0.9.5"]]
   :global-vars {*warn-on-reflection* true}
   :aliases {"run-example-server" ["trampoline" "with-profile" "default,clojure17,example" "run" "-m" "slacker.example.server"]
             "run-example-client" ["trampoline" "with-profile" "default,clojure17,example" "run" "-m" "slacker.example.client"]
             "test-all" ["with-profile" "default,clojure15:default,clojure16:default,clojure17:default,clojure18" "test"]}
   :deploy-repositories {"releases" :clojars}
-  :codox {:output-dir "target/codox"})
+  :codox {:output-path "target/codox"
+          :source-uri "https://github.com/sunng87/slacker/blob/master/{filepath}#L{line}"
+          :metadata {:doc/format :markdown}})
