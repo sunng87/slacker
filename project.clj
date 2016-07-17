@@ -3,7 +3,7 @@
   :url "http://github.com/sunng87/slacker"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
-  :dependencies [[link "0.8.16"]
+  :dependencies [[link "0.9.0"]
                  [rigui "0.5.1"]
                  [org.clojure/tools.logging "0.3.1"]]
   :profiles {:example {:source-paths ["examples"]
@@ -17,12 +17,13 @@
              :clojure15 {:dependencies [[org.clojure/clojure "1.5.1"]]}
              :clojure16 {:dependencies [[org.clojure/clojure "1.6.0"]]}
              :clojure17 {:dependencies [[org.clojure/clojure "1.7.0"]]}
-             :clojure18 {:dependencies [[org.clojure/clojure "1.8.0"]]}}
+             :clojure18 {:dependencies [[org.clojure/clojure "1.8.0"]]}
+             :clojure19 {:dependencies [[org.clojure/clojure "1.9.0-alpha10"]]}}
   :plugins [[lein-exec "0.3.1"]
             [lein-codox "0.9.5"]]
   :global-vars {*warn-on-reflection* true}
-  :aliases {"run-example-server" ["trampoline" "with-profile" "default,clojure17,example" "run" "-m" "slacker.example.server"]
-            "run-example-client" ["trampoline" "with-profile" "default,clojure17,example" "run" "-m" "slacker.example.client"]
+  :aliases {"run-example-server" ["trampoline" "with-profile" "default,clojure18,example" "run" "-m" "slacker.example.server"]
+            "run-example-client" ["trampoline" "with-profile" "default,clojure18,example" "run" "-m" "slacker.example.client"]
             "test-all" ["with-profile" "default,clojure15:default,clojure16:default,clojure17:default,clojure18" "test"]}
   :deploy-repositories {"releases" :clojars}
   :codox {:output-path "target/codox"
