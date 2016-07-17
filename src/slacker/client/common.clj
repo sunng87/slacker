@@ -276,8 +276,8 @@
     (log/debug "ping"))
   (close [this]
     (cancel-ping this)
-    (dissoc-client! factory this)
-    (close! conn))
+    (close! conn)
+    (dissoc-client! factory this))
   (server-addr [this]
     addr)
   (interrupt [this tid]
@@ -319,10 +319,10 @@
                (log/warn "Failed to connect to server or connection lost.")
                (log/error exc "Unexpected error in event loop")))
    (on-inactive [ch]
-                (let [rmap (-> ch
-                               (channel-hostport)
-                               (@server-requests)
-                               :pendings)]
+                (when-let [rmap (-> ch
+                                    (channel-hostport)
+                                    (@server-requests)
+                                    :pendings)]
                   (doseq [handler (vals @rmap)]
                     (when (not-empty handler)
                       (deliver (:promise handler)
