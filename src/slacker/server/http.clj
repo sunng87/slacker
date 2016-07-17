@@ -1,11 +1,9 @@
-(ns slacker.server.http
-  (:require [clojure.string :as string])
-  (:require [clojure.java.io :as io])
-  (:require [slacker.protocol])
-  (:import [java.io
-            ByteArrayInputStream
-            ByteArrayOutputStream])
-  (:import [java.nio ByteBuffer]))
+(ns ^:no-doc slacker.server.http
+  (:require [clojure.string :as string]
+            [clojure.java.io :as io]
+            [slacker.protocol])
+  (:import [java.io ByteArrayInputStream ByteArrayOutputStream]
+           [java.nio ByteBuffer]))
 
 (defn- stream->bytebuffer [inputstream]
   (let [out (ByteArrayOutputStream.)]

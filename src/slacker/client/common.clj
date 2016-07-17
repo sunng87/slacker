@@ -1,12 +1,14 @@
-(ns slacker.client.common
-  (:use [clojure.string :only [split]])
-  (:use [slacker serialization common protocol])
-  (:use [link.core])
-  (:use [link.tcp])
+(ns ^:no-doc slacker.client.common
   (:require [clojure.tools.logging :as log]
+            [clojure.string :refer [split]]
+            [link.core :refer :all]
+            [link.tcp :refer :all]
             [link.codec :refer [netty-encoder netty-decoder]]
             [link.ssl :refer [ssl-handler-from-jdk-ssl-context]]
-            [rigui.core :as rigui])
+            [rigui.core :as rigui]
+            [slacker.serialization :refer [serialize deserialize]]
+            [slacker.common :refer :all]
+            [slacker.protocol :refer :all])
   (:import [java.net ConnectException InetSocketAddress InetAddress]
            [java.nio.channels ClosedChannelException]
            [java.util.concurrent ExecutorService]

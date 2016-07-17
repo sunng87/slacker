@@ -1,4 +1,4 @@
-(ns slacker.serialization.nippy
+(ns ^:no-doc slacker.serialization.nippy
   (:require [taoensso.nippy :as nippy])
   (:import [java.io DataOutput DataInput]))
 

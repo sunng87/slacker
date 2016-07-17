@@ -20,6 +20,6 @@
   *ob-max* (* 1024 16))
 
 (def
-  ^{:doc "Max pending requests the client can have. Set to 0 to disable flow control."
+  ^{:doc "Max on-the-fly requests the client can have. Set to 0 to disable flow control."
     :dynamic true}
   *backlog* 5000)

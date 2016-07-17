@@ -1,12 +1,12 @@
 (ns slacker.serialization
-  (:use [slacker common])
-  (:use [clojure.java.io :only [copy]])
-  (:require [clojure.tools.logging :as logging])
-  (:require [clojure.edn :as edn])
-  (:import [java.io ByteArrayInputStream ByteArrayOutputStream])
-  (:import [java.nio ByteBuffer])
-  (:import [java.nio.charset Charset])
-  (:import [java.util.zip DeflaterInputStream InflaterInputStream]))
+  (:require [clojure.tools.logging :as logging]
+            [clojure.java.io :refer [copy]]
+            [slacker.common :refer :all]
+            [clojure.edn :as edn])
+  (:import [java.io ByteArrayInputStream ByteArrayOutputStream]
+           [java.nio ByteBuffer]
+           [java.nio.charset Charset]
+           [java.util.zip DeflaterInputStream InflaterInputStream]))
 
 (defn- bytebuffer-bytes [^ByteBuffer data]
   (let [bs (byte-array (.remaining data))]

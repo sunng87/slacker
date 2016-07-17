@@ -1,4 +1,4 @@
-(ns slacker.acl.core
+(ns ^:no-doc slacker.acl.core
   (:import [java.net InetSocketAddress]))
 
 (defn- ip-seg-contains?
@@ -28,10 +28,5 @@
     (cond
      (empty? rules) false
      flag (ip-set-contains? allow-set ip-address)
-     :else (and (ip-set-contains? allow-set ip-address) (not (ip-set-contains? deny-set ip-address))))  
+     :else (and (ip-set-contains? allow-set ip-address) (not (ip-set-contains? deny-set ip-address))))
     ))
-
-
-
-
-

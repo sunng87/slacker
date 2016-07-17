@@ -1,4 +1,4 @@
-(ns slacker.protocol
+(ns ^:no-doc slacker.protocol
   (:refer-clojure :exclude [byte float double])
   (:use [link.codec]))
 

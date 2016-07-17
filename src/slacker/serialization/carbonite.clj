@@ -1,4 +1,4 @@
-(ns slacker.serialization.carbonite
+(ns ^:no-doc slacker.serialization.carbonite
   (:require [carbonite.api :as carb])
   (:import [java.nio ByteBuffer])
   (:import [com.esotericsoftware.kryo Kryo Serializer SerializationException]
@@ -31,4 +31,3 @@
   (swap! carb-registry carb/register-serializers serializers))
 
 (register-serializers {StackTraceElement stacktrace-element-serializer})
-  

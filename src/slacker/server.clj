@@ -1,9 +1,13 @@
 (ns slacker.server
-  (:use [slacker common serialization protocol])
-  (:use [slacker.server http])
-  (:use [link core tcp http])
   (:require [clojure.tools.logging :as log]
+            [link.core :refer :all]
+            [link.tcp :refer :all]
+            [link.http :refer :all]
+            [slacker.common :refer :all]
+            [slacker.serialization :refer [serialize deserialize]]
+            [slacker.protocol :refer :all]
             [slacker.acl.core :as acl]
+            [slacker.server.http :refer :all]
             [slacker.interceptor :as interceptor]
             [link.ssl :refer [ssl-handler-from-jdk-ssl-context]]
             [link.codec :refer [netty-encoder netty-decoder]])
@@ -11,7 +15,7 @@
             ThreadPoolExecutor LinkedBlockingQueue RejectedExecutionHandler
             ThreadPoolExecutor$DiscardOldestPolicy ThreadFactory]))
 
-(defn counted-thread-factory
+(defn- counted-thread-factory
   [name-format daemon]
   (let [counter (atom 0)]
     (reify
@@ -21,14 +25,14 @@
           (.setName (format name-format (swap! counter inc)))
           (.setDaemon daemon))))))
 
-(defn thread-pool-executor [threads backlog-queue-size]
+(defn- thread-pool-executor [threads backlog-queue-size]
   (ThreadPoolExecutor. (int threads) (int threads) (long 0)
                        TimeUnit/MILLISECONDS
                        (LinkedBlockingQueue. ^long backlog-queue-size)
                        (counted-thread-factory "slacker-server-worker-%d" true)
                        ^RejectedExecutionHandler (ThreadPoolExecutor$DiscardOldestPolicy.)))
 
-(defmacro with-executor [executor & body]
+(defmacro ^:private with-executor [executor & body]
   `(.submit ~executor
             ^Runnable (cast Runnable
                             (fn [] (try ~@body
@@ -99,19 +103,22 @@
       (swap! running-threads dissoc key)))
   req)
 
-(defn pong-packet [tid]
-  [version tid [:type-pong]])
-(defn protocol-mismatch-packet [tid]
-  [version tid [:type-error [:protocol-mismatch]]])
-(defn invalid-type-packet [tid]
-  [version tid [:type-error [:invalid-packet]]])
-(defn acl-reject-packet [tid]
-  [version tid [:type-error [:acl-reject]]])
-(defn make-inspect-ack [tid data]
-  [version tid [:type-inspect-ack
-            [(serialize :clj data :string)]]])
+(defmacro ^:private def-packet-fn [name args & content]
+  `(defn- ~name [tid# ~@args]
+     [version tid# [~@content]]))
 
-(defn build-server-pipeline [funcs interceptors running-threads]
+(def-packet-fn pong-packet []
+  :type-pong)
+(def-packet-fn protocol-mismatch-packet []
+  :type-error [:protocol-mismatch])
+(def-packet-fn invalid-type-packet []
+  :type-error [:invalid-packet])
+(def-packet-fn acl-reject-packet []
+  :type-error [:acl-reject])
+(def-packet-fn make-inspect-ack [data]
+  :type-inspect-ack [(serialize :clj data :string)])
+
+(defn ^:no-doc build-server-pipeline [funcs interceptors running-threads]
   #(-> %
        (assoc-current-thread running-threads)
        (look-up-function funcs)
@@ -128,7 +135,7 @@
 ;; inspection handler
 ;; inspect request data structure
 ;; [version tid  [request-type [cmd data]]]
-(defn build-inspect-handler [funcs]
+(defn ^:no-doc build-inspect-handler [funcs]
   (fn [req]
     (let [tid (second req)
           [cmd data] (second (nth req 2))
@@ -145,7 +152,7 @@
            (select-keys metadata [:name :doc :arglists]))
          nil)))))
 
-(defn interrupt-handler [packet client-info running-threads]
+(defn- interrupt-handler [packet client-info running-threads]
   (let [[target-tid] (second (nth packet 2))
         key (thread-map-key client-info target-tid)]
     (log/debug "About to interrupt" key)
@@ -155,7 +162,7 @@
       (swap! running-threads dissoc key))
     nil))
 
-(defmulti -handle-request (fn [p & _] (first (nth p 2))))
+(defmulti ^:private -handle-request (fn [p & _] (first (nth p 2))))
 (defmethod -handle-request :type-request [req
                                           server-pipeline
                                           client-info
@@ -171,7 +178,8 @@
 (defmethod -handle-request :default [p & _]
   (invalid-type-packet (second p)))
 
-(defn handle-request [server-pipeline req client-info inspect-handler acl running-threads]
+(defn ^:no-doc handle-request
+  [server-pipeline req client-info inspect-handler acl running-threads]
   (log/debug req)
   (cond
    (not= version (first req))
@@ -210,7 +218,7 @@
                (close! ch)))))
 
 
-(defn parse-funcs [n]
+(defn ^:no-doc parse-funcs [n]
   (if (map? n)
     ;; expose via map
     (into {}
@@ -229,15 +237,11 @@
                                (fn? @v)))]
               [(str nsname "/" (name k)) v])))))
 
-(def
-  ^{:doc "Default options"}
-  server-options
+(def ^:no-doc server-options
   {:child.so-reuseaddr true,
    :so-reuseaddr true,
    :child.so-keepalive true,
    :tcp-nodelay true,
-   :write-buffer-high-water-mark (int 0xFFFF) ; 65kB
-   :write-buffer-low-water-mark (int 0xFFF)       ; 4kB
    :child.tcp-nodelay true})
 
 (defn slacker-ring-app
@@ -268,6 +272,7 @@
   to expose, put `fn-coll` as a vector.
 
   `fn-coll` examples:
+
   * `(the-ns 'slacker.example.api)`: expose all public functions under
     `slacker.example.api`, except those marked with `^:no-slacker`
   * `{\"slacker.example.api2\" {\"echo2 \" (fn [a] a) ...}}` expose all functions
@@ -275,6 +280,7 @@
   * `[(the-ns 'slacker.example.api) {...}]` a vector of normal function collection
 
   Options:
+
   * `interceptors` add server interceptors
   * `http` http port for slacker http transport
   * `acl` the acl rules defined by defrules

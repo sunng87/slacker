@@ -1,14 +1,17 @@
 (ns slacker.client
-  (:use [slacker common])
-  (:use [slacker.client common])
-  (:require [slacker.interceptor :as interceptor])
-  (:use [clojure.string :only [split]])
-  (:use [link.tcp :only [stop-clients]]))
+  (:require [clojure.string :refer [split]]
+            [link.tcp :onlu [stop-clients]]
+            [slacker.common :refer :all]
+            [slacker.client.common :refer :all]
+            [slacker.interceptor :as interceptor]))
 
-(defonce cached-slacker-client-factory
+(defonce ^{:doc "the default client factory using plain socket"}
+  cached-slacker-client-factory
   (delay (create-client-factory nil)))
 
-(defn slacker-client-factory [ssl-context]
+(defn slacker-client-factory
+  "Create a secure client factory from ssl-connect"
+  [ssl-context]
   (create-client-factory ssl-context))
 
 (defn slackerc
@@ -27,11 +30,14 @@
                            :interceptors interceptors
                            :callback-executor callback-executor}))))
 
-(defn close-slackerc [client]
+(defn close-slackerc
+  "Close a slacker client"
+  [client]
   (when (realized? client)
     (close @client)))
 
 (defn shutdown-slacker-client-factory
+  "Shutdown a client factory, close all clients derived from it."
   ([] (shutdown-factory @cached-slacker-client-factory))
   ([factory] (shutdown-factory factory)))
 
@@ -104,7 +110,9 @@
         body (drop-last body)]
     `(binding [*callback* ~cb] ~@body)))
 
-(defn slacker-meta [f]
+(defn slacker-meta
+  "Fetch metadata of a slacker function."
+  [f]
   (let [metadata (meta f)
         {sc :slacker-client
          remote-ns :slacker-remote-ns
