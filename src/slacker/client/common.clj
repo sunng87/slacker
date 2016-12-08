@@ -71,6 +71,9 @@
   (assoc-client! [this client])
   (dissoc-client! [this client]))
 
+(defprotocol SlackerClientStateProtocol
+  (pending-count [this]))
+
 (deftype DefaultSlackerClientFactory [tcp-factory timer purgatory]
   SlackerClientFactoryProtocol
   (schedule-task [this task delay]
@@ -292,7 +295,13 @@
   (cancel-ping [this]
     (when-let [state (get-purgatory factory (server-addr this))]
       (when-let [cancelable (@(:keep-alive state) this)]
-        (rigui/cancel! (.-timer factory) cancelable)))))
+        (rigui/cancel! (.-timer factory) cancelable))))
+
+  SlackerClientStateProtocol
+  (pending-count [this]
+    (when-let [p (:pendings (get-purgatory factory (server-addr this)))]
+      (count @p))))
+
 
 (defn- create-link-handler
   "The event handler for client"
