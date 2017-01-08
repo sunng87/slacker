@@ -1,7 +1,7 @@
 (ns ^:no-doc slacker.server.http
   (:require [clojure.string :as string]
             [clojure.java.io :as io]
-            [slacker.protocol])
+            [slacker.protocol :as protocol])
   (:import [java.io ByteArrayInputStream ByteArrayOutputStream]
            [java.nio ByteBuffer]))
 
@@ -27,12 +27,12 @@
         content-type (keyword content-type)
         body (or body "[]")
         data (stream->bytebuffer body)]
-    [slacker.protocol/version 0 [:type-request [content-type fname data]]]))
+    (protocol/of protocol/v6 [0 [:type-request [content-type fname data []]]])))
 
 (defn slacker-resp->ring-resp
   "transform slacker response to ring response"
   [resp]
-  (let [resp-body (nth resp 2)
+  (let [[_ [_ resp-body]] resp
         packet-type (first resp-body)]
     (if (and (= :type-error packet-type)
              (= :acl-reject (-> resp-body second first)))
@@ -40,7 +40,7 @@
       {:status 403
        :body "rejected by access control list"}
       ;; normal response packet
-      (let [[ct code result] (second resp-body)
+      (let [[ct code result _] (second resp-body)
             content-type (str "application/" (name ct))
             status (case code
                      :success 200

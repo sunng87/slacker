@@ -1,9 +1,11 @@
 (ns slacker.example.client
-  (:use slacker.client)
-  (:require [slacker.serialization.nippy]))
+  (:require [slacker.client :refer :all]
+            [slacker.protocol :refer [v5]]
+            [slacker.serialization.nippy]))
 
 (def conn (slackerc "127.0.0.1:2104" :ping-interval 5 :content-type :nippy))
-(def conn2 (slackerc "127.0.0.1:2104" :content-type :json))
+(def conn2 (slackerc "127.0.0.1:2104" :content-type :json
+                     :protocol-version v5))
 (defn-remote conn slacker.example.api/timestamp)
 (defn-remote conn2 slacker.example.api/inc-m)
 (defn-remote conn slacker.example.api/get-m :async? true)

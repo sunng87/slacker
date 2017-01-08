@@ -2,9 +2,12 @@
   (:refer-clojure :exclude [byte float double])
   (:use [link.codec]))
 
-(def
-  ^{:doc "Protocol version."}
-  version (short 5))
+(def ^:const v5 5)
+(def ^:const v6 6)
+
+(def versions
+  (enum (byte) {v5 5
+                v6 6}))
 
 (def packet-type
   (enum (byte) {:type-request 0
@@ -31,22 +34,44 @@
                 :exception 12
                 :protocol-mismatch 20
                 :invalid-packet 21
-                :acl-rejct 22}))
+                :acl-reject 22}))
+
+(def slacker-call-extension
+  (frame
+   (int16) ;; extension id
+   (byte-block :prefix (uint16))))
 
 ;; :type-request
-(def slacker-request-codec
+(def slacker-request-codec-v5
   (frame
    content-type
    (string :encoding :utf-8 :prefix (uint16))
-   (byte-block :prefix (uint32))))
+   (byte-block :prefix (uint32))
+   (const [])))
 
 ;; :type-response
-(def slacker-response-codec
+(def slacker-response-codec-v5
   (frame
    content-type
    result-codes
-   (byte-block :prefix (uint32))))
+   (byte-block :prefix (uint32))
+   (const [])))
 
+;; :type-request
+(def slacker-request-codec-v6
+  (frame
+   content-type
+   (string :encoding :utf-8 :prefix (uint16))
+   (byte-block :prefix (uint32))
+   (counted :prefix (byte) :body slacker-call-extension)))
+
+;; :type-response
+(def slacker-response-codec-v6
+  (frame
+   content-type
+   result-codes
+   (byte-block :prefix (uint32))
+   (counted :prefix (byte) :body slacker-call-extension)))
 
 ;; :type-ping
 (def slacker-ping-codec
@@ -89,14 +114,13 @@
   (frame
    (int32)))
 
-(def slacker-base-codec
+(def slacker-v5-codec
   (frame
-   (byte) ;; protocol version
    (int32) ;; transaction id
    (header
     packet-type
-    {:type-request slacker-request-codec
-     :type-response slacker-response-codec
+    {:type-request slacker-request-codec-v5
+     :type-response slacker-response-codec-v5
      :type-ping slacker-ping-codec
      :type-pong slacker-pong-codec
      :type-error slacker-error-codec
@@ -105,3 +129,30 @@
      :type-inspect-req slacker-inspect-req-codec
      :type-inspect-ack slacker-inspect-ack-codec
      :type-interrupt slacker-interrupt-codec})))
+
+(def slacker-v6-codec
+  (frame
+   (int32)
+   (header
+    packet-type
+    {:type-request slacker-request-codec-v6
+     :type-response slacker-response-codec-v6
+     :type-ping slacker-ping-codec
+     :type-pong slacker-pong-codec
+     :type-error slacker-error-codec
+     :type-auth-req slacker-auth-req-codec
+     :type-auth-ack slacker-auth-ack-codec
+     :type-inspect-req slacker-inspect-req-codec
+     :type-inspect-ack slacker-inspect-ack-codec
+     :type-interrupt slacker-interrupt-codec})))
+
+(def slacker-root-codec
+  (header
+    versions
+    {v5 slacker-v5-codec
+     v6 slacker-v6-codec}))
+
+;; helper function
+
+(defn of [v data]
+  [(or v v6) data])
