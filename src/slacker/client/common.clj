@@ -24,8 +24,10 @@
       :interrupted {:cause {:error code}}
       {:cause {:error :invalid-result-code}})))
 
-(defn make-request [tid content-type func-name params]
-  [tid [:type-request [content-type func-name params []]]])
+;; TODO: request extensions
+(defn make-request [tid content-type func-name params extensions]
+  (let [extensions (or extensions [])]
+    [tid [:type-request [content-type func-name params []]]]))
 
 (def ping-packet [0 [:type-ping]])
 
@@ -196,7 +198,8 @@
           protocol-version (:protocol-version call-options)
           request (protocol/of protocol-version
                                (make-request tid (:content-type req-data)
-                                             (:fname req-data) (:args req-data)))
+                                             (:fname req-data) (:args req-data)
+                                             (:extensions req-data)))
           backlog (or (:backlog options) *backlog*)
           prms (promise)
 
@@ -240,7 +243,8 @@
           protocol-version (:protocol-version call-options)
           request (protocol/of protocol-version
                                (make-request tid (:content-type req-data)
-                                             (:fname req-data) (:args req-data)))
+                                             (:fname req-data) (:args req-data)
+                                             (:extensions req-data)))
           backlog (or (:backlog options) *backlog*)
 
           post-hook (fn [result]
