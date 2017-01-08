@@ -106,8 +106,8 @@
   req)
 
 (defmacro ^:private def-packet-fn [name args & content]
-  `(defn- ~name [tid# ~@args]
-     (protocol/of protocol/v6 [tid# [~@content]])))
+  `(defn- ~name [prot-ver# tid# ~@args]
+     (protocol/of prot-ver# [tid# [~@content]])))
 
 (def-packet-fn pong-packet []
   :type-pong)
@@ -172,14 +172,14 @@
                                           & _]
   (let [req-map (assoc (map-req-fields req) :client client-info)]
     (map-response-fields (server-pipeline req-map))))
-(defmethod -handle-request :type-ping [p & _]
-  (pong-packet (second p)))
+(defmethod -handle-request :type-ping [[version [tid _]] & _]
+  (pong-packet version tid))
 (defmethod -handle-request :type-inspect-req [p _ _ inspect-handler & _]
   (inspect-handler p))
 (defmethod -handle-request :type-interrupt [p _ client-info _ running-threads]
   (interrupt-handler p client-info running-threads))
-(defmethod -handle-request :default [p & _]
-  (invalid-type-packet (second p)))
+(defmethod -handle-request :default [[version [tid _]] & _]
+  (invalid-type-packet version tid))
 
 (defn ^:no-doc handle-request
   [server-pipeline req client-info inspect-handler acl running-threads]
@@ -188,7 +188,8 @@
    ;; acl enabled
    (and (not-empty acl)
         (not (acl/authorize client-info acl)))
-   (acl-reject-packet (first req) (second req))
+   (let [[prot-version [tid _]] req]
+     (acl-reject-packet prot-version tid))
 
    ;; handle request
 
