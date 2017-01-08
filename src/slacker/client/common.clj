@@ -24,10 +24,8 @@
       :interrupted {:cause {:error code}}
       {:cause {:error :invalid-result-code}})))
 
-;; TODO: request extensions
 (defn make-request [tid content-type func-name params extensions]
-  (let [extensions (or extensions [])]
-    [tid [:type-request [content-type func-name params []]]]))
+  [tid [:type-request [content-type func-name params extensions]]])
 
 (def ping-packet [0 [:type-ping]])
 
@@ -125,7 +123,12 @@
   (swap! trans-id-gen unchecked-inc))
 
 (defn serialize-params [req]
-  (assoc req :args (serialize (:content-type req) (:data req))))
+  (assoc req
+         :args (serialize (:content-type req) (:data req))
+         :extensions (->> (:extensions req)
+                          (into [])
+                          ;; serialize the second item
+                          (mapv #(update % 1 (partial serialize (:content-type req)))))))
 
 (defn deserialize-results [resp]
   (-> resp
@@ -191,7 +194,8 @@
           fname (str ns-name "/" func-name)
           tid (next-trans-id (:idgen state))
           content-type (:content-type call-options content-type)
-          req-data (-> {:fname fname :data params :content-type content-type}
+          req-data (-> {:fname fname :data params :content-type content-type
+                        :extensions (:extensions call-options)}
                        ((:pre (:interceptors call-options)))
                        (serialize-params)
                        ((:before (:interceptors call-options))))
@@ -235,7 +239,8 @@
           tid (next-trans-id (:idgen state))
           content-type (:content-type call-options content-type)
 
-          req-data (-> {:fname fname :data params :content-type content-type}
+          req-data (-> {:fname fname :data params :content-type content-type
+                        :extensions (:extensions call-options)}
                        ((:pre (:interceptors call-options)))
                        (serialize-params)
                        ((:before (:interceptors call-options))))
@@ -393,6 +398,7 @@
 
 (def ^:dynamic *sc* nil)
 (def ^:dynamic *callback* nil)
+(def ^:dynamic *extensions* {})
 
 (defn invoke-slacker
   "Invoke remote function with given slacker connection.
@@ -403,7 +409,9 @@
       :or {async? false callback nil}
       :as options}]
   (let [sc @(or *sc* sc)  ;; allow local binding to override client
-        [nsname fname args] remote-call-info]
+        [nsname fname args] remote-call-info
+        ;; merge static extensions and invoke-scope extensions
+        options (update options :extensions merge *extensions*)]
     (if (or *callback* async? callback)
       ;; async
       (async-call-remote sc nsname fname args (or *callback* callback) options)

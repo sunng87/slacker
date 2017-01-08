@@ -21,6 +21,8 @@
 (defn-remote conn slacker.example.api/return-nil)
 #(defn-remote conn slacker.example.api/not-found)
 
+(def extension-id 16)
+
 (defn -main [& args]
   #_(not-found 1 2 3)
   (return-nil)
@@ -28,7 +30,8 @@
   (println (inc-m 100))
   (println (show-m))
   (println @(get-m))
-  (get-m2)
+  (with-extensions {extension-id "extension-value"}
+    (get-m2))
   (println (rand-ints 10))
 
   ;; call a function with another client

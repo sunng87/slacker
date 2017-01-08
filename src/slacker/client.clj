@@ -46,7 +46,7 @@
 (defmacro defn-remote
   "Define a facade for remote function. You have to provide the
   connection and the function name. (Argument list is not required here.)"
-  ([sc fname & {:keys [remote-ns remote-name async? callback]
+  ([sc fname & {:keys [remote-ns remote-name async? callback extensions]
                 :or {remote-ns (ns-name *ns*)
                      remote-name nil
                      async? false callback nil}
@@ -123,3 +123,10 @@
       (merge metadata
              (meta-remote sc (str remote-ns "/" remote-fn)))
       metadata)))
+
+(defmacro with-extensions
+  "Setting extension data for this invoke. Extension data is a map, keyed by an integer
+   extension id, the value can be any serializable data structure. Extension map will be
+   sent to remote server using same content type with the request body."
+  [ext-map & body]
+  `(binding [*extensions* ~ext-map] ~@body))
