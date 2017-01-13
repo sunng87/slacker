@@ -1,5 +1,6 @@
 (ns slacker.example.client
   (:require [slacker.client :refer :all]
+            [slacker.common :refer [with-extensions]]
             [slacker.protocol :refer [v5]]
             [slacker.serialization.nippy]))
 

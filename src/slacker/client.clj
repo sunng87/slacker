@@ -1,7 +1,7 @@
 (ns slacker.client
   (:require [clojure.string :refer [split]]
             [link.tcp :onlu [stop-clients]]
-            [slacker.common :refer :all]
+            [slacker.common :refer :all :as c]
             [slacker.client.common :refer :all]
             [slacker.interceptor :as interceptor]))
 
@@ -123,10 +123,3 @@
       (merge metadata
              (meta-remote sc (str remote-ns "/" remote-fn)))
       metadata)))
-
-(defmacro with-extensions
-  "Setting extension data for this invoke. Extension data is a map, keyed by an integer
-   extension id, the value can be any serializable data structure. Extension map will be
-   sent to remote server using same content type with the request body."
-  [ext-map & body]
-  `(binding [*extensions* ~ext-map] ~@body))

@@ -66,10 +66,11 @@
 (defn- do-invoke [req]
   (if (nil? (:code req))
     (try
-      (let [{f :func args :args} req
-            r0 (apply f args)
-            r (if (seq? r0) (doall r0) r0)]
-        (assoc req :result r :code :success))
+      (with-extensions (:extensions req)
+        (let [{f :func args :args} req
+              r0 (apply f args)
+              r (if (seq? r0) (doall r0) r0)]
+          (assoc req :result r :code :success)))
       (catch InterruptedException e
         (log/info "Thread execution interrupted." (:client req) (:tid req))
         (assoc req :code :interrupted))

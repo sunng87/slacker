@@ -398,7 +398,6 @@
 
 (def ^:dynamic *sc* nil)
 (def ^:dynamic *callback* nil)
-(def ^:dynamic *extensions* {})
 
 (defn invoke-slacker
   "Invoke remote function with given slacker connection.
