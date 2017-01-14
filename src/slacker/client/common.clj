@@ -18,9 +18,9 @@
 (defn- handle-valid-response [response]
   (let [[content-type code data extensions] (second response)]
     (case code
-      :success {:result data}
-      :not-found {:cause {:error code}}
-      :exception {:cause {:error code :exception data}}
+      :success {:result data :extensions extensions}
+      :not-found {:cause {:error code} :extensions extensions}
+      :exception {:cause {:error code :exception data} :extensions extensions}
       :interrupted {:cause {:error code}}
       {:cause {:error :invalid-result-code}})))
 
@@ -131,12 +131,15 @@
                           (mapv #(update % 1 (partial serialize (:content-type req)))))))
 
 (defn deserialize-results [resp]
+  (when (not-empty (:extensions resp)) (log/debug "deserialize" resp))
   (-> resp
       (assoc :result (when-let [data (:result resp)] (deserialize (:content-type resp) data)))
       (assoc :cause
              (when-let [cause (:cause resp)]
                (update-in cause [:exception]
-                          #(when % (deserialize (:content-type resp) %)))))))
+                          #(when % (deserialize (:content-type resp) %)))))
+      (assoc :extensions (into {} (map #(update % 1 (partial deserialize (:content-type resp)))
+                                       (:extensions resp))))))
 
 (defn- parse-exception [einfo]
   (doto (Exception. ^String (:msg einfo))
@@ -227,7 +230,10 @@
                        {:cause {:error :interrupted}})))
                  {:cause {:error :backlog-overflow}})]
 
-      (-> (assoc req-data :cause (:cause resp) :result (:result resp))
+      (-> (assoc req-data
+                 :cause (:cause resp)
+                 :result (:result resp)
+                 :extensions (:extensions resp))
           ((:after (:interceptors call-options)))
           (deserialize-results)
           ((:post (:interceptors call-options))))))
@@ -253,7 +259,10 @@
           backlog (or (:backlog options) *backlog*)
 
           post-hook (fn [result]
-                      (-> (assoc req-data :cause (:cause result) :result (:result result))
+                      (-> (assoc req-data
+                                 :cause (:cause result)
+                                 :result (:result result)
+                                 :extensions (:extensions result))
                           ((:after (:interceptors call-options)))
                           (deserialize-results)
                           ((:post (:interceptors call-options)))))

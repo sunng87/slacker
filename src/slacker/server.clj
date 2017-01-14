@@ -58,9 +58,13 @@
 
 (defn- deserialize-args [req]
   (if (nil? (:code req))
-    (let [data (:data req)]
-      (assoc req :args
-             (deserialize (:content-type req) data)))
+    (let [data (:data req)
+          content-type (:content-type req)
+          extensions (:extensions req)]
+      (assoc req
+             :args (deserialize content-type data)
+             :extensions (into {} (map #(update % 1 (partial deserialize content-type))
+                                       extensions))))
     req))
 
 (defn- do-invoke [req]
@@ -83,7 +87,12 @@
     req))
 
 (defn- serialize-result [req]
-  (assoc req :result (serialize (:content-type req) (:result req))))
+  (assoc req
+         :result (serialize (:content-type req) (:result req))
+         ;; FIXME: check type
+         :extensions (->> (:extensions req)
+                          (into [])
+                          (mapv #(update % 1 (partial serialize (:content-type req)))))))
 
 (defn- map-response-fields [req]
   (protocol/of (:protocol-version req)
