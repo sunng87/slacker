@@ -18,14 +18,14 @@
 (defn- handle-valid-response [response]
   (let [[content-type code data extensions] (second response)]
     (case code
-      :success {:result data}
-      :not-found {:cause {:error code}}
-      :exception {:cause {:error code :exception data}}
+      :success {:result data :extensions extensions}
+      :not-found {:cause {:error code} :extensions extensions}
+      :exception {:cause {:error code :exception data} :extensions extensions}
       :interrupted {:cause {:error code}}
       {:cause {:error :invalid-result-code}})))
 
-(defn make-request [tid content-type func-name params]
-  [tid [:type-request [content-type func-name params []]]])
+(defn make-request [tid content-type func-name params extensions]
+  [tid [:type-request [content-type func-name params extensions]]])
 
 (def ping-packet [0 [:type-ping]])
 
@@ -123,15 +123,23 @@
   (swap! trans-id-gen unchecked-inc))
 
 (defn serialize-params [req]
-  (assoc req :args (serialize (:content-type req) (:data req))))
+  (assoc req
+         :args (serialize (:content-type req) (:data req))
+         :extensions (->> (:extensions req)
+                          (into [])
+                          ;; serialize the second item
+                          (mapv #(update % 1 (partial serialize (:content-type req)))))))
 
 (defn deserialize-results [resp]
+  (when (not-empty (:extensions resp)) (log/debug "deserialize" resp))
   (-> resp
       (assoc :result (when-let [data (:result resp)] (deserialize (:content-type resp) data)))
       (assoc :cause
              (when-let [cause (:cause resp)]
                (update-in cause [:exception]
-                          #(when % (deserialize (:content-type resp) %)))))))
+                          #(when % (deserialize (:content-type resp) %)))))
+      (assoc :extensions (into {} (map #(update % 1 (partial deserialize (:content-type resp)))
+                                       (:extensions resp))))))
 
 (defn- parse-exception [einfo]
   (doto (Exception. ^String (:msg einfo))
@@ -189,14 +197,16 @@
           fname (str ns-name "/" func-name)
           tid (next-trans-id (:idgen state))
           content-type (:content-type call-options content-type)
-          req-data (-> {:fname fname :data params :content-type content-type}
+          req-data (-> {:fname fname :data params :content-type content-type
+                        :extensions (:extensions call-options)}
                        ((:pre (:interceptors call-options)))
                        (serialize-params)
                        ((:before (:interceptors call-options))))
           protocol-version (:protocol-version call-options)
           request (protocol/of protocol-version
                                (make-request tid (:content-type req-data)
-                                             (:fname req-data) (:args req-data)))
+                                             (:fname req-data) (:args req-data)
+                                             (:extensions req-data)))
           backlog (or (:backlog options) *backlog*)
           prms (promise)
 
@@ -220,7 +230,10 @@
                        {:cause {:error :interrupted}})))
                  {:cause {:error :backlog-overflow}})]
 
-      (-> (assoc req-data :cause (:cause resp) :result (:result resp))
+      (-> (assoc req-data
+                 :cause (:cause resp)
+                 :result (:result resp)
+                 :extensions (:extensions resp))
           ((:after (:interceptors call-options)))
           (deserialize-results)
           ((:post (:interceptors call-options))))))
@@ -232,7 +245,8 @@
           tid (next-trans-id (:idgen state))
           content-type (:content-type call-options content-type)
 
-          req-data (-> {:fname fname :data params :content-type content-type}
+          req-data (-> {:fname fname :data params :content-type content-type
+                        :extensions (:extensions call-options)}
                        ((:pre (:interceptors call-options)))
                        (serialize-params)
                        ((:before (:interceptors call-options))))
@@ -240,11 +254,15 @@
           protocol-version (:protocol-version call-options)
           request (protocol/of protocol-version
                                (make-request tid (:content-type req-data)
-                                             (:fname req-data) (:args req-data)))
+                                             (:fname req-data) (:args req-data)
+                                             (:extensions req-data)))
           backlog (or (:backlog options) *backlog*)
 
           post-hook (fn [result]
-                      (-> (assoc req-data :cause (:cause result) :result (:result result))
+                      (-> (assoc req-data
+                                 :cause (:cause result)
+                                 :result (:result result)
+                                 :extensions (:extensions result))
                           ((:after (:interceptors call-options)))
                           (deserialize-results)
                           ((:post (:interceptors call-options)))))
@@ -399,7 +417,9 @@
       :or {async? false callback nil}
       :as options}]
   (let [sc @(or *sc* sc)  ;; allow local binding to override client
-        [nsname fname args] remote-call-info]
+        [nsname fname args] remote-call-info
+        ;; merge static extensions and invoke-scope extensions
+        options (update options :extensions merge *extensions*)]
     (if (or *callback* async? callback)
       ;; async
       (async-call-remote sc nsname fname args (or *callback* callback) options)

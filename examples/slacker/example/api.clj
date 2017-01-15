@@ -1,4 +1,6 @@
-(ns slacker.example.api)
+(ns slacker.example.api
+  (:require [slacker.common :as s]
+            [clojure.tools.logging :as logging]))
 
 (defn timestamp []
   (System/currentTimeMillis))
@@ -8,6 +10,7 @@
   (swap! m + amount))
 
 (defn get-m []
+  (logging/info "Getting client extensions" s/*extensions*)
   @m)
 
 (defn rand-ints

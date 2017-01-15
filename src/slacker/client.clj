@@ -1,7 +1,7 @@
 (ns slacker.client
   (:require [clojure.string :refer [split]]
             [link.tcp :onlu [stop-clients]]
-            [slacker.common :refer :all]
+            [slacker.common :refer :all :as c]
             [slacker.client.common :refer :all]
             [slacker.interceptor :as interceptor]))
 
@@ -46,7 +46,7 @@
 (defmacro defn-remote
   "Define a facade for remote function. You have to provide the
   connection and the function name. (Argument list is not required here.)"
-  ([sc fname & {:keys [remote-ns remote-name async? callback]
+  ([sc fname & {:keys [remote-ns remote-name async? callback extensions]
                 :or {remote-ns (ns-name *ns*)
                      remote-name nil
                      async? false callback nil}

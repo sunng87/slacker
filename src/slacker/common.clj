@@ -23,3 +23,15 @@
   ^{:doc "Max on-the-fly requests the client can have. Set to 0 to disable flow control."
     :dynamic true}
   *backlog* 5000)
+
+(def
+  ^{:doc "Request extension map, keyed by an integer as extension id."
+    :dynamic true}
+  *extensions* {})
+
+(defmacro with-extensions
+  "Setting extension data for this invoke. Extension data is a map, keyed by an integer
+   extension id, the value can be any serializable data structure. Extension map will be
+   sent to remote server using same content type with the request body."
+  [ext-map & body]
+  `(binding [*extensions* ~ext-map] ~@body))
