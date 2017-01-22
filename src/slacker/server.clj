@@ -88,11 +88,10 @@
 
 (defn- serialize-result [req]
   (assoc req
-         :result (serialize (:content-type req) (link/allocator (:ch req)) (:result req))
+         :result (serialize (:content-type req) (:result req))
          :extensions (->> (:extensions req)
                           (into [])
-                          (mapv #(update % 1 (partial serialize (:content-type req)
-                                                      (link/allocator (:ch req))))))))
+                          (mapv #(update % 1 (partial serialize (:content-type req)))))))
 
 (defn- map-response-fields [req]
   (protocol/of (:protocol-version req)
@@ -148,7 +147,7 @@
 ;; inspect request data structure
 ;; [version tid  [request-type [cmd data]]]
 (defn ^:no-doc build-inspect-handler [funcs]
-  (fn [req ch]
+  (fn [req]
     (let [[prot-ver [tid [_ [cmd data]]]] req
           data (deserialize :clj data)
           results (case cmd
@@ -160,7 +159,7 @@
                           metadata (meta (funcs fname))]
                       (select-keys metadata [:name :doc :arglists]))
                     nil)
-          sresult (serialize :clj (link/allocator ch) data)]
+          sresult (serialize :clj data)]
       (make-inspect-ack prot-ver tid sresult))))
 
 (defn- interrupt-handler [packet client-info running-threads]
@@ -179,21 +178,20 @@
                                           server-pipeline
                                           client-info
                                           inspect-handler
-                                          running-threads
-                                          ch]
-  (let [req-map (assoc (map-req-fields req) :client client-info :ch ch)]
+                                          running-threads]
+  (let [req-map (assoc (map-req-fields req) :client client-info)]
     (map-response-fields (server-pipeline req-map))))
 (defmethod -handle-request :type-ping [[version [tid _]] & _]
   (pong-packet version tid))
-(defmethod -handle-request :type-inspect-req [p _ _ inspect-handler _ ch]
-  (inspect-handler p ch))
+(defmethod -handle-request :type-inspect-req [p _ _ inspect-handler _]
+  (inspect-handler p))
 (defmethod -handle-request :type-interrupt [p _ client-info _ running-threads]
   (interrupt-handler p client-info running-threads))
 (defmethod -handle-request :default [[version [tid _]] & _]
   (invalid-type-packet version tid))
 
 (defn ^:no-doc handle-request
-  [server-pipeline req client-info inspect-handler acl running-threads ch]
+  [server-pipeline req client-info inspect-handler acl running-threads]
   (log/debug req)
   (cond
    ;; acl enabled
@@ -205,7 +203,7 @@
    ;; handle request
 
    :else (-handle-request req server-pipeline
-                          client-info inspect-handler running-threads ch)))
+                          client-info inspect-handler running-threads)))
 
 (defn- create-server-handler [executor funcs interceptors acl running-threads]
   (let [server-pipeline (build-server-pipeline funcs interceptors running-threads)
@@ -221,8 +219,7 @@
                                  client-info
                                  inspect-handler
                                  acl
-                                 running-threads
-                                 ch)]
+                                 running-threads)]
                      (log/debug "result" result)
                      (when-not (or (nil? result) (= :interrupted (:code result)))
                        (send! ch result)))))

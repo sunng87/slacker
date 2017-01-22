@@ -25,7 +25,7 @@
     (is (= "echo" (let [[_ [_ [_ [_ v]]]] sreq] v)))))
 
 (deftest test-http-response
-  (let [result (serialize :clj UnpooledByteBufAllocator/DEFAULT [1])
+  (let [result (serialize :clj [1])
         sresp [v6 [0 [:type-response [:clj :success result []]]]]
         resp (slacker-resp->ring-resp sresp)]
     (is (= 200 (:status resp)))

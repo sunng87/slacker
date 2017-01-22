@@ -6,10 +6,10 @@
             [clojure.test :refer :all]
             [clojure.string :refer [split]]
             [link.core :as link])
-  (:import [io.netty.buffer Unpooled UnpooledByteBufAllocator]))
+  (:import [io.netty.buffer Unpooled]))
 
 (def funcs {"plus" + "minus" - "prod" * "div" /})
-(def params (serialize :nippy UnpooledByteBufAllocator/DEFAULT [100 0]))
+(def params (serialize :nippy [100 0]))
 
 (deftest test-server-pipeline
   (let [server-pipeline (build-server-pipeline
@@ -24,19 +24,18 @@
         req3 {:content-type :nippy
               :data params
               :fname "div"}]
-    (with-redefs [link/allocator (constantly UnpooledByteBufAllocator/DEFAULT)]
-      (.readerIndex params 0)
-      (let [result (server-pipeline req)]
-        (is (= :success (:code result)))
-        (is (= 100 (deserialize :nippy (:result result)))))
+    (.readerIndex params 0)
+    (let [result (server-pipeline req)]
+      (is (= :success (:code result)))
+      (is (= 100 (deserialize :nippy (:result result)))))
 
-      (.readerIndex params 0)
-      (let [result (server-pipeline req2)]
-        (is (= :not-found (:code result))))
+    (.readerIndex params 0)
+    (let [result (server-pipeline req2)]
+      (is (= :not-found (:code result))))
 
-      (.readerIndex params 0)
-      (let [result (server-pipeline req3)]
-        (is (= :exception (:code result)))))))
+    (.readerIndex params 0)
+    (let [result (server-pipeline req3)]
+      (is (= :exception (:code result))))))
 
 (def interceptor (fn [req] (update-in req [:result] str)))
 
@@ -49,17 +48,16 @@
              :fname "prod"}]
 
     (.readerIndex params 0)
-    (with-redefs [link/allocator (constantly UnpooledByteBufAllocator/DEFAULT)]
-      (is (= "0" (deserialize :nippy (:result (server-pipeline req))))))))
+    (is (= "0" (deserialize :nippy (:result (server-pipeline req)))))))
 
 (deftest test-ping
   (let [request [protocol/v5 [0 [:type-ping]]]
-        [_ [_ response]] (handle-request nil request nil nil nil nil nil)]
+        [_ [_ response]] (handle-request nil request nil nil nil nil)]
     (is (= :type-pong (nth response 0)))))
 
 (deftest test-invalid-packet
   (let [request [protocol/v5 [0 [:type-unknown]]]
-        [_ [_ response]] (handle-request nil request nil nil nil nil nil)]
+        [_ [_ response]] (handle-request nil request nil nil nil nil)]
     (is (= :type-error (nth response 0)))
     (is (= :invalid-packet (-> response
                                second
@@ -67,13 +65,12 @@
 
 
 (deftest test-functions-inspect
-  (with-redefs [link/allocator (constantly UnpooledByteBufAllocator/DEFAULT)]
-    (let [request [protocol/v5 [0 [:type-inspect-req [:functions
-                                                      (Unpooled/wrappedBuffer (.getBytes "nil"))]]]]
-          [_ [_ [_ [result]]]] (handle-request nil request nil
-                                               (build-inspect-handler funcs) nil nil nil)
-          response (deserialize :clj result)]
-      (= (map name (keys funcs)) response))))
+  (let [request [protocol/v5 [0 [:type-inspect-req [:functions
+                                                    (Unpooled/wrappedBuffer (.getBytes "nil"))]]]]
+        [_ [_ [_ [result]]]] (handle-request nil request nil
+                                             (build-inspect-handler funcs) nil nil)
+        response (deserialize :clj result)]
+    (= (map name (keys funcs)) response)))
 
 (deftest test-parse-functions
   (testing "parsing function map"

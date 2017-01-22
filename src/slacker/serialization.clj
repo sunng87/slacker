@@ -7,11 +7,6 @@
            [io.netty.buffer ByteBuf ByteBufAllocator ByteBufInputStream
             ByteBufOutputStream]))
 
-(defn- bytebuffer-bytes [^ByteBuffer data]
-  (let [bs (byte-array (.remaining data))]
-    (.get data bs)
-    bs))
-
 (defn- resolve-by-name [ns mem]
   @(ns-resolve (symbol ns) (symbol mem)))
 
@@ -34,11 +29,11 @@
       (parse-string (.toString data ^Charset (Charset/forName "UTF-8")) true))
 
     (defmethod serialize :json
-      [_ ^ByteBufAllocator alloc data]
+      [_ data]
       (let [jsonstr (generate-string data)
             bytes (.getBytes ^String jsonstr "UTF-8")
             bytes-length (alength bytes)
-            buffer (.buffer alloc bytes-length)]
+            buffer (.buffer ByteBufAllocator/DEFAULT bytes-length)]
         (.writeBytes buffer bytes)
         buffer)))
 
@@ -51,11 +46,11 @@
   (edn/read-string (.toString data ^Charset (Charset/forName "UTF-8"))))
 
 (defmethod serialize :clj
-  [_ ^ByteBufAllocator alloc data]
+  [_ data]
   (let [ednstr (pr-str data)
         bytes (.getBytes ^String ednstr "UTF-8")
         bytes-length (alength bytes)
-        buffer (.buffer alloc bytes-length)]
+        buffer (.buffer ByteBufAllocator/DEFAULT bytes-length)]
     (.writeBytes buffer bytes)
     buffer))
 
@@ -75,8 +70,8 @@
         (thaw bin)))
 
     (defmethod serialize :nippy
-      [_ ^ByteBufAllocator alloc data]
-      (let [buffer (.buffer alloc)
+      [_ data]
+      (let [buffer (.buffer ByteBufAllocator/DEFAULT)
             bos (ByteBufOutputStream. buffer)]
         (freeze bos data)
         buffer)))

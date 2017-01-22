@@ -29,9 +29,9 @@
 
 (def ping-packet [0 [:type-ping]])
 
-(defn make-inspect-request [tid cmd args alloc]
+(defn make-inspect-request [tid cmd args]
   [tid [:type-inspect-req
-        [cmd (serialize :clj alloc args)]]])
+        [cmd (serialize :clj args)]]])
 
 (defn make-interrupt [target-tid]
   [0 [:type-interrupt [target-tid]]])
@@ -122,13 +122,13 @@
 (defn- next-trans-id [trans-id-gen]
   (swap! trans-id-gen unchecked-inc))
 
-(defn serialize-params [req alloc]
+(defn serialize-params [req]
   (assoc req
-         :args (serialize (:content-type req) alloc (:data req))
+         :args (serialize (:content-type req) (:data req))
          :extensions (->> (:extensions req)
                           (into [])
                           ;; serialize the second item
-                          (mapv #(update % 1 (partial serialize (:content-type req) alloc))))))
+                          (mapv #(update % 1 (partial serialize (:content-type req)))))))
 
 (defn deserialize-results [resp]
   (-> resp
@@ -199,7 +199,7 @@
           req-data (-> {:fname fname :data params :content-type content-type
                         :extensions (:extensions call-options)}
                        ((:pre (:interceptors call-options)))
-                       (serialize-params (link/allocator conn))
+                       (serialize-params)
                        ((:before (:interceptors call-options))))
           protocol-version (:protocol-version call-options)
           request (protocol/of protocol-version
@@ -247,7 +247,7 @@
           req-data (-> {:fname fname :data params :content-type content-type
                         :extensions (:extensions call-options)}
                        ((:pre (:interceptors call-options)))
-                       (serialize-params (link/allocator conn))
+                       (serialize-params)
                        ((:before (:interceptors call-options))))
 
           protocol-version (:protocol-version call-options)
@@ -288,7 +288,7 @@
           tid (next-trans-id (:idgen state))
           protocol-version (:protocol-version options)
           request (protocol/of protocol-version
-                               (make-inspect-request tid cmd args (link/allocator conn)))
+                               (make-inspect-request tid cmd args))
           prms (promise)]
       (swap! (:pendings state) assoc tid {:promise prms :type :inspect})
       (send! conn request)
