@@ -4,7 +4,8 @@
   (:use slacker.server.http)
   (:use slacker.serialization)
   (:require [clojure.java.io :as io])
-  (:import [java.io ByteArrayOutputStream]))
+  (:import [java.io ByteArrayOutputStream]
+           [io.netty.buffer UnpooledByteBufAllocator]))
 
 (defn make-fake-data-stream [string-data]
   (io/input-stream (.getBytes ^String string-data "UTF-8")))
@@ -24,7 +25,7 @@
     (is (= "echo" (let [[_ [_ [_ [_ v]]]] sreq] v)))))
 
 (deftest test-http-response
-  (let [result (serialize :clj [1])
+  (let [result (serialize :clj UnpooledByteBufAllocator/DEFAULT [1])
         sresp [v6 [0 [:type-response [:clj :success result []]]]]
         resp (slacker-resp->ring-resp sresp)]
     (is (= 200 (:status resp)))

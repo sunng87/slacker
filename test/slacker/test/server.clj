@@ -4,37 +4,39 @@
             [slacker.common :refer :all]
             [slacker.protocol :as protocol]
             [clojure.test :refer :all]
-            [clojure.string :refer [split]]))
+            [clojure.string :refer [split]]
+            [link.core :as link])
+  (:import [io.netty.buffer Unpooled UnpooledByteBufAllocator]))
 
 (def funcs {"plus" + "minus" - "prod" * "div" /})
-(def params (serialize :carb [100 0]))
+(def params (serialize :nippy UnpooledByteBufAllocator/DEFAULT [100 0]))
 
 (deftest test-server-pipeline
   (let [server-pipeline (build-server-pipeline
                          funcs {:pre identity :before identity :after identity :post identity}
                          (atom {}))
-        req {:content-type :carb
+        req {:content-type :nippy
              :data params
              :fname "plus"}
-        req2 {:content-type :carb
+        req2 {:content-type :nippy
               :data params
               :fname "never-found"}
-        req3 {:content-type :carb
+        req3 {:content-type :nippy
               :data params
               :fname "div"}]
+    (with-redefs [link/allocator (constantly UnpooledByteBufAllocator/DEFAULT)]
+      (.readerIndex params 0)
+      (let [result (server-pipeline req)]
+        (is (= :success (:code result)))
+        (is (= 100 (deserialize :nippy (:result result)))))
 
-    (.rewind params)
-    (let [result (server-pipeline req)]
-      (is (= :success (:code result)))
-      (is (= 100 (deserialize :carb (:result result)))))
+      (.readerIndex params 0)
+      (let [result (server-pipeline req2)]
+        (is (= :not-found (:code result))))
 
-    (.rewind params)
-    (let [result (server-pipeline req2)]
-      (is (= :not-found (:code result))))
-
-    (.rewind params)
-    (let [result (server-pipeline req3)]
-      (is (= :exception (:code result))))))
+      (.readerIndex params 0)
+      (let [result (server-pipeline req3)]
+        (is (= :exception (:code result)))))))
 
 (def interceptor (fn [req] (update-in req [:result] str)))
 
@@ -42,20 +44,22 @@
   (let [server-pipeline (build-server-pipeline
                          funcs {:pre identity :before identity :after interceptor :post identity}
                          (atom {}))
-        req {:content-type :carb
+        req {:content-type :nippy
              :data params
              :fname "prod"}]
-    (.rewind params)
-    (is (= "0" (deserialize :carb (:result (server-pipeline req)))))))
+
+    (.readerIndex params 0)
+    (with-redefs [link/allocator (constantly UnpooledByteBufAllocator/DEFAULT)]
+      (is (= "0" (deserialize :nippy (:result (server-pipeline req))))))))
 
 (deftest test-ping
   (let [request [protocol/v5 [0 [:type-ping]]]
-        [_ [_ response]] (handle-request nil request nil nil nil nil)]
+        [_ [_ response]] (handle-request nil request nil nil nil nil nil)]
     (is (= :type-pong (nth response 0)))))
 
 (deftest test-invalid-packet
   (let [request [protocol/v5 [0 [:type-unknown]]]
-        [_ [_ response]] (handle-request nil request nil nil nil nil)]
+        [_ [_ response]] (handle-request nil request nil nil nil nil nil)]
     (is (= :type-error (nth response 0)))
     (is (= :invalid-packet (-> response
                                second
@@ -63,11 +67,13 @@
 
 
 (deftest test-functions-inspect
-  (let [request [protocol/v5 [0 [:type-inspect-req [:functions "nil"]]]]
-        [_ [_ [_ [result]]]] (handle-request nil request nil
-                                             (build-inspect-handler funcs) nil nil)
-        response (deserialize :clj result :string)]
-    (= (map name (keys funcs)) response)))
+  (with-redefs [link/allocator (constantly UnpooledByteBufAllocator/DEFAULT)]
+    (let [request [protocol/v5 [0 [:type-inspect-req [:functions
+                                                      (Unpooled/wrappedBuffer (.getBytes "nil"))]]]]
+          [_ [_ [_ [result]]]] (handle-request nil request nil
+                                               (build-inspect-handler funcs) nil nil nil)
+          response (deserialize :clj result)]
+      (= (map name (keys funcs)) response))))
 
 (deftest test-parse-functions
   (testing "parsing function map"

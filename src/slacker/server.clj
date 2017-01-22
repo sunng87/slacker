@@ -1,6 +1,6 @@
 (ns slacker.server
   (:require [clojure.tools.logging :as log]
-            [link.core :refer :all]
+            [link.core :as link :refer :all]
             [link.tcp :refer :all]
             [link.http :refer :all]
             [slacker.common :refer :all]
@@ -88,11 +88,11 @@
 
 (defn- serialize-result [req]
   (assoc req
-         :result (serialize (:content-type req) (:result req))
-         ;; FIXME: check type
+         :result (serialize (:content-type req) (link/allocator (:ch req)) (:result req))
          :extensions (->> (:extensions req)
                           (into [])
-                          (mapv #(update % 1 (partial serialize (:content-type req)))))))
+                          (mapv #(update % 1 (partial serialize (:content-type req)
+                                                      (link/allocator (:ch req))))))))
 
 (defn- map-response-fields [req]
   (protocol/of (:protocol-version req)
@@ -128,7 +128,7 @@
 (def-packet-fn acl-reject-packet []
   :type-error [:acl-reject])
 (def-packet-fn make-inspect-ack [data]
-  :type-inspect-ack [(serialize :clj data :string)])
+  :type-inspect-ack [data])
 
 (defn ^:no-doc build-server-pipeline [funcs interceptors running-threads]
   #(-> %
@@ -148,21 +148,20 @@
 ;; inspect request data structure
 ;; [version tid  [request-type [cmd data]]]
 (defn ^:no-doc build-inspect-handler [funcs]
-  (fn [req]
+  (fn [req ch]
     (let [[prot-ver [tid [_ [cmd data]]]] req
-          data (deserialize :clj data :string)]
-      (make-inspect-ack
-       prot-ver
-       tid
-       (case cmd
-         :functions
-         (let [nsname (or data "")]
-           (filter (fn [x] (.startsWith ^String x nsname)) (keys funcs)))
-         :meta
-         (let [fname data
-               metadata (meta (funcs fname))]
-           (select-keys metadata [:name :doc :arglists]))
-         nil)))))
+          data (deserialize :clj data)
+          results (case cmd
+                    :functions
+                    (let [nsname (or data "")]
+                      (filter (fn [x] (.startsWith ^String x nsname)) (keys funcs)))
+                    :meta
+                    (let [fname data
+                          metadata (meta (funcs fname))]
+                      (select-keys metadata [:name :doc :arglists]))
+                    nil)
+          sresult (serialize :clj (link/allocator ch) data)]
+      (make-inspect-ack prot-ver tid sresult))))
 
 (defn- interrupt-handler [packet client-info running-threads]
   (let [[_ [_ [_ [target-tid]]]] packet
@@ -179,20 +178,22 @@
 (defmethod -handle-request :type-request [req
                                           server-pipeline
                                           client-info
-                                          & _]
-  (let [req-map (assoc (map-req-fields req) :client client-info)]
+                                          inspect-handler
+                                          running-threads
+                                          ch]
+  (let [req-map (assoc (map-req-fields req) :client client-info :ch ch)]
     (map-response-fields (server-pipeline req-map))))
 (defmethod -handle-request :type-ping [[version [tid _]] & _]
   (pong-packet version tid))
-(defmethod -handle-request :type-inspect-req [p _ _ inspect-handler & _]
-  (inspect-handler p))
+(defmethod -handle-request :type-inspect-req [p _ _ inspect-handler _ ch]
+  (inspect-handler p ch))
 (defmethod -handle-request :type-interrupt [p _ client-info _ running-threads]
   (interrupt-handler p client-info running-threads))
 (defmethod -handle-request :default [[version [tid _]] & _]
   (invalid-type-packet version tid))
 
 (defn ^:no-doc handle-request
-  [server-pipeline req client-info inspect-handler acl running-threads]
+  [server-pipeline req client-info inspect-handler acl running-threads ch]
   (log/debug req)
   (cond
    ;; acl enabled
@@ -204,7 +205,7 @@
    ;; handle request
 
    :else (-handle-request req server-pipeline
-                          client-info inspect-handler running-threads)))
+                          client-info inspect-handler running-threads ch)))
 
 (defn- create-server-handler [executor funcs interceptors acl running-threads]
   (let [server-pipeline (build-server-pipeline funcs interceptors running-threads)
@@ -220,7 +221,8 @@
                                  client-info
                                  inspect-handler
                                  acl
-                                 running-threads)]
+                                 running-threads
+                                 ch)]
                      (log/debug "result" result)
                      (when-not (or (nil? result) (= :interrupted (:code result)))
                        (send! ch result)))))

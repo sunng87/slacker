@@ -1,7 +1,7 @@
 (ns ^:no-doc slacker.client.common
   (:require [clojure.tools.logging :as log]
             [clojure.string :refer [split]]
-            [link.core :refer :all]
+            [link.core :as link :refer :all]
             [link.tcp :refer :all]
             [slacker.protocol :as protocol]
             [link.codec :refer [netty-encoder netty-decoder]]
@@ -29,16 +29,16 @@
 
 (def ping-packet [0 [:type-ping]])
 
-(defn make-inspect-request [tid cmd args]
+(defn make-inspect-request [tid cmd args alloc]
   [tid [:type-inspect-req
-        [cmd (serialize :clj args :string)]]])
+        [cmd (serialize :clj alloc args)]]])
 
 (defn make-interrupt [target-tid]
   [0 [:type-interrupt [target-tid]]])
 
 (defn parse-inspect-response [response]
   (let [[_ [_ [_ data]]] response]
-    {:result (deserialize :clj data :string)}))
+    {:result (deserialize :clj data)}))
 
 (defn handle-response [response]
   (case (first response)
@@ -122,16 +122,15 @@
 (defn- next-trans-id [trans-id-gen]
   (swap! trans-id-gen unchecked-inc))
 
-(defn serialize-params [req]
+(defn serialize-params [req alloc]
   (assoc req
-         :args (serialize (:content-type req) (:data req))
+         :args (serialize (:content-type req) alloc (:data req))
          :extensions (->> (:extensions req)
                           (into [])
                           ;; serialize the second item
-                          (mapv #(update % 1 (partial serialize (:content-type req)))))))
+                          (mapv #(update % 1 (partial serialize (:content-type req) alloc))))))
 
 (defn deserialize-results [resp]
-  (when (not-empty (:extensions resp)) (log/debug "deserialize" resp))
   (-> resp
       (assoc :result (when-let [data (:result resp)] (deserialize (:content-type resp) data)))
       (assoc :cause
@@ -200,7 +199,7 @@
           req-data (-> {:fname fname :data params :content-type content-type
                         :extensions (:extensions call-options)}
                        ((:pre (:interceptors call-options)))
-                       (serialize-params)
+                       (serialize-params (link/allocator conn))
                        ((:before (:interceptors call-options))))
           protocol-version (:protocol-version call-options)
           request (protocol/of protocol-version
@@ -248,7 +247,7 @@
           req-data (-> {:fname fname :data params :content-type content-type
                         :extensions (:extensions call-options)}
                        ((:pre (:interceptors call-options)))
-                       (serialize-params)
+                       (serialize-params (link/allocator conn))
                        ((:before (:interceptors call-options))))
 
           protocol-version (:protocol-version call-options)
@@ -288,7 +287,8 @@
     (let [state (get-purgatory factory (server-addr this))
           tid (next-trans-id (:idgen state))
           protocol-version (:protocol-version options)
-          request (protocol/of protocol-version (make-inspect-request tid cmd args))
+          request (protocol/of protocol-version
+                               (make-inspect-request tid cmd args (link/allocator conn)))
           prms (promise)]
       (swap! (:pendings state) assoc tid {:promise prms :type :inspect})
       (send! conn request)

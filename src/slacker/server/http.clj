@@ -3,17 +3,18 @@
             [clojure.java.io :as io]
             [slacker.protocol :as protocol])
   (:import [java.io ByteArrayInputStream ByteArrayOutputStream]
-           [java.nio ByteBuffer]))
+           [io.netty.buffer ByteBuf ByteBufOutputStream Unpooled]))
 
 (defn- stream->bytebuffer [inputstream]
-  (let [out (ByteArrayOutputStream.)]
+  (let [buf (Unpooled/buffer)
+        out (ByteBufOutputStream. buf)]
     (io/copy inputstream out)
-    (ByteBuffer/wrap (.toByteArray out))))
+    buf))
 
-(defn- bytebuffer->stream [^ByteBuffer bb]
-  (let [buf-size (.remaining bb)
+(defn- bytebuffer->stream [^ByteBuf bb]
+  (let [buf-size (.readableBytes bb)
         buf (byte-array buf-size)]
-    (.get bb buf)
+    (.readBytes bb buf)
     (ByteArrayInputStream. buf)))
 
 (defn ring-req->slacker-req

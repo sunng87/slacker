@@ -102,12 +102,12 @@
   (frame
    (enum (byte) {:functions 0
                  :meta 1})
-   (string :prefix (uint16) :encoding :utf-8)))
+   (byte-block :prefix (uint16))))
 
 ;; type-inspect-ack
 (def slacker-inspect-ack-codec
   (frame
-   (string :encoding :utf-8 :prefix (uint16))))
+   (byte-block :prefix (uint16))))
 
 ;; type-interrupt
 (def slacker-interrupt-codec
