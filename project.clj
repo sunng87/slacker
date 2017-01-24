@@ -23,6 +23,7 @@
   :global-vars {*warn-on-reflection* true}
   :aliases {"run-example-server" ["trampoline" "with-profile" "default,clojure18,example" "run" "-m" "slacker.example.server"]
             "run-example-client" ["trampoline" "with-profile" "default,clojure18,example" "run" "-m" "slacker.example.client"]
+            "run-bench" ["trampoline" "with-profiles" "default,clojure18,example" "run" "-m" "slacker.example.bench"]
             "test-all" ["with-profile" "default,clojure15:default,clojure16:default,clojure17:default,clojure18" "test"]}
   :deploy-repositories {"releases" :clojars}
   :codox {:output-path "target/codox"
