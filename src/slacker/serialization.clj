@@ -26,7 +26,9 @@
         generate-string (resolve-by-name "cheshire.core" "generate-string")]
     (defmethod deserialize :json
       [_ ^ByteBuf data]
-      (parse-string (.toString data ^Charset (Charset/forName "UTF-8")) true))
+      (let [s (.toString data ^Charset (Charset/forName "UTF-8"))]
+        (.release data)
+        (parse-string s true)))
 
     (defmethod serialize :json
       [_ data]
@@ -43,7 +45,9 @@
 
 (defmethod deserialize :clj
   [_ ^ByteBuf data]
-  (edn/read-string (.toString data ^Charset (Charset/forName "UTF-8"))))
+  (let [s (.toString data ^Charset (Charset/forName "UTF-8"))]
+    (.release data)
+    (edn/read-string s)))
 
 (defmethod serialize :clj
   [_ data]
@@ -66,8 +70,10 @@
 
     (defmethod deserialize :nippy
       [_ ^ByteBuf data]
-      (let [bin (ByteBufInputStream. data)]
-        (thaw bin)))
+      (let [bin (ByteBufInputStream. data)
+            r (thaw bin)]
+        (.release data)
+        r))
 
     (defmethod serialize :nippy
       [_ data]
