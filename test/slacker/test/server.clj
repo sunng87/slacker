@@ -9,31 +9,28 @@
   (:import [io.netty.buffer Unpooled]))
 
 (def funcs {"plus" + "minus" - "prod" * "div" /})
-(def params (serialize :nippy [100 0]))
 
 (deftest test-server-pipeline
   (let [server-pipeline (build-server-pipeline
                          funcs {:pre identity :before identity :after identity :post identity}
                          (atom {}))
         req {:content-type :nippy
-             :data params
+             :data (serialize :nippy [100 0])
              :fname "plus"}
         req2 {:content-type :nippy
-              :data params
+              :data (serialize :nippy [100 0])
               :fname "never-found"}
         req3 {:content-type :nippy
-              :data params
+              :data (serialize :nippy [100 0])
               :fname "div"}]
-    (.readerIndex params 0)
+
     (let [result (server-pipeline req)]
       (is (= :success (:code result)))
       (is (= 100 (deserialize :nippy (:result result)))))
 
-    (.readerIndex params 0)
     (let [result (server-pipeline req2)]
       (is (= :not-found (:code result))))
 
-    (.readerIndex params 0)
     (let [result (server-pipeline req3)]
       (is (= :exception (:code result))))))
 
@@ -44,10 +41,9 @@
                          funcs {:pre identity :before identity :after interceptor :post identity}
                          (atom {}))
         req {:content-type :nippy
-             :data params
+             :data (serialize :nippy [100 0])
              :fname "prod"}]
 
-    (.readerIndex params 0)
     (is (= "0" (deserialize :nippy (:result (server-pipeline req)))))))
 
 (deftest test-ping
