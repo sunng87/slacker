@@ -10,8 +10,8 @@
                        :dependencies [[org.clojure/java.jmx "0.3.3"]]}
              :dev {:dependencies [[org.clojure/clojure "1.8.0"]
                                   [info.sunng/carbonite "0.2.3"]
-                                  [cheshire "5.6.3"]
-                                  [com.taoensso/nippy "2.12.1"
+                                  [cheshire "5.7.0"]
+                                  [com.taoensso/nippy "2.12.2"
                                    :exclusions [org.clojure/clojure]]
                                   [log4j "1.2.17"]]}
              :clojure15 {:dependencies [[org.clojure/clojure "1.5.1"]]}
