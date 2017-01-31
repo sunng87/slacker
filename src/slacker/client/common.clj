@@ -1,7 +1,7 @@
 (ns ^:no-doc slacker.client.common
   (:require [clojure.tools.logging :as log]
             [clojure.string :refer [split]]
-            [link.core :refer :all]
+            [link.core :as link :refer :all]
             [link.tcp :refer :all]
             [slacker.protocol :as protocol]
             [link.codec :refer [netty-encoder netty-decoder]]
@@ -31,14 +31,14 @@
 
 (defn make-inspect-request [tid cmd args]
   [tid [:type-inspect-req
-        [cmd (serialize :clj args :string)]]])
+        [cmd (serialize :clj args)]]])
 
 (defn make-interrupt [target-tid]
   [0 [:type-interrupt [target-tid]]])
 
 (defn parse-inspect-response [response]
   (let [[_ [_ [_ data]]] response]
-    {:result (deserialize :clj data :string)}))
+    {:result (deserialize :clj data)}))
 
 (defn handle-response [response]
   (case (first response)
@@ -131,7 +131,6 @@
                           (mapv #(update % 1 (partial serialize (:content-type req)))))))
 
 (defn deserialize-results [resp]
-  (when (not-empty (:extensions resp)) (log/debug "deserialize" resp))
   (-> resp
       (assoc :result (when-let [data (:result resp)] (deserialize (:content-type resp) data)))
       (assoc :cause
@@ -288,7 +287,8 @@
     (let [state (get-purgatory factory (server-addr this))
           tid (next-trans-id (:idgen state))
           protocol-version (:protocol-version options)
-          request (protocol/of protocol-version (make-inspect-request tid cmd args))
+          request (protocol/of protocol-version
+                               (make-inspect-request tid cmd args))
           prms (promise)]
       (swap! (:pendings state) assoc tid {:promise prms :type :inspect})
       (send! conn request)

@@ -1,6 +1,6 @@
 (ns slacker.server
   (:require [clojure.tools.logging :as log]
-            [link.core :refer :all]
+            [link.core :as link :refer :all]
             [link.tcp :refer :all]
             [link.http :refer :all]
             [slacker.common :refer :all]
@@ -89,7 +89,6 @@
 (defn- serialize-result [req]
   (assoc req
          :result (serialize (:content-type req) (:result req))
-         ;; FIXME: check type
          :extensions (->> (:extensions req)
                           (into [])
                           (mapv #(update % 1 (partial serialize (:content-type req)))))))
@@ -128,7 +127,7 @@
 (def-packet-fn acl-reject-packet []
   :type-error [:acl-reject])
 (def-packet-fn make-inspect-ack [data]
-  :type-inspect-ack [(serialize :clj data :string)])
+  :type-inspect-ack [data])
 
 (defn ^:no-doc build-server-pipeline [funcs interceptors running-threads]
   #(-> %
@@ -150,19 +149,18 @@
 (defn ^:no-doc build-inspect-handler [funcs]
   (fn [req]
     (let [[prot-ver [tid [_ [cmd data]]]] req
-          data (deserialize :clj data :string)]
-      (make-inspect-ack
-       prot-ver
-       tid
-       (case cmd
-         :functions
-         (let [nsname (or data "")]
-           (filter (fn [x] (.startsWith ^String x nsname)) (keys funcs)))
-         :meta
-         (let [fname data
-               metadata (meta (funcs fname))]
-           (select-keys metadata [:name :doc :arglists]))
-         nil)))))
+          data (deserialize :clj data)
+          results (case cmd
+                    :functions
+                    (let [nsname (or data "")]
+                      (filter (fn [x] (.startsWith ^String x nsname)) (keys funcs)))
+                    :meta
+                    (let [fname data
+                          metadata (meta (funcs fname))]
+                      (select-keys metadata [:name :doc :arglists]))
+                    nil)
+          sresult (serialize :clj data)]
+      (make-inspect-ack prot-ver tid sresult))))
 
 (defn- interrupt-handler [packet client-info running-threads]
   (let [[_ [_ [_ [target-tid]]]] packet
@@ -179,12 +177,13 @@
 (defmethod -handle-request :type-request [req
                                           server-pipeline
                                           client-info
-                                          & _]
+                                          inspect-handler
+                                          running-threads]
   (let [req-map (assoc (map-req-fields req) :client client-info)]
     (map-response-fields (server-pipeline req-map))))
 (defmethod -handle-request :type-ping [[version [tid _]] & _]
   (pong-packet version tid))
-(defmethod -handle-request :type-inspect-req [p _ _ inspect-handler & _]
+(defmethod -handle-request :type-inspect-req [p _ _ inspect-handler _]
   (inspect-handler p))
 (defmethod -handle-request :type-interrupt [p _ client-info _ running-threads]
   (interrupt-handler p client-info running-threads))

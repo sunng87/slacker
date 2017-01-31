@@ -3,13 +3,12 @@
   :url "http://github.com/sunng87/slacker"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
-  :dependencies [[link "0.9.5"]
+  :dependencies [[link "0.10.0-SNAPSHOT"]
                  [rigui "0.5.1"]
                  [org.clojure/tools.logging "0.3.1"]]
   :profiles {:example {:source-paths ["examples"]
                        :dependencies [[org.clojure/java.jmx "0.3.3"]]}
              :dev {:dependencies [[org.clojure/clojure "1.8.0"]
-                                  [info.sunng/carbonite "0.2.3"]
                                   [cheshire "5.7.0"]
                                   [com.taoensso/nippy "2.12.2"
                                    :exclusions [org.clojure/clojure]]
@@ -24,6 +23,7 @@
   :global-vars {*warn-on-reflection* true}
   :aliases {"run-example-server" ["trampoline" "with-profile" "default,clojure18,example" "run" "-m" "slacker.example.server"]
             "run-example-client" ["trampoline" "with-profile" "default,clojure18,example" "run" "-m" "slacker.example.client"]
+            "run-bench" ["trampoline" "with-profiles" "default,clojure18,example" "run" "-m" "slacker.example.bench"]
             "test-all" ["with-profile" "default,clojure15:default,clojure16:default,clojure17:default,clojure18" "test"]}
   :deploy-repositories {"releases" :clojars}
   :codox {:output-path "target/codox"
