@@ -78,9 +78,9 @@
       (catch InterruptedException e
         (log/info "Thread execution interrupted." (:client req) (:tid req))
         (assoc req :code :interrupted))
-      (catch Exception e
+      (catch Throwable e
         (if-not *debug*
-          (assoc req :code :exception :result (str e))
+          (assoc req :code :exception :result (str e) :exception e)
           (assoc req :code :exception
                  :result {:msg (.getMessage ^Exception e)
                           :stacktrace (.getStackTrace ^Exception e)}))))
