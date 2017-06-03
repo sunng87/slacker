@@ -7,9 +7,9 @@
                  [rigui "0.5.1"]
                  [org.clojure/tools.logging "0.3.1"]]
   :profiles {:example {:source-paths ["examples"]
-                       :dependencies [[org.clojure/java.jmx "0.3.3"]]}
+                       :dependencies [[org.clojure/java.jmx "0.3.4"]]}
              :dev {:dependencies [[org.clojure/clojure "1.8.0"]
-                                  [cheshire "5.7.0"]
+                                  [cheshire "5.7.1"]
                                   [com.taoensso/nippy "2.13.0"
                                    :exclusions [org.clojure/clojure]]
                                   [log4j "1.2.17"]]}
