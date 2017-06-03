@@ -35,23 +35,17 @@
   [resp]
   (let [[_ [_ resp-body]] resp
         packet-type (first resp-body)]
-    (if (and (= :type-error packet-type)
-             (= :acl-reject (-> resp-body second first)))
-      ;; rejected by acl, return HTTP403
-      {:status 403
-       :body "rejected by access control list"}
-      ;; normal response packet
-      (let [[ct code result _] (second resp-body)
-            content-type (str "application/" (name ct))
-            status (case code
-                     :success 200
-                     :exception 500
-                     :not-found 404
-                     400)
-            body (and result (bytebuffer->stream result))]
-        {:status status
-         :headers {"content-type" content-type}
-         :body body}))))
+    (let [[ct code result _] (second resp-body)
+          content-type (str "application/" (name ct))
+          status (case code
+                   :success 200
+                   :exception 500
+                   :not-found 404
+                   400)
+          body (and result (bytebuffer->stream result))]
+      {:status status
+       :headers {"content-type" content-type}
+       :body body})))
 
 
 

@@ -48,12 +48,12 @@
 
 (deftest test-ping
   (let [request [protocol/v5 [0 [:type-ping]]]
-        [_ [_ response]] (handle-request nil request nil nil nil nil)]
+        [_ [_ response]] (handle-request nil request nil nil nil)]
     (is (= :type-pong (nth response 0)))))
 
 (deftest test-invalid-packet
   (let [request [protocol/v5 [0 [:type-unknown]]]
-        [_ [_ response]] (handle-request nil request nil nil nil nil)]
+        [_ [_ response]] (handle-request nil request nil nil nil)]
     (is (= :type-error (nth response 0)))
     (is (= :invalid-packet (-> response
                                second
@@ -64,7 +64,7 @@
   (let [request [protocol/v5 [0 [:type-inspect-req [:functions
                                                     (Unpooled/wrappedBuffer (.getBytes "nil"))]]]]
         [_ [_ [_ [result]]]] (handle-request nil request nil
-                                             (build-inspect-handler funcs) nil nil)
+                                             (build-inspect-handler funcs) nil)
         response (deserialize :clj result)]
     (= (map name (keys funcs)) response)))
 

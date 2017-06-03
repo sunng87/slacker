@@ -6,7 +6,6 @@
             [slacker.common :refer :all]
             [slacker.serialization :refer [serialize deserialize]]
             [slacker.protocol :as protocol]
-            [slacker.acl.core :as acl]
             [slacker.server.http :refer :all]
             [slacker.interceptor :as interceptor]
             [link.ssl :refer [ssl-handler-from-jdk-ssl-context]]
@@ -124,8 +123,6 @@
   :type-error [:protocol-mismatch])
 (def-packet-fn invalid-type-packet []
   :type-error [:invalid-packet])
-(def-packet-fn acl-reject-packet []
-  :type-error [:acl-reject])
 (def-packet-fn make-inspect-ack [data]
   :type-inspect-ack [data])
 
@@ -191,21 +188,12 @@
   (invalid-type-packet version tid))
 
 (defn ^:no-doc handle-request
-  [server-pipeline req client-info inspect-handler acl running-threads]
+  [server-pipeline req client-info inspect-handler running-threads]
   (log/debug req)
-  (cond
-   ;; acl enabled
-   (and (not-empty acl)
-        (not (acl/authorize client-info acl)))
-   (let [[prot-version [tid _]] req]
-     (acl-reject-packet prot-version tid))
+  (-handle-request req server-pipeline
+                   client-info inspect-handler running-threads))
 
-   ;; handle request
-
-   :else (-handle-request req server-pipeline
-                          client-info inspect-handler running-threads)))
-
-(defn- create-server-handler [executor funcs interceptors acl running-threads]
+(defn- create-server-handler [executor funcs interceptors running-threads]
   (let [server-pipeline (build-server-pipeline funcs interceptors running-threads)
         inspect-handler (build-inspect-handler funcs)]
     (create-handler
@@ -218,7 +206,6 @@
                                  data
                                  client-info
                                  inspect-handler
-                                 acl
                                  running-threads)]
                      (log/debug "result" result)
                      (when-not (or (nil? result) (= :interrupted (:code result)))
@@ -256,8 +243,8 @@
 
 (defn slacker-ring-app
   "Wrap slacker as a ring app that can be deployed to any ring adaptors.
-  You can also configure interceptors and acl just like `start-slacker-server`"
-  [fn-coll & {:keys [interceptors acl]
+  You can also configure interceptors just like `start-slacker-server`"
+  [fn-coll & {:keys [interceptors]
               :or {interceptors interceptor/default-interceptors}}]
   (let [fn-coll (if (vector? fn-coll) fn-coll [fn-coll])
         funcs (apply merge (map parse-funcs fn-coll))
@@ -269,7 +256,6 @@
                                                      req
                                                      client-info
                                                      nil
-                                                     acl
                                                      nil))]
         (-> req
             ring-req->slacker-req
@@ -293,13 +279,12 @@
 
   * `interceptors` add server interceptors
   * `http` http port for slacker http transport
-  * `acl` the acl rules defined by defrules
   * `ssl-context` the SSLContext object for enabling tls support
   * `executor` custom java.util.concurrent.ExecutorService for tasks execution, note this executor will be shutdown when you stop the slacker server
   * `threads` size of thread pool if no executor provided
   * `queue-size` size of thread pool task queue if no executor provided"
   [fn-coll port
-   & {:keys [http interceptors acl ssl-context threads queue-size executor]
+   & {:keys [http interceptors ssl-context threads queue-size executor]
       :or {interceptors interceptor/default-interceptors
            threads 10
            queue-size 3000
@@ -309,7 +294,7 @@
         funcs (apply merge (map parse-funcs fn-coll))
         executor (or executor (thread-pool-executor threads queue-size))
         running-threads (atom {})
-        handler (create-server-handler executor funcs interceptors acl running-threads)
+        handler (create-server-handler executor funcs interceptors running-threads)
         ssl-handler (when ssl-context
                       (ssl-handler-from-jdk-ssl-context ssl-context false))
         handlers [(netty-encoder protocol/slacker-root-codec)
