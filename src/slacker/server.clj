@@ -85,6 +85,16 @@
                           :stacktrace (.getStackTrace ^Exception e)}))))
     req))
 
+(defn- call-interceptor [req interceptor]
+  (try
+    (interceptor req)
+    (catch Throwable e
+      (if-not *debug*
+        (assoc req :code :exception :result (str e) :exception e)
+        (assoc req :code :exception
+               :result {:msg (.getMessage ^Exception e)
+                        :stacktrace (.getStackTrace ^Exception e)})))))
+
 (defn- serialize-result [req]
   (assoc req
          :result (serialize (:content-type req) (:result req))
@@ -130,13 +140,13 @@
   #(-> %
        (assoc-current-thread running-threads)
        (look-up-function funcs)
-       ((:pre interceptors))
+       (call-interceptor (:pre interceptors))
        deserialize-args
-       ((:before interceptors))
+       (call-interceptor (:before interceptors))
        do-invoke
-       ((:after interceptors))
+       (call-interceptor (:after interceptors))
        serialize-result
-       ((:post interceptors))
+       (call-interceptor (:post interceptors))
        (dissoc-current-thread running-threads)
        (assoc :packet-type :type-response)))
 
