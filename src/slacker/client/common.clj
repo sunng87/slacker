@@ -198,9 +198,9 @@
           content-type (:content-type call-options content-type)
           req-data (-> {:fname fname :data params :content-type content-type
                         :extensions (:extensions call-options)}
-                       ((:pre (:interceptors call-options)))
+                       ((:pre (:interceptors call-options) identity))
                        (serialize-params)
-                       ((:before (:interceptors call-options))))
+                       ((:before (:interceptors call-options) identity)))
           protocol-version (:protocol-version call-options)
           request (protocol/of protocol-version
                                (make-request tid (:content-type req-data)
@@ -233,9 +233,9 @@
                  :cause (:cause resp)
                  :result (:result resp)
                  :extensions (:extensions resp))
-          ((:after (:interceptors call-options)))
+          ((:after (:interceptors call-options) identity))
           (deserialize-results)
-          ((:post (:interceptors call-options))))))
+          ((:post (:interceptors call-options) identity)))))
 
   (async-call-remote [this ns-name func-name params cb call-options]
     (let [call-options (merge options call-options)
@@ -246,9 +246,9 @@
 
           req-data (-> {:fname fname :data params :content-type content-type
                         :extensions (:extensions call-options)}
-                       ((:pre (:interceptors call-options)))
+                       ((:pre (:interceptors call-options) identity))
                        (serialize-params)
-                       ((:before (:interceptors call-options))))
+                       ((:before (:interceptors call-options) identity)))
 
           protocol-version (:protocol-version call-options)
           request (protocol/of protocol-version
@@ -262,9 +262,9 @@
                                  :cause (:cause result)
                                  :result (:result result)
                                  :extensions (:extensions result))
-                          ((:after (:interceptors call-options)))
+                          ((:after (:interceptors call-options) identity))
                           (deserialize-results)
-                          ((:post (:interceptors call-options)))))
+                          ((:post (:interceptors call-options) identity))))
 
           prms (post-deref-promise (promise) post-hook cb (:callback-executor call-options))
           timeout-check (fn []

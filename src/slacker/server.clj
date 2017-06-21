@@ -140,13 +140,13 @@
   #(-> %
        (assoc-current-thread running-threads)
        (look-up-function funcs)
-       (call-interceptor (:pre interceptors))
+       (call-interceptor (:pre interceptors identity))
        deserialize-args
-       (call-interceptor (:before interceptors))
+       (call-interceptor (:before interceptors identity))
        do-invoke
-       (call-interceptor (:after interceptors))
+       (call-interceptor (:after interceptors identity))
        serialize-result
-       (call-interceptor (:post interceptors))
+       (call-interceptor (:post interceptors identity))
        (dissoc-current-thread running-threads)
        (assoc :packet-type :type-response)))
 
