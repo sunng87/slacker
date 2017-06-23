@@ -248,7 +248,6 @@
   {:child.so-reuseaddr true,
    :so-reuseaddr true,
    :child.so-keepalive true,
-   :tcp-nodelay true,
    :child.tcp-nodelay true})
 
 (defn slacker-ring-app
