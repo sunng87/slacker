@@ -21,12 +21,17 @@
                 :type-inspect-ack 8
                 :type-interrupt 9}))
 
+(def content-type-map
+  (atom {:carb 0 :json 1 :clj 2 :nippy 3
+         :deflate-carb 10 :deflate-json 11
+         :deflate-clj 12 :deflate-nippy 13}))
+
+(defn register-content-type! [code type]
+  (assert (> code 100) "Custom type code must larger than 100 to avoid conflicts with internal")
+  (swap! content-type-map assoc type code))
+
 (def content-type
-  (enum (byte) {:carb 0 :json 1 :clj 2 :nippy 3
-                :deflate-carb 10
-                :deflate-json 11
-                :deflate-clj 12
-                :deflate-nippy 13}))
+  (enum (byte) content-type-map))
 
 (def result-codes
   (enum (byte) {:success 0
