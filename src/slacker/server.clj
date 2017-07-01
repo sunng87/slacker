@@ -313,7 +313,8 @@
   * `ssl-context` the SSLContext object for enabling tls support
   * `executor` custom java.util.concurrent.ExecutorService for tasks execution, note this executor will be shutdown when you stop the slacker server
   * `threads` size of thread pool if no executor provided
-  * `queue-size` size of thread pool task queue if no executor provided"
+  * `queue-size` size of thread pool task queue if no executor provided
+  * `executors` a map of dedicated executors, key by namespace. You can configure dedicated thread pool for certain namespace."
   [fn-coll port
    & {:keys [http interceptors ssl-context threads queue-size executor executors]
       :or {interceptors interceptor/default-interceptors
