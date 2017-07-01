@@ -20,7 +20,8 @@
 (defn-remote conn slacker.example.api/rand-ints)
 (defn-remote conn slacker.example.api/make-error)
 (defn-remote conn slacker.example.api/return-nil)
-#(defn-remote conn slacker.example.api/not-found)
+#_(defn-remote conn slacker.example.api/not-found)
+(defn-remote conn2 slacker.example.api2/echo2)
 
 (def extension-id 16)
 
@@ -38,6 +39,7 @@
   ;; call a function with another client
   (println (with-slackerc conn2 (timestamp)))
 
+  (println (echo2 "Echo me."))
   (try
     (make-error)
     (catch Exception e
