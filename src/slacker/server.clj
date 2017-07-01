@@ -344,13 +344,16 @@
                                                      (flatten (into [] options)))
                                          :threads threads
                                          :ssl-context ssl-context))]
-      [the-tcp-server the-http-server executor])))
+      [the-tcp-server the-http-server executors])))
 
 (defn stop-slacker-server [server]
   "Takes the value returned by start-slacker-server and stop both tcp and http server if any"
-  (let [[the-tcp-server the-http-server ^ExecutorService executor] server]
-    (.shutdown executor)
-    (.awaitTermination executor *timeout* TimeUnit/MILLISECONDS)
+  (let [[the-tcp-server the-http-server executors] server]
+    (pmap #(do
+             (.shutdown %)
+             (.awaitTermination % *timeout* TimeUnit/MILLISECONDS))
+          (vals executors))
+
     (when (not-empty the-tcp-server)
       (stop-server the-tcp-server))
     (when (not-empty the-http-server)
