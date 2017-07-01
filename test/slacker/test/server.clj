@@ -8,28 +8,22 @@
             [link.core :as link])
   (:import [io.netty.buffer Unpooled]))
 
-(def funcs {"plus" + "minus" - "prod" * "div" /})
+(def funcs {"a/plus" + "a/minus" - "a/prod" * "a/div" /})
 
 (deftest test-server-pipeline
   (let [server-pipeline (build-server-pipeline
-                         funcs {:pre identity :before identity :after identity :post identity}
+                         {:pre identity :before identity :after identity :post identity}
                          (atom {}))
         req {:content-type :nippy
              :data (serialize :nippy [100 0])
-             :fname "plus"}
-        req2 {:content-type :nippy
-              :data (serialize :nippy [100 0])
-              :fname "never-found"}
+             :fname "a/plus" :func +}
         req3 {:content-type :nippy
               :data (serialize :nippy [100 0])
-              :fname "div"}]
+              :fname "a/div" :func /}]
 
     (let [result (server-pipeline req)]
       (is (= :success (:code result)))
       (is (= 100 (deserialize :nippy (:result result)))))
-
-    (let [result (server-pipeline req2)]
-      (is (= :not-found (:code result))))
 
     (let [result (server-pipeline req3)]
       (is (= :exception (:code result))))))
@@ -42,18 +36,18 @@
                          (atom {}))
         req {:content-type :nippy
              :data (serialize :nippy [100 0])
-             :fname "prod"}]
+             :fname "a/prod" :func *}]
 
     (is (= "0" (deserialize :nippy (:result (server-pipeline req)))))))
 
 (deftest test-ping
   (let [request [protocol/v5 [0 [:type-ping]]]
-        [_ [_ response]] (handle-request nil request nil nil nil)]
+        [_ [_ response]] (handle-request nil request nil nil nil nil nil)]
     (is (= :type-pong (nth response 0)))))
 
 (deftest test-invalid-packet
   (let [request [protocol/v5 [0 [:type-unknown]]]
-        [_ [_ response]] (handle-request nil request nil nil nil)]
+        [_ [_ response]] (handle-request nil request nil nil nil nil nil)]
     (is (= :type-error (nth response 0)))
     (is (= :invalid-packet (-> response
                                second
@@ -62,11 +56,12 @@
 
 (deftest test-functions-inspect
   (let [request [protocol/v5 [0 [:type-inspect-req [:functions
-                                                    (Unpooled/wrappedBuffer (.getBytes "nil"))]]]]
+                                                    (Unpooled/wrappedBuffer (.getBytes "\"a\""))]]]]
         [_ [_ [_ [result]]]] (handle-request nil request nil
-                                             (build-inspect-handler funcs) nil)
+                                             (build-inspect-handler funcs)
+                                             nil nil nil)
         response (deserialize :clj result)]
-    (= (map name (keys funcs)) response)))
+    (is (= (keys funcs) response))))
 
 (deftest test-parse-functions
   (testing "parsing function map"
