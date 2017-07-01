@@ -32,7 +32,7 @@
 
 (deftest test-server-pipeline-interceptors
   (let [server-pipeline (build-server-pipeline
-                         funcs {:pre identity :before identity :after interceptor :post identity}
+                         {:pre identity :before identity :after interceptor :post identity}
                          (atom {}))
         req {:content-type :nippy
              :data (serialize :nippy [100 0])
