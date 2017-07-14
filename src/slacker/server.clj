@@ -12,7 +12,7 @@
             [link.codec :refer [netty-encoder netty-decoder]])
   (:import [java.util.concurrent TimeUnit ExecutorService
             ThreadPoolExecutor LinkedBlockingQueue RejectedExecutionHandler
-            ThreadPoolExecutor$DiscardOldestPolicy ThreadFactory]))
+            RejectedExecutionException ThreadPoolExecutor$DiscardOldestPolicy ThreadFactory]))
 
 (defn- counted-thread-factory
   [name-format daemon]
@@ -52,7 +52,8 @@
 
 (defn- look-up-function [req funcs]
   (if-let [func (funcs (:fname req))]
-    (assoc req :func func)
+    (let [[ns-name fn-name] (clojure.string/split (:fname req) #"/" 2)]
+      (assoc req :func func :ns-name ns-name :fn-name fn-name))
     (assoc req :code :not-found)))
 
 (defn- deserialize-args [req]
@@ -136,10 +137,9 @@
 (def-packet-fn make-inspect-ack [data]
   :type-inspect-ack [data])
 
-(defn ^:no-doc build-server-pipeline [funcs interceptors running-threads]
+(defn ^:no-doc build-server-pipeline [interceptors running-threads]
   #(-> %
        (assoc-current-thread running-threads)
-       (look-up-function funcs)
        (call-interceptor (:pre interceptors identity))
        deserialize-args
        (call-interceptor (:before interceptors identity))
@@ -160,13 +160,13 @@
           results (case cmd
                     :functions
                     (let [nsname (or data "")]
-                      (filter (fn [x] (.startsWith ^String x nsname)) (keys funcs)))
+                      (filter #(clojure.string/starts-with? % nsname) (keys funcs)))
                     :meta
                     (let [fname data
                           metadata (meta (funcs fname))]
                       (select-keys metadata [:name :doc :arglists]))
                     nil)
-          sresult (serialize :clj data)]
+          sresult (serialize :clj results)]
       (make-inspect-ack prot-ver tid sresult))))
 
 (defn- interrupt-handler [packet client-info running-threads]
@@ -180,46 +180,67 @@
     nil))
 
 ;; p: [version [tid [type ...]]]
-(defmulti ^:private -handle-request (fn [p & _] (let [[_ [_ [t]]] p] t)))
+(defmulti ^:private -handle-request (fn [p & _] (let [[_ [_ [packet-type]]] p] packet-type)))
 (defmethod -handle-request :type-request [req
                                           server-pipeline
                                           client-info
                                           inspect-handler
-                                          running-threads]
-  (let [req-map (assoc (map-req-fields req) :client client-info)]
-    (map-response-fields (server-pipeline req-map))))
+                                          running-threads
+                                          executors
+                                          funcs]
+  (let [req-map (assoc (map-req-fields req) :client client-info)
+        req-map (look-up-function req-map funcs)]
+    (if (nil? (:code req-map))
+      (if-let [thread-pool (get executors (:ns-name req-map)
+                                          (:default executors))]
+        ;; async run on dedicated or default thread pool
+        (do
+          (try
+            (with-executor thread-pool
+              (let [result (map-response-fields (server-pipeline req-map))]
+                (when-not (or (nil? result) (= :interrupted (:code result)))
+                  (send! (:channel client-info) result))))
+            nil
+            (catch RejectedExecutionException _
+              (map-response-fields (assoc req-map :code :thread-pool-full)))))
+        ;; run on default thread
+        (map-response-fields (server-pipeline req-map)))
+      ;; return error
+      (map-response-fields req-map))))
 (defmethod -handle-request :type-ping [[version [tid _]] & _]
   (pong-packet version tid))
-(defmethod -handle-request :type-inspect-req [p _ _ inspect-handler _]
+(defmethod -handle-request :type-inspect-req [p _ _ inspect-handler & _]
   (inspect-handler p))
-(defmethod -handle-request :type-interrupt [p _ client-info _ running-threads]
+(defmethod -handle-request :type-interrupt [p _ client-info _ running-threads & _]
   (interrupt-handler p client-info running-threads))
 (defmethod -handle-request :default [[version [tid _]] & _]
   (invalid-type-packet version tid))
 
 (defn ^:no-doc handle-request
-  [server-pipeline req client-info inspect-handler running-threads]
+  [server-pipeline req client-info inspect-handler running-threads executors funcs]
   (log/debug req)
   (-handle-request req server-pipeline
-                   client-info inspect-handler running-threads))
+                   client-info inspect-handler running-threads executors funcs))
 
-(defn- create-server-handler [executor funcs interceptors running-threads]
-  (let [server-pipeline (build-server-pipeline funcs interceptors running-threads)
+(defn- create-server-handler [executors funcs interceptors running-threads]
+  (let [server-pipeline (build-server-pipeline interceptors running-threads)
         inspect-handler (build-inspect-handler funcs)]
     (create-handler
      (on-message [ch data]
                  (log/debug "data received" data)
-                 (with-executor ^ExecutorService executor
-                   (let [client-info {:remote-addr (remote-addr ch)}
-                         result (handle-request
-                                 server-pipeline
-                                 data
-                                 client-info
-                                 inspect-handler
-                                 running-threads)]
-                     (log/debug "result" result)
-                     (when-not (or (nil? result) (= :interrupted (:code result)))
-                       (send! ch result)))))
+                 (let [client-info {:remote-addr (remote-addr ch)
+                                    :channel ch}
+                       result (handle-request
+                               server-pipeline
+                               data
+                               client-info
+                               inspect-handler
+                               running-threads
+                               executors
+                               funcs)]
+                   (log/debug "result" result)
+                   (when-not (or (nil? result) (= :interrupted (:code result)))
+                     (send! ch result))))
      (on-error [ch ^Exception e]
                (log/error e "Unexpected error in event loop")
                (close! ch)))))
@@ -257,13 +278,14 @@
               :or {interceptors interceptor/default-interceptors}}]
   (let [fn-coll (if (vector? fn-coll) fn-coll [fn-coll])
         funcs (apply merge (map parse-funcs fn-coll))
-        server-pipeline (build-server-pipeline
-                          funcs interceptors nil)]
+        server-pipeline (build-server-pipeline interceptors nil)]
     (fn [req]
       (let [client-info (http-client-info req)
             curried-handler (fn [req] (handle-request server-pipeline
                                                      req
                                                      client-info
+                                                     nil
+                                                     nil
                                                      nil
                                                      nil))]
         (-> req
@@ -291,19 +313,22 @@
   * `ssl-context` the SSLContext object for enabling tls support
   * `executor` custom java.util.concurrent.ExecutorService for tasks execution, note this executor will be shutdown when you stop the slacker server
   * `threads` size of thread pool if no executor provided
-  * `queue-size` size of thread pool task queue if no executor provided"
+  * `queue-size` size of thread pool task queue if no executor provided
+  * `executors` a map of dedicated executors, key by namespace. You can configure dedicated thread pool for certain namespace."
   [fn-coll port
-   & {:keys [http interceptors ssl-context threads queue-size executor]
+   & {:keys [http interceptors ssl-context threads queue-size executor executors]
       :or {interceptors interceptor/default-interceptors
            threads 10
            queue-size 3000
-           executor nil}
+           executor nil
+           executors {}}
       :as options}]
   (let [fn-coll (if (vector? fn-coll) fn-coll [fn-coll])
         funcs (apply merge (map parse-funcs fn-coll))
-        executor (or executor (thread-pool-executor threads queue-size))
+        default-executor (or executor (thread-pool-executor threads queue-size))
+        executors (assoc executors :default default-executor)
         running-threads (atom {})
-        handler (create-server-handler executor funcs interceptors running-threads)
+        handler (create-server-handler executors funcs interceptors running-threads)
         ssl-handler (when ssl-context
                       (ssl-handler-from-jdk-ssl-context ssl-context false))
         handlers [(netty-encoder protocol/slacker-root-codec)
@@ -320,13 +345,16 @@
                                                      (flatten (into [] options)))
                                          :threads threads
                                          :ssl-context ssl-context))]
-      [the-tcp-server the-http-server executor])))
+      [the-tcp-server the-http-server executors])))
 
 (defn stop-slacker-server [server]
   "Takes the value returned by start-slacker-server and stop both tcp and http server if any"
-  (let [[the-tcp-server the-http-server ^ExecutorService executor] server]
-    (.shutdown executor)
-    (.awaitTermination executor *timeout* TimeUnit/MILLISECONDS)
+  (let [[the-tcp-server the-http-server executors] server]
+    (pmap #(do
+             (.shutdown %)
+             (.awaitTermination % *timeout* TimeUnit/MILLISECONDS))
+          (vals executors))
+
     (when (not-empty the-tcp-server)
       (stop-server the-tcp-server))
     (when (not-empty the-http-server)

@@ -1,10 +1,12 @@
 (ns slacker.example.server
-  (:use [slacker server interceptor])
-  (:use slacker.interceptors.stats)
-  (:use slacker.interceptors.exectime)
-  (:use slacker.interceptors.logargs)
   (:require [slacker.example.api]
-            [slacker.serialization.nippy]))
+            [slacker.serialization.nippy]
+            [slacker.server :refer :all]
+            [slacker.interceptor :refer :all]
+            [slacker.interceptors.stats :refer :all]
+            [slacker.interceptors.exectime :refer :all]
+            [slacker.interceptors.logargs :refer :all])
+  (:import [java.util.concurrent Executors]))
 
 (definterceptor log-function-calls
   :before (fn [req]
@@ -15,7 +17,9 @@
   (let [server (start-slacker-server [(the-ns 'slacker.example.api)
                                       {"slacker.example.api2" {"echo2" (fn [n] n)}}]
                                      2104
-                                     :http 4104)]
+                                     :http 4104
+                                     :executors {"slacker.example.api2"
+                                                 (Executors/newFixedThreadPool 2)})]
     (.addShutdownHook (Runtime/getRuntime)
                       (Thread. ^Runnable
                                (fn []

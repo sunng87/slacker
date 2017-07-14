@@ -32,6 +32,7 @@
   (enum (byte) {:success 0
                 :not-found 11
                 :exception 12
+                :thread-pool-full 13
                 :protocol-mismatch 20
                 :invalid-packet 21
                 :acl-reject 22}))
