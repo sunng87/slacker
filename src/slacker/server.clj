@@ -193,13 +193,15 @@
     (if (nil? (:code req-map))
       (if-let [thread-pool (get executors (:ns-name req-map)
                                           (:default executors))]
-        ;; async run on dedicated or default thread pool
+        ;; async run on dedicated or global thread pool
+        ;; http call always runs on default thread
         (do
           (try
-            (with-executor thread-pool
+            (with-executor ^ThreadPoolExecutor thread-pool
               (let [result (map-response-fields (server-pipeline req-map))]
                 (when-not (or (nil? result) (= :interrupted (:code result)))
-                  (send! (:channel client-info) result))))
+                  (link/send! (:channel client-info) result))))
+            ;; async run, return nil so sync wait won't send
             nil
             (catch RejectedExecutionException _
               (map-response-fields (assoc req-map :code :thread-pool-full)))))
@@ -351,8 +353,8 @@
   "Takes the value returned by start-slacker-server and stop both tcp and http server if any"
   (let [[the-tcp-server the-http-server executors] server]
     (pmap #(do
-             (.shutdown %)
-             (.awaitTermination % *timeout* TimeUnit/MILLISECONDS))
+             (.shutdown ^ThreadPoolExecutor %)
+             (.awaitTermination ^ThreadPoolExecutor % *timeout* TimeUnit/MILLISECONDS))
           (vals executors))
 
     (when (not-empty the-tcp-server)
