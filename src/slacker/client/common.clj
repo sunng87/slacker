@@ -22,6 +22,7 @@
       :not-found {:cause {:error code} :extensions extensions}
       :exception {:cause {:error code :exception data} :extensions extensions}
       :interrupted {:cause {:error code}}
+      :thread-pool-full {:cause {:error code}}
       {:cause {:error :invalid-result-code}})))
 
 (defn make-request [tid content-type func-name params extensions]
@@ -157,7 +158,7 @@
     (let [e (user-friendly-cause call-result)]
       (if (instance? Throwable e)
         (throw (ex-info "Slacker client exception" {:error :exception} e))
-        (throw (ex-info "Slacker client error" e))))))
+        (throw (ex-info "Slacker client error " e))))))
 
 (deftype PostDerefPromise [prms post-hook deliver-callback ^ExecutorService deliver-callback-executor]
   IDeref

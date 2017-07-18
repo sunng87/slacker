@@ -105,7 +105,7 @@
 
 (defn- map-response-fields [req]
   (protocol/of (:protocol-version req)
-               [(:tid req) [(:packet-type req)
+               [(:tid req) [:type-response
                             (map req [:content-type :code :result :extensions])]]))
 
 (defn- assoc-current-thread [req running-threads]
@@ -132,8 +132,8 @@
   :type-pong)
 #_(def-packet-fn protocol-mismatch-packet []
   :type-error [:protocol-mismatch])
-(def-packet-fn invalid-type-packet []
-  :type-error [:invalid-packet])
+(def-packet-fn error-packet [code]
+  :type-error [code])
 (def-packet-fn make-inspect-ack [data]
   :type-inspect-ack [data])
 
@@ -147,8 +147,7 @@
        (call-interceptor (:after interceptors identity))
        serialize-result
        (call-interceptor (:post interceptors identity))
-       (dissoc-current-thread running-threads)
-       (assoc :packet-type :type-response)))
+       (dissoc-current-thread running-threads)))
 
 ;; inspection handler
 ;; inspect request data structure
@@ -204,11 +203,12 @@
             ;; async run, return nil so sync wait won't send
             nil
             (catch RejectedExecutionException _
-              (map-response-fields (assoc req-map :code :thread-pool-full)))))
+              (log/warn "Server thread pool is full for" (:ns-name req-map))
+              (error-packet (:version req-map) (:tid req-map) :thread-pool-full))))
         ;; run on default thread
         (map-response-fields (server-pipeline req-map)))
       ;; return error
-      (map-response-fields req-map))))
+      (error-packet (:version req-map) (:tid req-map) :not-found))))
 (defmethod -handle-request :type-ping [[version [tid _]] & _]
   (pong-packet version tid))
 (defmethod -handle-request :type-inspect-req [p _ _ inspect-handler & _]
@@ -216,7 +216,7 @@
 (defmethod -handle-request :type-interrupt [p _ client-info _ running-threads & _]
   (interrupt-handler p client-info running-threads))
 (defmethod -handle-request :default [[version [tid _]] & _]
-  (invalid-type-packet version tid))
+  (error-packet version tid :invalid-packet))
 
 (defn ^:no-doc handle-request
   [server-pipeline req client-info inspect-handler running-threads executors funcs]
