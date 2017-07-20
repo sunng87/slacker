@@ -155,10 +155,11 @@
 (defn process-call-result [call-result]
   (if (nil? (:cause call-result))
     (:result call-result)
-    (let [e (user-friendly-cause call-result)]
+    (let [e (user-friendly-cause call-result)
+          user-ex-data (dissoc call-result :result :args :data)]
       (if (instance? Throwable e)
-        (throw (ex-info "Slacker client exception" {:error :exception} e))
-        (throw (ex-info "Slacker client error " e))))))
+        (throw (ex-info "Slacker client exception" user-ex-data e))
+        (throw (ex-info (str "Slacker client error " (:error e)) user-ex-data))))))
 
 (deftype PostDerefPromise [prms post-hook deliver-callback ^ExecutorService deliver-callback-executor]
   IDeref
@@ -209,26 +210,27 @@
                                              (:extensions req-data)))
           backlog (or (:backlog options) *backlog*)
           prms (promise)
+          timeout (or (:timeout call-options) *timeout*)
 
           resp (if-not (> (count @(:pendings state)) backlog 0)
                  (do
                    (swap! (:pendings state) assoc tid {:promise prms})
                    (send! conn request)
                    (try
-                     (deref prms (or (:timeout call-options) *timeout*) nil)
+                     (deref prms timeout nil)
                      (if (realized? prms)
                        @prms
                        (do
                          (swap! (:pendings state) dissoc tid)
                          (when (:interrupt-on-timeout call-options)
                            (interrupt this tid))
-                         {:cause {:error :timeout}}))
+                         {:cause {:error :timeout :timeout timeout} :fname fname}))
                      (catch InterruptedException e
                        (log/debug "Client interrupted" tid)
                        (interrupt this tid)
                        (swap! (:pendings state) dissoc tid)
-                       {:cause {:error :interrupted}})))
-                 {:cause {:error :backlog-overflow}})]
+                       {:cause {:error :interrupted} :fname fname})))
+                 {:cause {:error :backlog-overflow} :fname fname})]
 
       (-> (assoc req-data
                  :cause (:cause resp)
@@ -257,6 +259,7 @@
                                              (:fname req-data) (:args req-data)
                                              (:extensions req-data)))
           backlog (or (:backlog options) *backlog*)
+          timeout (or (:timeout call-options) *timeout*)
 
           post-hook (fn [result]
                       (-> (assoc req-data
@@ -271,7 +274,7 @@
           timeout-check (fn []
                           (when-let [handler (get @(:pendings state) tid)]
                             (swap! (:pendings state) dissoc tid)
-                            (let [result {:cause {:error :timeout}}]
+                            (let [result {:cause {:error :timeout :timeout timeout} :fname fname}]
                               (deliver (:promise handler) result))
                             (when (:interrupt-on-timeout call-options)
                               (interrupt this tid))))]
@@ -280,9 +283,8 @@
           (swap! (:pendings state) assoc
                  tid {:promise prms :async? true})
           (send! conn request)
-          (schedule-task factory timeout-check
-                         (or (:timeout call-options) *timeout*)))
-        (deliver prms {:cause {:error :backlog-overflow}}))
+          (schedule-task factory timeout-check timeout))
+        (deliver prms {:cause {:error :backlog-overflow} :fname fname}))
       prms))
   (inspect [this cmd args]
     (let [state (get-purgatory factory (server-addr this))
