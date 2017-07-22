@@ -3,9 +3,9 @@
   :url "http://github.com/sunng87/slacker"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
-  :dependencies [[link "0.10.2-SNAPSHOT"]
+  :dependencies [[link "0.10.2"]
                  [rigui "0.5.2"]
-                 [org.clojure/tools.logging "0.3.1"]]
+                 [org.clojure/tools.logging "0.4.0"]]
   :profiles {:example {:source-paths ["examples"]
                        :dependencies [[org.clojure/java.jmx "0.3.4"]]}
              :dev {:dependencies [[org.clojure/clojure "1.8.0"]
