@@ -1,4 +1,4 @@
-(defproject slacker "0.15.0"
+(defproject slacker "0.15.1-SNAPSHOT"
   :description "Transparent, non-invasive RPC by clojure and for clojure"
   :url "http://github.com/sunng87/slacker"
   :license {:name "Eclipse Public License"
