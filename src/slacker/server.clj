@@ -352,10 +352,10 @@
 (defn stop-slacker-server [server]
   "Takes the value returned by start-slacker-server and stop both tcp and http server if any"
   (let [[the-tcp-server the-http-server executors] server]
-    (pmap #(do
-             (.shutdown ^ThreadPoolExecutor %)
-             (.awaitTermination ^ThreadPoolExecutor % *timeout* TimeUnit/MILLISECONDS))
-          (vals executors))
+    (dorun (pmap #(do
+                    (.shutdown ^ThreadPoolExecutor %)
+                    (.awaitTermination ^ThreadPoolExecutor % *timeout* TimeUnit/MILLISECONDS))
+                 (vals executors)))
 
     (when (not-empty the-tcp-server)
       (stop-server the-tcp-server))
