@@ -33,8 +33,8 @@ source code.
 
 [![latest version on clojars](https://clojars.org/slacker/slacker/latest-version.svg)](https://clojars.org/slacker/slacker)
 
-* Stable: 0.14.x
-* Development: 0.15.0-SNAPSHOT
+* Stable: 0.15.x
+* Development: 0.16.0-SNAPSHOT
 
 ### Basic Usage
 
@@ -180,17 +180,9 @@ to add nippy into your classpath and set the content-type as `:nippy`
 to use it. Nippy has excellent support for custom types, you can find
 detailed information on its page.
 
-#### Your own serialization? No problem!
+#### Middleware
 
-Typically the built-in serializers could full-fill your need. But if
-you have special requirements for another serialization, you don't
-have to send pull request to me. Just look into
-[src/slacker/serialization.clj](https://github.com/sunng87/slacker/blob/master/src/slacker/serialization.clj)
-and add your own multi-method implementation in your code.
-
-#### Server interceptors
-
-To add custom functions on server, you can define custom
+To add custom functions on server and client, you can define custom
 interceptors before or after function called.
 
 ``` clojure
@@ -204,6 +196,14 @@ interceptors before or after function called.
 For more information about using interceptors and creating your own
 interceptors, query the [wiki
 page](https://github.com/sunng87/slacker/wiki/Interceptors).
+
+Here we have two typical demo middlewares:
+
+* The [metrics middleware](https://github.com/sunng87/slacker-metrics)
+integrates [metrics-clojure](https://github.com/sjl/metrics-clojure)
+into slacker server.
+* The [htrace middleware](https://github.com/sunng87/slacker-htrace)
+enables htrace distributed tracing on both server and client side.
 
 #### Slacker on HTTP
 
@@ -246,12 +246,6 @@ with ring spec. So it could be deployed on any ring adapter.
 
 The url pattern of this ring app is same as slacker's built-in http
 module.
-
-#### Access Control List
-
-Slacker 0.7 supports IP based access control list (ACL). Consult [wiki
-page](https://github.com/sunng87/slacker/wiki/AccessControlList) for
-the ACL rule DSL.
 
 #### Custom client on function call
 
@@ -305,6 +299,6 @@ See [wiki page](https://github.com/sunng87/slacker/wiki/VersionHistory)
 
 ## License
 
-Copyright (C) 2011-2015 Sun Ning
+Copyright (C) 2011-2017 Sun Ning
 
 Distributed under the Eclipse Public License, the same as Clojure.
