@@ -4,7 +4,7 @@
             [slacker.protocol :refer [v5]]
             [slacker.serialization.nippy]))
 
-(def conn (slackerc "127.0.0.1:2104" :ping-interval 5 :content-type :nippy))
+(def conn (slackerc "127.0.0.1:2104" :ping-interval 5 :content-type :nippy :meta {:client-name "Test-Client" :client-version "1.0"}))
 (def conn2 (slackerc "127.0.0.1:2104" :content-type :json
                      :protocol-version v5))
 (defn-remote conn slacker.example.api/timestamp)
@@ -35,6 +35,7 @@
   (with-extensions {extension-id "extension-value"}
     (get-m2))
   (println (rand-ints 10))
+  (println (meta @conn))
 
   ;; call a function with another client
   (println (with-slackerc conn2 (timestamp)))
