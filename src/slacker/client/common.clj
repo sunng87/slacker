@@ -25,8 +25,8 @@
       :thread-pool-full {:cause {:error code}}
       {:cause {:error :invalid-result-code}})))
 
-(defn make-request [tid content-type func-name params extensions]
-  [tid [:type-request [content-type func-name params extensions]]])
+(defn make-request [tid content-type func-name params extensions client-meta]
+  [tid [:type-request [content-type func-name params extensions client-meta]]])
 
 (def ping-packet [0 [:type-ping]])
 
@@ -199,7 +199,8 @@
           tid (next-trans-id (:idgen state))
           content-type (:content-type call-options content-type)
           req-data (-> {:fname fname :data params :content-type content-type
-                        :extensions (:extensions call-options)}
+                        :extensions (:extensions call-options)
+                        :client-meta (meta this)}
                        ((:pre (:interceptors call-options) identity))
                        (serialize-params)
                        ((:before (:interceptors call-options) identity)))
@@ -207,11 +208,11 @@
           request (protocol/of protocol-version
                                (make-request tid (:content-type req-data)
                                              (:fname req-data) (:args req-data)
-                                             (:extensions req-data)))
+                                             (:extensions req-data)
+                                             (:client-meta req-data)))
           backlog (or (:backlog options) *backlog*)
           prms (promise)
           timeout (or (:timeout call-options) *timeout*)
-
           resp (if-not (> (count @(:pendings state)) backlog 0)
                  (do
                    (swap! (:pendings state) assoc tid {:promise prms})
@@ -231,7 +232,6 @@
                        (swap! (:pendings state) dissoc tid)
                        {:cause {:error :interrupted} :fname fname})))
                  {:cause {:error :backlog-overflow} :fname fname})]
-
       (-> (assoc req-data
                  :cause (:cause resp)
                  :result (:result resp)
@@ -248,16 +248,17 @@
           content-type (:content-type call-options content-type)
 
           req-data (-> {:fname fname :data params :content-type content-type
-                        :extensions (:extensions call-options)}
+                        :extensions (:extensions call-options)
+                        :client-meta (meta this)}
                        ((:pre (:interceptors call-options) identity))
                        (serialize-params)
                        ((:before (:interceptors call-options) identity)))
-
           protocol-version (:protocol-version call-options)
           request (protocol/of protocol-version
                                (make-request tid (:content-type req-data)
                                              (:fname req-data) (:args req-data)
-                                             (:extensions req-data)))
+                                             (:extensions req-data)
+                                             (:client-meta req-data)))
           backlog (or (:backlog options) *backlog*)
           timeout (or (:timeout call-options) *timeout*)
 
@@ -329,7 +330,7 @@
     (when-let [p (:pendings (get-purgatory factory (server-addr this)))]
       (count @p)))
   clojure.lang.IObj
-  (meta [this] (prn options)(:meta options))
+  (meta [this] (:meta options))
   (withMeta [this args]
     (merge args (:meta options))))
 
