@@ -327,7 +327,11 @@
   SlackerClientStateProtocol
   (pending-count [this]
     (when-let [p (:pendings (get-purgatory factory (server-addr this)))]
-      (count @p))))
+      (count @p)))
+  clojure.lang.IObj
+  (meta [this] (prn options)(:meta options))
+  (withMeta [this args]
+    (merge args (:meta options))))
 
 
 (defn- create-link-handler
