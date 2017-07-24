@@ -332,7 +332,7 @@
   clojure.lang.IObj
   (meta [this] (:meta options))
   (withMeta [this args]
-    (merge args (:meta options))))
+    (SlackerClient. addr conn factory content-type (update-in options [:meta] merge args))))
 
 
 (defn- create-link-handler
