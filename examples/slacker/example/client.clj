@@ -36,6 +36,7 @@
     (get-m2))
   (println (rand-ints 10))
   (println (meta @conn))
+  (println (meta (vary-meta @conn assoc :client-version "1.1")))
 
   ;; call a function with another client
   (println (with-slackerc conn2 (timestamp)))
