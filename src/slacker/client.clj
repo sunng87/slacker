@@ -19,7 +19,7 @@
   [addr
    & {:keys [content-type factory ping-interval timeout backlog
              interrupt-on-timeout interceptors callback-executor
-             protocol-version]
+             protocol-version meta]
       :or {content-type :clj
            interceptors interceptor/default-interceptors}}]
   (let [factory (or factory @cached-slacker-client-factory)]
@@ -30,7 +30,8 @@
                            :interrupt-on-timeout interrupt-on-timeout
                            :interceptors interceptors
                            :callback-executor callback-executor
-                           :protocol-version protocol-version}))))
+                           :protocol-version protocol-version
+                           :meta meta}))))
 
 (defn close-slackerc
   "Close a slacker client"
