@@ -3,6 +3,7 @@
             [clojure.string :refer [split]]
             [link.core :as link :refer :all]
             [link.tcp :refer :all]
+            [slacker.util :refer :all]
             [slacker.protocol :as protocol]
             [link.codec :refer [netty-encoder netty-decoder]]
             [link.ssl :refer [ssl-handler-from-jdk-ssl-context]]
@@ -10,7 +11,7 @@
             [slacker.serialization :refer [serialize deserialize]]
             [slacker.common :refer :all]
             [slacker.protocol :refer :all])
-  (:import [java.net ConnectException InetSocketAddress InetAddress]
+  (:import [java.net ConnectException InetSocketAddress]
            [java.nio.channels ClosedChannelException]
            [java.util.concurrent ExecutorService]
            [clojure.lang IFn IDeref IBlockingDeref IPending]))
@@ -25,8 +26,8 @@
       :thread-pool-full {:cause {:error code}}
       {:cause {:error :invalid-result-code}})))
 
-(defn make-request [tid content-type func-name params extensions client-meta]
-  [tid [:type-request [content-type func-name params extensions client-meta]]])
+(defn make-request [tid content-type func-name params extensions]
+  [tid [:type-request [content-type func-name params extensions]]])
 
 (def ping-packet [0 [:type-ping]])
 
@@ -37,16 +38,29 @@
 (defn make-interrupt [target-tid]
   [0 [:type-interrupt [target-tid]]])
 
+(defn make-client-meta [clients-meta]
+  [0 [:type-client-meta [(serialize :clj clients-meta)]]])
+
 (defn parse-inspect-response [response]
   (let [[_ [_ [_ data]]] response]
     {:result (deserialize :clj data)}))
 
-(defn handle-response [response]
+(defn- handle-client-meta-ack-response [response server-requests]
+  (let[[local-addr remote-addr] (second response)]
+    (swap! server-requests
+           (fn[snapshot]
+             (if(snapshot remote-addr)
+               (update-in snapshot [remote-addr :connected-clients]
+                          clojure.set/union #{local-addr}))))
+    nil))
+
+(defn handle-response [response server-requests]
   (case (first response)
     :type-response (handle-valid-response response)
     :type-inspect-ack (parse-inspect-response response)
     :type-pong (log/debug "pong")
     :type-error {:cause {:error (-> response second first)}}
+    :type-client-meta-ack (handle-client-meta-ack-response response server-requests)
     nil))
 
 (defprotocol SlackerClientProtocol
@@ -55,6 +69,7 @@
   (inspect [this cmd args])
   (server-addr [this])
   (ping [this])
+  (send-meta [this])
   (close [this])
   (interrupt [this tid]))
 
@@ -116,9 +131,7 @@
 
 (defn- channel-hostport [ch]
   (let [addr (link.core/remote-addr ch)]
-    (str (.getHostAddress ^InetAddress
-                          (.getAddress ^InetSocketAddress addr))
-         ":" (.getPort ^InetSocketAddress addr))))
+    (inet-hostport addr)))
 
 (defn- next-trans-id [trans-id-gen]
   (swap! trans-id-gen unchecked-inc))
@@ -199,8 +212,7 @@
           tid (next-trans-id (:idgen state))
           content-type (:content-type call-options content-type)
           req-data (-> {:fname fname :data params :content-type content-type
-                        :extensions (:extensions call-options)
-                        :client-meta (meta this)}
+                        :extensions (:extensions call-options)}
                        ((:pre (:interceptors call-options) identity))
                        (serialize-params)
                        ((:before (:interceptors call-options) identity)))
@@ -208,8 +220,7 @@
           request (protocol/of protocol-version
                                (make-request tid (:content-type req-data)
                                              (:fname req-data) (:args req-data)
-                                             (:extensions req-data)
-                                             (:client-meta req-data)))
+                                             (:extensions req-data)))
           backlog (or (:backlog options) *backlog*)
           prms (promise)
           timeout (or (:timeout call-options) *timeout*)
@@ -246,10 +257,8 @@
           fname (str ns-name "/" func-name)
           tid (next-trans-id (:idgen state))
           content-type (:content-type call-options content-type)
-
           req-data (-> {:fname fname :data params :content-type content-type
-                        :extensions (:extensions call-options)
-                        :client-meta (meta this)}
+                        :extensions (:extensions call-options)}
                        ((:pre (:interceptors call-options) identity))
                        (serialize-params)
                        ((:before (:interceptors call-options) identity)))
@@ -257,8 +266,7 @@
           request (protocol/of protocol-version
                                (make-request tid (:content-type req-data)
                                              (:fname req-data) (:args req-data)
-                                             (:extensions req-data)
-                                             (:client-meta req-data)))
+                                             (:extensions req-data)))
           backlog (or (:backlog options) *backlog*)
           timeout (or (:timeout call-options) *timeout*)
 
@@ -305,6 +313,8 @@
   (ping [this]
     (send! conn (protocol/of (:protocol-version options) ping-packet))
     (log/debug "ping"))
+  (send-meta [this]
+    (send! conn (protocol/of (:protocol-version options) (make-client-meta (meta this)))))
   (close [this]
     (cancel-ping this)
     (close! conn)
@@ -347,7 +357,7 @@
                  (let [[_ [tid msg-body]] msg
                        handler (get @rmap tid)]
                    (swap! rmap dissoc tid)
-                   (let [result (handle-response msg-body)]
+                   (let [result (handle-response msg-body server-requests)]
                      (when (not-empty handler)
                        (deliver (:promise handler) result)
                        ;; pong
@@ -367,7 +377,22 @@
                     (when (not-empty handler)
                       (deliver (:promise handler)
                                {:cause {:error :connection-broken}})))
-                  (reset! rmap {})))))
+                  (reset! rmap {}))
+                ;;remove from connected-clients
+                (let[remote-addr (-> ch
+                                     channel-hostport)
+                     local-addr (-> ch channel-addr inet-hostport)]
+                  (swap! server-requests
+                         (fn[snapshot]
+                           (if(snapshot remote-addr)
+                             (update-in snapshot [remote-addr :conntected-clients]
+                                        disj local-addr))))))
+   (on-active [ch]
+              (when-let[slacker-clients (-> ch
+                                            (channel-hostport)
+                                            (@server-requests)
+                                            :refs)]
+                (doall (map send-meta slacker-clients))))))
 
 (def ^:dynamic *options*
   {:tcp-nodelay true
@@ -401,9 +426,9 @@
 
 (defn create-client [slacker-client-factory addr content-type options]
   (let [[host port] (host-port addr)
-        host (.. (InetSocketAddress. ^String host ^int port) (getAddress) (getHostAddress))
+        hostport (inet-hostport (InetSocketAddress. ^String host ^int port))
         client (open-tcp-client slacker-client-factory host port)
-        slacker-client (SlackerClient. (str host ":" port)
+        slacker-client (SlackerClient. hostport
                                        client
                                        slacker-client-factory
                                        content-type
