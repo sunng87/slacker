@@ -11,7 +11,7 @@
 
 (definterceptor log-function-calls
   :before (fn [req]
-            (println (str (-> req :client :remote-addr)  " calling: " (:fname req)))
+            (println (str (-> req :client)  " calling: " (:fname req)))
             req))
 
 (defn -main [& args]
@@ -25,7 +25,9 @@
                                                  (ThreadPoolExecutor. 1 1
                                                                       0 TimeUnit/MINUTES
                                                                       (LinkedBlockingQueue. 1)
-                                                                      (ThreadPoolExecutor$AbortPolicy.))})]
+                                                                      (ThreadPoolExecutor$AbortPolicy.))}
+                                     ;:interceptors (interceptors [log-function-calls])
+                                     )]
     (.addShutdownHook (Runtime/getRuntime)
                       (Thread. ^Runnable
                                (fn []
