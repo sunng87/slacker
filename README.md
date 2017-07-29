@@ -190,7 +190,7 @@ interceptors before or after function called.
    :before (fn [req] (println (str "calling: " (:fname req))) req))
 
 (start-slacker-server (the-ns 'slapi) 2104
-                      :interceptors (interceptors logging-interceptor))
+                      :interceptors (interceptors [logging-interceptor]))
 ```
 
 For more information about using interceptors and creating your own
