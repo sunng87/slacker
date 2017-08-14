@@ -38,7 +38,7 @@
   [0 [:type-interrupt [target-tid]]])
 
 (defn parse-inspect-response [response]
-  (let [[_ [_ [_ data]]] response]
+  (let [[_ [data]] response]
     {:result (deserialize :clj data)}))
 
 (defn handle-response [response]
