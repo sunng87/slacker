@@ -12,6 +12,7 @@
                                   [cheshire "5.7.1"]
                                   [com.taoensso/nippy "2.13.0"
                                    :exclusions [org.clojure/clojure]]
+                                  [com.cognitect/transit-clj "0.8.300"]
                                   [log4j "1.2.17"]]}
              :clojure15 {:dependencies [[org.clojure/clojure "1.5.1"]]}
              :clojure16 {:dependencies [[org.clojure/clojure "1.6.0"]]}
