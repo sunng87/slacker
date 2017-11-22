@@ -4,6 +4,7 @@
             [link.tcp :refer :all]
             [link.http :refer :all]
             [slacker.common :refer :all]
+            [slacker.util :refer :all]
             [slacker.serialization :refer [serialize deserialize]]
             [slacker.protocol :as protocol]
             [slacker.server.http :refer :all]
@@ -136,6 +137,8 @@
   :type-error [code])
 (def-packet-fn make-inspect-ack [data]
   :type-inspect-ack [data])
+(def-packet-fn make-client-meta-ack [remote-addr local-addr]
+  :type-client-meta-ack [remote-addr local-addr])
 
 (defn ^:no-doc build-server-pipeline [interceptors running-threads]
   #(-> %
@@ -178,6 +181,18 @@
       (swap! running-threads dissoc key))
     nil))
 
+(defn- client-meta-handler [packet client-info connected-clients]
+  (let[[version [tid [_ [data]]]] packet
+       client-meta (deserialize :clj data)
+       remote-addr (inet-hostport (:remote-addr client-info))
+       local-addr (inet-hostport (-> client-info :channel channel-addr))]
+    (swap! connected-clients
+           assoc
+           remote-addr
+           (merge client-meta
+                  {:connected-at (System/currentTimeMillis)}))
+    (make-client-meta-ack version tid remote-addr local-addr)))
+
 ;; p: [version [tid [type ...]]]
 (defmulti ^:private -handle-request (fn [p & _] (let [[_ [_ [packet-type]]] p] packet-type)))
 (defmethod -handle-request :type-request [req
@@ -186,7 +201,8 @@
                                           inspect-handler
                                           running-threads
                                           executors
-                                          funcs]
+                                          funcs
+                                          connected-clients]
   (let [req-map (assoc (map-req-fields req) :client client-info)
         req-map (look-up-function req-map funcs)]
     (if (nil? (:code req-map))
@@ -215,23 +231,28 @@
   (inspect-handler p))
 (defmethod -handle-request :type-interrupt [p _ client-info _ running-threads & _]
   (interrupt-handler p client-info running-threads))
+(defmethod -handle-request :type-client-meta [p _ client-info _ _ _ _ connected-clients]
+  (client-meta-handler p client-info connected-clients))
 (defmethod -handle-request :default [[version [tid _]] & _]
   (error-packet version tid :invalid-packet))
 
 (defn ^:no-doc handle-request
-  [server-pipeline req client-info inspect-handler running-threads executors funcs]
+  [server-pipeline req client-info inspect-handler running-threads executors funcs connected-clients]
   (log/debug req)
   (-handle-request req server-pipeline
-                   client-info inspect-handler running-threads executors funcs))
+                   client-info inspect-handler running-threads executors funcs connected-clients))
 
-(defn- create-server-handler [executors funcs interceptors running-threads]
+(defn- create-server-handler [executors funcs interceptors running-threads connected-clients]
   (let [server-pipeline (build-server-pipeline interceptors running-threads)
         inspect-handler (build-inspect-handler funcs)]
     (create-handler
      (on-message [ch data]
                  (log/debug "data received" data)
-                 (let [client-info {:remote-addr (remote-addr ch)
-                                    :channel ch}
+                 (let [client-info (merge
+                                    {:remote-addr (remote-addr ch)
+                                     :channel ch}
+                                    (get @connected-clients (inet-hostport
+                                                             (remote-addr ch))))
                        result (handle-request
                                server-pipeline
                                data
@@ -239,13 +260,24 @@
                                inspect-handler
                                running-threads
                                executors
-                               funcs)]
+                               funcs
+                               connected-clients)]
                    (log/debug "result" result)
                    (when-not (or (nil? result) (= :interrupted (:code result)))
                      (send! ch result))))
      (on-error [ch ^Exception e]
                (log/error e "Unexpected error in event loop")
-               (close! ch)))))
+               (close! ch))
+     (on-active [ch]
+                (swap! connected-clients
+                       (fn[clients-info]
+                         (let[addr (inet-hostport (remote-addr ch))]
+                           (assoc clients-info addr {})))))
+     (on-inactive [ch]
+                  (swap! connected-clients
+                         (fn[clients-info]
+                           (let[addr (inet-hostport (remote-addr ch))]
+                             (dissoc clients-info addr))))))))
 
 
 (defn ^:no-doc parse-funcs [n]
@@ -286,6 +318,7 @@
             curried-handler (fn [req] (handle-request server-pipeline
                                                      req
                                                      client-info
+                                                     nil
                                                      nil
                                                      nil
                                                      nil
@@ -330,7 +363,8 @@
         default-executor (or executor (thread-pool-executor threads queue-size))
         executors (assoc executors :default default-executor)
         running-threads (atom {})
-        handler (create-server-handler executors funcs interceptors running-threads)
+        connected-clients (atom {})
+        handler (create-server-handler executors funcs interceptors running-threads connected-clients)
         ssl-handler (when ssl-context
                       (ssl-handler-from-jdk-ssl-context ssl-context false))
         handlers [(netty-encoder protocol/slacker-root-codec)

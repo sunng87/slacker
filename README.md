@@ -190,7 +190,7 @@ interceptors before or after function called.
    :before (fn [req] (println (str "calling: " (:fname req))) req))
 
 (start-slacker-server (the-ns 'slapi) 2104
-                      :interceptors (interceptors logging-interceptor))
+                      :interceptors (interceptors [logging-interceptor]))
 ```
 
 For more information about using interceptors and creating your own
@@ -287,11 +287,12 @@ Then run the performance test script:
 `lein exec -p scripts/performance-test.clj 200000 50`. This will run
 200,000 calls with 50 threads.
 
-Tested on my working desktop (DELL optiplex 760, Intel(R) Core(TM)2
-Duo CPU E7400 @ 2.80GHz, 8G memory), without any special JVM optimization.
-**200,000** calls with **50** threads is completed in **21923.806054
-msecs**, which means slacker could handle more than **9000** calls per
-second on this machine.
+Tested without any special JVM optimization.
+
+| CPU           | Memory           | times(ms)  |  calls/s |
+| ------------- |----------------| -----|---------
+|  DELL optiplex 760, Intel(R) Core(TM)2 Duo CPU E7400 @ 2.80GHz | 8G | 21923.806054 | 9090 |
+| rMBP 2013 late, 2.3 GHz Intel Core i7 | 16G |   15148.756936 | 13333|
 
 ## Change logs
 
