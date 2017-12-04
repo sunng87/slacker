@@ -9,7 +9,8 @@
             [rigui.core :as rigui]
             [slacker.serialization :refer [serialize deserialize]]
             [slacker.common :refer :all]
-            [slacker.protocol :refer :all])
+            [slacker.protocol :refer :all]
+            [manifold.deferred :as d])
   (:import [java.net ConnectException InetSocketAddress InetAddress]
            [java.nio.channels ClosedChannelException]
            [java.util.concurrent ExecutorService]
@@ -270,12 +271,18 @@
                           (deserialize-results)
                           ((:post (:interceptors call-options) identity))))
 
-          prms (post-deref-promise (promise) post-hook cb (:callback-executor call-options))
+          ;;prms (post-deref-promise (promise) post-hook cb (:callback-executor call-options))
+          prms (as-> (d/deferred) $
+                  (if-let [executor (:callback-executor call-options)]
+                    (d/onto $ executor) $)
+                  (d/chain $ post-hook process-call-result))
+          _ (when cb
+              (d/chain prms #(cb (user-friendly-cause %) (:result %))))
           timeout-check (fn []
                           (when-let [handler (get @(:pendings state) tid)]
                             (swap! (:pendings state) dissoc tid)
                             (let [result {:cause {:error :timeout :timeout timeout} :fname fname}]
-                              (deliver (:promise handler) result))
+                              (d/success! (:promise handler) result))
                             (when (:interrupt-on-timeout call-options)
                               (interrupt this tid))))]
       (if-not (> (count @(:pendings state)) backlog 0)
@@ -284,7 +291,7 @@
                  tid {:promise prms :async? true})
           (send! conn request)
           (schedule-task factory timeout-check timeout))
-        (deliver prms {:cause {:error :backlog-overflow} :fname fname}))
+        (d/success! prms {:cause {:error :backlog-overflow} :fname fname}))
       prms))
   (inspect [this cmd args]
     (let [state (get-purgatory factory (server-addr this))

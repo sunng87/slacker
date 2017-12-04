@@ -5,6 +5,7 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[link "0.10.3"]
                  [rigui "0.5.2"]
+                 [manifold "0.1.6"]
                  [org.clojure/tools.logging "0.4.0"]]
   :profiles {:example {:source-paths ["examples"]
                        :dependencies [[org.clojure/java.jmx "0.3.4"]]}
