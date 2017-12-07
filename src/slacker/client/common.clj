@@ -162,7 +162,7 @@
         (throw (ex-info "Slacker client exception" user-ex-data e))
         (throw (ex-info (str "Slacker client error " (:error e)) user-ex-data))))))
 
-(deftype PostDerefPromise [prms post-hook deliver-callback ^ExecutorService deliver-callback-executor]
+#_(deftype PostDerefPromise [prms post-hook deliver-callback ^ExecutorService deliver-callback-executor]
   IDeref
   (deref [_]
     (process-call-result (post-hook @prms)))
@@ -186,7 +186,7 @@
          (.submit deliver-callback-executor ^Runnable (cast Runnable call-cb))
          (call-cb))))))
 
-(defn post-deref-promise
+#_(defn post-deref-promise
   ([post-hook] (post-deref-promise (promise) post-hook nil nil))
   ([prms post-hook] (post-deref-promise prms post-hook nil nil))
   ([prms post-hook cb cb-executor] (PostDerefPromise. prms post-hook cb cb-executor)))
@@ -271,13 +271,16 @@
                           (deserialize-results)
                           ((:post (:interceptors call-options) identity))))
 
-          ;;prms (post-deref-promise (promise) post-hook cb (:callback-executor call-options))
-          prms (as-> (d/deferred) $
-                  (if-let [executor (:callback-executor call-options)]
-                    (d/onto $ executor) $)
-                  (d/chain $ post-hook process-call-result))
+          ;;prms (post-deref-promise (promise) post-hook cb
+          ;;(:callback-executor call-options))
+          prms (d/deferred)
+          prms_processed (d/chain prms post-hook)
+          prms_ret (d/chain prms_processed process-call-result)
           _ (when cb
-              (d/chain prms #(cb (user-friendly-cause %) (:result %))))
+              (as-> prms_processed $
+                (if-let [executor (:callback-executor call-options)]
+                  (d/onto $ executor) $)
+                (d/chain $ #(cb (user-friendly-cause %) (:result %)))))
           timeout-check (fn []
                           (when-let [handler (get @(:pendings state) tid)]
                             (swap! (:pendings state) dissoc tid)
@@ -292,7 +295,7 @@
           (send! conn request)
           (schedule-task factory timeout-check timeout))
         (d/success! prms {:cause {:error :backlog-overflow} :fname fname}))
-      prms))
+      prms_ret))
   (inspect [this cmd args]
     (let [state (get-purgatory factory (server-addr this))
           tid (next-trans-id (:idgen state))
