@@ -162,35 +162,6 @@
         (throw (ex-info "Slacker client exception" user-ex-data e))
         (throw (ex-info (str "Slacker client error " (:error e)) user-ex-data))))))
 
-#_(deftype PostDerefPromise [prms post-hook deliver-callback ^ExecutorService deliver-callback-executor]
-  IDeref
-  (deref [_]
-    (process-call-result (post-hook @prms)))
-  IBlockingDeref
-  (deref [_ timeout timeout-var]
-    (deref prms timeout nil)
-    (if (realized? prms)
-      (deref _)
-      timeout-var))
-  IPending
-  (isRealized [_]
-    (realized? prms))
-  IFn
-  (invoke [_ x]
-    (prms x)
-    (when deliver-callback
-      (let [call-cb (fn []
-                      (let [r (post-hook x)]
-                        (deliver-callback (user-friendly-cause r) (:result r))))]
-        (if deliver-callback-executor
-         (.submit deliver-callback-executor ^Runnable (cast Runnable call-cb))
-         (call-cb))))))
-
-#_(defn post-deref-promise
-  ([post-hook] (post-deref-promise (promise) post-hook nil nil))
-  ([prms post-hook] (post-deref-promise prms post-hook nil nil))
-  ([prms post-hook cb cb-executor] (PostDerefPromise. prms post-hook cb cb-executor)))
-
 (deftype SlackerClient [addr conn ^DefaultSlackerClientFactory factory content-type options]
   SlackerClientProtocol
   (sync-call-remote [this ns-name func-name params call-options]
