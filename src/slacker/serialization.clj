@@ -84,3 +84,41 @@
 
   (catch Throwable _
     (logging/info "Disable nippy support.")))
+
+(try
+  (require '[cognitect.transit])
+  (let [write (resolve-by-name "cognitect.transit" "write")
+        writer (resolve-by-name "cognitect.transit" "writer")
+        read (resolve-by-name "cognitect.transit" "read")
+        reader (resolve-by-name "cognitect.transit" "reader")]
+
+    (defmethod deserialize :transit-json
+      [_ ^ByteBuf data]
+      (let [bin (ByteBufInputStream. data)
+            r (read (reader bin :json))]
+        (.release data)
+        r))
+
+    (defmethod serialize :transit-json
+      [_ data]
+      (let [buffer (.buffer ByteBufAllocator/DEFAULT)
+            bos (ByteBufOutputStream. buffer)]
+        (write (writer bos :json) data)
+        buffer))
+
+    (defmethod deserialize :transit-msgpack
+      [_ ^ByteBuf data]
+      (let [bin (ByteBufInputStream. data)
+            r (read (reader bin :msgpack))]
+        (.release data)
+        r))
+
+    (defmethod serialize :transit-msgpack
+      [_ data]
+      (let [buffer (.buffer ByteBufAllocator/DEFAULT)
+            bos (ByteBufOutputStream. buffer)]
+        (write (writer bos :msgpack) data)
+        buffer)))
+
+  (catch Throwable _
+    (logging/info "Disable transit support.")))

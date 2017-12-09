@@ -23,6 +23,8 @@
 
 (def content-type
   (enum (byte) {:carb 0 :json 1 :clj 2 :nippy 3
+                :transit-json 4 :transit-msgpack 5
+
                 :deflate-carb 10
                 :deflate-json 11
                 :deflate-clj 12
