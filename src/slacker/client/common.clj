@@ -271,11 +271,8 @@
                           (deserialize-results)
                           ((:post (:interceptors call-options) identity))))
 
-          ;;prms (post-deref-promise (promise) post-hook cb
-          ;;(:callback-executor call-options))
           prms (d/deferred)
           prms_processed (d/chain prms post-hook)
-          prms_ret (d/chain prms_processed process-call-result)
           _ (when cb
               (as-> prms_processed $
                 (if-let [executor (:callback-executor call-options)]
@@ -295,7 +292,7 @@
           (send! conn request)
           (schedule-task factory timeout-check timeout))
         (d/success! prms {:cause {:error :backlog-overflow} :fname fname}))
-      prms_ret))
+      prms_processed))
   (inspect [this cmd args]
     (let [state (get-purgatory factory (server-addr this))
           tid (next-trans-id (:idgen state))
@@ -435,7 +432,9 @@
         options (update options :extensions merge *extensions*)]
     (if (or *callback* async? callback)
       ;; async
-      (async-call-remote sc nsname fname args (or *callback* callback) options)
+      (d/chain
+       (async-call-remote sc nsname fname args (or *callback* callback) options)
+       process-call-result)
 
       ;; sync
       (process-call-result (sync-call-remote sc nsname fname args options)))))
