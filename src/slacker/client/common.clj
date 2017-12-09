@@ -9,7 +9,8 @@
             [rigui.core :as rigui]
             [slacker.serialization :refer [serialize deserialize]]
             [slacker.common :refer :all]
-            [slacker.protocol :refer :all])
+            [slacker.protocol :refer :all]
+            [manifold.deferred :as d])
   (:import [java.net ConnectException InetSocketAddress InetAddress]
            [java.nio.channels ClosedChannelException]
            [java.util.concurrent ExecutorService]
@@ -161,35 +162,6 @@
         (throw (ex-info "Slacker client exception" user-ex-data e))
         (throw (ex-info (str "Slacker client error " (:error e)) user-ex-data))))))
 
-(deftype PostDerefPromise [prms post-hook deliver-callback ^ExecutorService deliver-callback-executor]
-  IDeref
-  (deref [_]
-    (process-call-result (post-hook @prms)))
-  IBlockingDeref
-  (deref [_ timeout timeout-var]
-    (deref prms timeout nil)
-    (if (realized? prms)
-      (deref _)
-      timeout-var))
-  IPending
-  (isRealized [_]
-    (realized? prms))
-  IFn
-  (invoke [_ x]
-    (prms x)
-    (when deliver-callback
-      (let [call-cb (fn []
-                      (let [r (post-hook x)]
-                        (deliver-callback (user-friendly-cause r) (:result r))))]
-        (if deliver-callback-executor
-         (.submit deliver-callback-executor ^Runnable (cast Runnable call-cb))
-         (call-cb))))))
-
-(defn post-deref-promise
-  ([post-hook] (post-deref-promise (promise) post-hook nil nil))
-  ([prms post-hook] (post-deref-promise prms post-hook nil nil))
-  ([prms post-hook cb cb-executor] (PostDerefPromise. prms post-hook cb cb-executor)))
-
 (deftype SlackerClient [addr conn ^DefaultSlackerClientFactory factory content-type options]
   SlackerClientProtocol
   (sync-call-remote [this ns-name func-name params call-options]
@@ -270,12 +242,18 @@
                           (deserialize-results)
                           ((:post (:interceptors call-options) identity))))
 
-          prms (post-deref-promise (promise) post-hook cb (:callback-executor call-options))
+          prms (d/deferred)
+          prms_processed (d/chain prms post-hook)
+          _ (when cb
+              (as-> prms_processed $
+                (if-let [executor (:callback-executor call-options)]
+                  (d/onto $ executor) $)
+                (d/chain $ #(cb (user-friendly-cause %) (:result %)))))
           timeout-check (fn []
                           (when-let [handler (get @(:pendings state) tid)]
                             (swap! (:pendings state) dissoc tid)
                             (let [result {:cause {:error :timeout :timeout timeout} :fname fname}]
-                              (deliver (:promise handler) result))
+                              (d/success! (:promise handler) result))
                             (when (:interrupt-on-timeout call-options)
                               (interrupt this tid))))]
       (if-not (> (count @(:pendings state)) backlog 0)
@@ -284,8 +262,8 @@
                  tid {:promise prms :async? true})
           (send! conn request)
           (schedule-task factory timeout-check timeout))
-        (deliver prms {:cause {:error :backlog-overflow} :fname fname}))
-      prms))
+        (d/success! prms {:cause {:error :backlog-overflow} :fname fname}))
+      prms_processed))
   (inspect [this cmd args]
     (let [state (get-purgatory factory (server-addr this))
           tid (next-trans-id (:idgen state))
@@ -425,7 +403,9 @@
         options (update options :extensions merge *extensions*)]
     (if (or *callback* async? callback)
       ;; async
-      (async-call-remote sc nsname fname args (or *callback* callback) options)
+      (d/chain
+       (async-call-remote sc nsname fname args (or *callback* callback) options)
+       process-call-result)
 
       ;; sync
       (process-call-result (sync-call-remote sc nsname fname args options)))))

@@ -31,7 +31,7 @@
   (println (timestamp))
   (println (inc-m 100))
   (println (show-m))
-  (println @(get-m))
+  (println "Async deferred" @(get-m))
   (with-extensions {extension-id "extension-value"}
     (get-m2))
   (println (rand-ints 10))
