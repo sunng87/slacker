@@ -15,7 +15,20 @@ Clojure.
 * Plugable serialization backend, EDN, JSON and Nippy are built-in.
 * Transparent and non-invasive API. Calling remote just like local invocation.
 * Extensible server and client with interceptor framework.
-* Flexible cluster with Zookeeper (moved to [slacker-cluster](https://github.com/sunng87/slacker-cluster))
+* Flexible cluster with Zookeeper (moved to
+  [slacker-cluster](https://github.com/sunng87/slacker-cluster))
+
+## Slacker family
+
+* [slacker-metrics](https://github.com/sunng87/slacker-metrics)
+  Codahale's metrics collector as a slacker interceptor. It measures
+  QPS and latency for every function exposed.
+* [slacker-htrace](https://github.com/sunng87/slacker-htrace)
+  Distributed tracing for slacker.
+* [slacker-rust](https://github.com/sunng87/slacker-rust)
+  An experimental slacker RPC implementation in Rust.
+* [slacker-python](https://github.com/sunng87/slacker-python)
+  A limited python library for calling slacker functions.
 
 ## Examples
 
@@ -180,7 +193,7 @@ to add nippy into your classpath and set the content-type as `:nippy`
 to use it. Nippy has excellent support for custom types, you can find
 detailed information on its page.
 
-#### Middleware
+#### Interceptor
 
 To add custom functions on server and client, you can define custom
 interceptors before or after function called.
@@ -276,7 +289,7 @@ raised.
 
 ## API Documentation
 
-[API docs](http://sunng.info/slacker/)
+[API docs](https://sunng87.github.io/slacker/)
 
 ## Performance
 
