@@ -1,6 +1,10 @@
 language: clojure
-after_success: |
-    lein with-profile default,clojure16 doc && \
-    sudo pip install ghp-import && \
-    ghp-import -n target/codox && \
-    git push -qf https://${TOKEN}@github.com/${TRAVIS_REPO_SLUG}.git gh-pages > /dev/null 2>&1
+after_success:
+    lein codox
+deploy:
+  provider: pages
+  skip_cleanup: true
+  github_token: $TOKEN
+  local_dir: target/codox
+  on:
+    branch: master
