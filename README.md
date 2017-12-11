@@ -11,7 +11,7 @@ Clojure.
 
 ## Features
 
-* Fast network infrastructure, fully asynchronous
+* Fast network layer, fully asynchronous and multiplexed
 * Plugable serialization backend, EDN, JSON and Nippy are built-in.
 * Transparent and non-invasive API. Calling remote just like local invocation.
 * Extensible server and client with interceptor framework.
@@ -20,6 +20,9 @@ Clojure.
 
 ## Slacker family
 
+* [slacker-cluster](https://github.com/sunng87/slacker-cluster)
+  Slacker cluster, service discovery with Zookeeper, and custom
+  grouping call.
 * [slacker-metrics](https://github.com/sunng87/slacker-metrics)
   Codahale's metrics collector as a slacker interceptor. It measures
   QPS and latency for every function exposed.
