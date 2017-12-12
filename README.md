@@ -309,10 +309,6 @@ Duo CPU E7400 @ 2.80GHz, 8G memory), without any special JVM optimization.
 msecs**, which means slacker could handle more than **9000** calls per
 second on this machine.
 
-## Change logs
-
-See [wiki page](https://github.com/sunng87/slacker/wiki/VersionHistory)
-
 ## License
 
 Copyright (C) 2011-2017 Sun Ning
