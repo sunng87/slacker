@@ -300,14 +300,12 @@ To test performance, just start an example server with `lein run -m
 slacker.example.server`.
 
 Then run the performance test script:
-`lein exec -p scripts/performance-test.clj 200000 50`. This will run
-200,000 calls with 50 threads.
+`lein exec -p scripts/performance-test.clj 200000 40`. This will run
+200,000 calls with 40 threads.
 
-Tested on my working desktop (DELL optiplex 760, Intel(R) Core(TM)2
-Duo CPU E7400 @ 2.80GHz, 8G memory), without any special JVM optimization.
-**200,000** calls with **50** threads is completed in **21923.806054
-msecs**, which means slacker could handle more than **9000** calls per
-second on this machine.
+Tested on my laptop(i7-5600U), **200,000** calls with **40** threads
+is completed in **12677.487741 msecs**, which means slacker could
+handle more than **15700** calls per second on this machine.
 
 ## License
 
