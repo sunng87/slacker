@@ -155,19 +155,22 @@
 ;; [version tid  [request-type [cmd data]]]
 (defn ^:no-doc build-inspect-handler [funcs]
   (fn [req]
-    (let [[prot-ver [tid [_ [cmd data]]]] req
-          data (deserialize :clj data)
-          results (case cmd
-                    :functions
-                    (let [nsname (or data "")]
-                      (filter #(clojure.string/starts-with? % nsname) (keys funcs)))
-                    :meta
-                    (let [fname data
-                          metadata (meta (funcs fname))]
-                      (select-keys metadata [:name :doc :arglists]))
-                    nil)
-          sresult (serialize :clj results)]
-      (make-inspect-ack prot-ver tid sresult))))
+    (let [[prot-ver [tid [_ [cmd byte-block]]]] req]
+      (try
+        (let [data (deserialize :clj byte-block)
+              results (case cmd
+                        :functions
+                        (let [nsname (or data "")]
+                          (filter #(clojure.string/starts-with? % nsname) (keys funcs)))
+                        :meta
+                        (let [fname data
+                              metadata (meta (funcs fname))]
+                          (select-keys metadata [:name :doc :arglists]))
+                        nil)
+              sresult (serialize :clj results)]
+          (make-inspect-ack prot-ver tid sresult))
+        (finally
+          (.release ^ByteBuf byte-block))))))
 
 (defn- interrupt-handler [packet client-info running-threads]
   (let [[_ [_ [_ [target-tid]]]] packet
