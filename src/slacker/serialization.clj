@@ -27,7 +27,6 @@
     (defmethod deserialize :json
       [_ ^ByteBuf data]
       (let [s (.toString data ^Charset (Charset/forName "UTF-8"))]
-        (.release data)
         (parse-string s true)))
 
     (defmethod serialize :json
@@ -46,7 +45,6 @@
 (defmethod deserialize :clj
   [_ ^ByteBuf data]
   (let [s (.toString data ^Charset (Charset/forName "UTF-8"))]
-    (.release data)
     (edn/read-string s)))
 
 (defmethod serialize :clj
@@ -70,10 +68,8 @@
 
     (defmethod deserialize :nippy
       [_ ^ByteBuf data]
-      (let [bin (ByteBufInputStream. data)
-            r (thaw bin)]
-        (.release data)
-        r))
+      (let [bin (ByteBufInputStream. data)]
+        (thaw bin)))
 
     (defmethod serialize :nippy
       [_ data]
@@ -94,10 +90,8 @@
 
     (defmethod deserialize :transit-json
       [_ ^ByteBuf data]
-      (let [bin (ByteBufInputStream. data)
-            r (read (reader bin :json))]
-        (.release data)
-        r))
+      (let [bin (ByteBufInputStream. data)]
+        (read (reader bin :json))))
 
     (defmethod serialize :transit-json
       [_ data]
@@ -108,10 +102,8 @@
 
     (defmethod deserialize :transit-msgpack
       [_ ^ByteBuf data]
-      (let [bin (ByteBufInputStream. data)
-            r (read (reader bin :msgpack))]
-        (.release data)
-        r))
+      (let [bin (ByteBufInputStream. data)]
+        (read (reader bin :msgpack))))
 
     (defmethod serialize :transit-msgpack
       [_ data]

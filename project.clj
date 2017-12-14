@@ -3,7 +3,7 @@
   :url "http://github.com/sunng87/slacker"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
-  :dependencies [[link "0.10.3"]
+  :dependencies [[link "0.11.0-SNAPSHOT"]
                  [rigui "0.5.2"]
                  [manifold "0.1.6"]
                  [org.clojure/tools.logging "0.4.0"]]
@@ -30,4 +30,6 @@
   :deploy-repositories {"releases" :clojars}
   :codox {:output-path "target/codox"
           :source-uri "https://github.com/sunng87/slacker/blob/master/{filepath}#L{line}"
-          :metadata {:doc/format :markdown}})
+          :metadata {:doc/format :markdown}}
+  :jvm-opts ["-Dio.netty.leakDetection.level=advanced"
+             "-Dio.netty.leakDetection.targetRecords=20"])

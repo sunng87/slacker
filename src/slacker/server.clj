@@ -12,7 +12,8 @@
             [link.codec :refer [netty-encoder netty-decoder]])
   (:import [java.util.concurrent TimeUnit ExecutorService
             ThreadPoolExecutor LinkedBlockingQueue RejectedExecutionHandler
-            RejectedExecutionException ThreadPoolExecutor$DiscardOldestPolicy ThreadFactory]))
+            RejectedExecutionException ThreadPoolExecutor$AbortPolicy ThreadFactory]
+           [io.netty.buffer ByteBuf]))
 
 (defn- counted-thread-factory
   [name-format daemon]
@@ -29,7 +30,7 @@
                        TimeUnit/MILLISECONDS
                        (LinkedBlockingQueue. ^long backlog-queue-size)
                        (counted-thread-factory "slacker-server-worker-%d" true)
-                       ^RejectedExecutionHandler (ThreadPoolExecutor$DiscardOldestPolicy.)))
+                       ^RejectedExecutionHandler (ThreadPoolExecutor$AbortPolicy.)))
 
 (defmacro ^:private with-executor [executor & body]
   `(.submit ~executor
@@ -63,8 +64,8 @@
           extensions (:extensions req)]
       (assoc req
              :args (deserialize content-type data)
-             :extensions (into {} (map #(update % 1 (partial deserialize content-type))
-                                       extensions))))
+             :extensions (into {} (mapv #(update % 1 (partial deserialize content-type))
+                                        extensions))))
     req))
 
 (defn- do-invoke [req]
@@ -106,7 +107,7 @@
 (defn- map-response-fields [req]
   (protocol/of (:protocol-version req)
                [(:tid req) [:type-response
-                            (map req [:content-type :code :result :extensions])]]))
+                            (mapv req [:content-type :code :result :extensions])]]))
 
 (defn- assoc-current-thread [req running-threads]
   (if running-threads
@@ -178,6 +179,14 @@
       (swap! running-threads dissoc key))
     nil))
 
+(defn- release-buffer [req-map]
+  ;; release the buffer
+  (when-let [byte-block (:data req-map)]
+    (.release ^ByteBuf byte-block))
+  (when-let [exts (not-empty (:extensions req-map))]
+    (doseq [bb (map second exts)]
+      (.release ^ByteBuf bb))))
+
 ;; p: [version [tid [type ...]]]
 (defmulti ^:private -handle-request (fn [p & _] (let [[_ [_ [packet-type]]] p] packet-type)))
 (defmethod -handle-request :type-request [req
@@ -197,18 +206,28 @@
         (do
           (try
             (with-executor ^ThreadPoolExecutor thread-pool
-              (let [result (map-response-fields (server-pipeline req-map))]
-                (when-not (or (nil? result) (= :interrupted (:code result)))
-                  (link/send! (:channel client-info) result))))
+              (try
+                (let [result (map-response-fields (server-pipeline req-map))]
+                  (when-not (or (nil? result) (= :interrupted (:code result)))
+                    (link/send! (:channel client-info) result)))
+                (finally
+                  (release-buffer req-map))))
             ;; async run, return nil so sync wait won't send
             nil
             (catch RejectedExecutionException _
               (log/warn "Server thread pool is full for" (:ns-name req-map))
+              (release-buffer req-map)
               (error-packet (:version req-map) (:tid req-map) :thread-pool-full))))
         ;; run on default thread
-        (map-response-fields (server-pipeline req-map)))
+        (try
+          (map-response-fields (server-pipeline req-map))
+          (finally
+            (release-buffer req-map))))
       ;; return error
-      (error-packet (:version req-map) (:tid req-map) :not-found))))
+      (try
+        (error-packet (:version req-map) (:tid req-map) :not-found)
+        (finally
+          (release-buffer req-map))))))
 (defmethod -handle-request :type-ping [[version [tid _]] & _]
   (pong-packet version tid))
 (defmethod -handle-request :type-inspect-req [p _ _ inspect-handler & _]
