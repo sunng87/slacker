@@ -14,7 +14,8 @@
   (:import [java.net ConnectException InetSocketAddress InetAddress]
            [java.nio.channels ClosedChannelException]
            [java.util.concurrent ExecutorService]
-           [clojure.lang IFn IDeref IBlockingDeref IPending]))
+           [clojure.lang IFn IDeref IBlockingDeref IPending]
+           [io.netty.buffer ByteBuf]))
 
 (defn- handle-valid-response [response]
   (let [[content-type code data extensions] (second response)]
@@ -40,7 +41,10 @@
 
 (defn parse-inspect-response [response]
   (let [[_ [data]] response]
-    {:result (deserialize :clj data)}))
+    (try
+      {:result (deserialize :clj data)}
+      (finally
+        (.release ^ByteBuf data)))))
 
 (defn handle-response [response]
   (case (first response)
@@ -142,6 +146,16 @@
       (assoc :extensions (into {} (map #(update % 1 (partial deserialize (:content-type resp)))
                                        (:extensions resp))))))
 
+(defn- release-buffer! [resp]
+  ;; release the buffer
+  (when-let [bb (:result resp)]
+    (.release ^ByteBuf bb))
+  (when-let [exts (not-empty (:extensions resp))]
+    (doseq [bb (map second exts)]
+      (.release ^ByteBuf bb)))
+  (when-let [bb (-> resp :cause :exception)]
+    (.release ^ByteBuf bb)))
+
 (defn- parse-exception [einfo]
   (doto (Exception. ^String (:msg einfo))
     (.setStackTrace (:stacktrace einfo))))
@@ -204,13 +218,16 @@
                        {:cause {:error :interrupted} :fname fname})))
                  {:cause {:error :backlog-overflow} :fname fname})]
 
-      (-> (assoc req-data
-                 :cause (:cause resp)
-                 :result (:result resp)
-                 :extensions (:extensions resp))
-          ((:after (:interceptors call-options) identity))
-          (deserialize-results)
-          ((:post (:interceptors call-options) identity)))))
+      (try
+        (-> (assoc req-data
+                   :cause (:cause resp)
+                   :result (:result resp)
+                   :extensions (:extensions resp))
+            ((:after (:interceptors call-options) identity))
+            (deserialize-results)
+            ((:post (:interceptors call-options) identity)))
+        (finally
+          (release-buffer! resp)))))
 
   (async-call-remote [this ns-name func-name params cb call-options]
     (let [call-options (merge options call-options)
@@ -234,13 +251,16 @@
           timeout (or (:timeout call-options) *timeout*)
 
           post-hook (fn [result]
-                      (-> (assoc req-data
-                                 :cause (:cause result)
-                                 :result (:result result)
-                                 :extensions (:extensions result))
-                          ((:after (:interceptors call-options) identity))
-                          (deserialize-results)
-                          ((:post (:interceptors call-options) identity))))
+                      (try
+                        (-> (assoc req-data
+                                   :cause (:cause result)
+                                   :result (:result result)
+                                   :extensions (:extensions result))
+                            ((:after (:interceptors call-options) identity))
+                            (deserialize-results)
+                            ((:post (:interceptors call-options) identity)))
+                        (finally
+                          (release-buffer! result))))
 
           prms (d/deferred)
           prms_processed (d/chain prms post-hook)

@@ -47,7 +47,7 @@
 ;; [version transaction-id [request-type [content-type func-name params]]]
 (defn- map-req-fields [req]
   (let [[prot-ver [tid [_ data]]] req]
-    (assoc (zipmap [:content-type :fname :data :extensions] data)
+    (assoc (zipmap [:content-type :fname :data :raw-extensions] data)
            :tid tid
            :protocol-version prot-ver)))
 
@@ -61,7 +61,7 @@
   (if (nil? (:code req))
     (let [data (:data req)
           content-type (:content-type req)
-          extensions (:extensions req)]
+          extensions (:raw-extensions req)]
       (assoc req
              :args (deserialize content-type data)
              :extensions (into {} (mapv #(update % 1 (partial deserialize content-type))
@@ -100,14 +100,14 @@
 (defn- serialize-result [req]
   (assoc req
          :result (serialize (:content-type req) (:result req))
-         :extensions (->> (:extensions req)
+         :raw-extensions (->> (:extensions req)
                           (into [])
                           (mapv #(update % 1 (partial serialize (:content-type req)))))))
 
 (defn- map-response-fields [req]
   (protocol/of (:protocol-version req)
                [(:tid req) [:type-response
-                            (mapv req [:content-type :code :result :extensions])]]))
+                            (mapv req [:content-type :code :result :raw-extensions])]]))
 
 (defn- assoc-current-thread [req running-threads]
   (if running-threads
@@ -182,11 +182,11 @@
       (swap! running-threads dissoc key))
     nil))
 
-(defn- release-buffer [req-map]
+(defn- release-buffer! [req-map]
   ;; release the buffer
   (when-let [byte-block (:data req-map)]
     (.release ^ByteBuf byte-block))
-  (when-let [exts (not-empty (:extensions req-map))]
+  (when-let [exts (not-empty (:raw-extensions req-map))]
     (doseq [bb (map second exts)]
       (.release ^ByteBuf bb))))
 
@@ -214,23 +214,23 @@
                   (when-not (or (nil? result) (= :interrupted (:code result)))
                     (link/send! (:channel client-info) result)))
                 (finally
-                  (release-buffer req-map))))
+                  (release-buffer! req-map))))
             ;; async run, return nil so sync wait won't send
             nil
             (catch RejectedExecutionException _
               (log/warn "Server thread pool is full for" (:ns-name req-map))
-              (release-buffer req-map)
+              (release-buffer! req-map)
               (error-packet (:version req-map) (:tid req-map) :thread-pool-full))))
         ;; run on default thread
         (try
           (map-response-fields (server-pipeline req-map))
           (finally
-            (release-buffer req-map))))
+            (release-buffer! req-map))))
       ;; return error
       (try
         (error-packet (:version req-map) (:tid req-map) :not-found)
         (finally
-          (release-buffer req-map))))))
+          (release-buffer! req-map))))))
 (defmethod -handle-request :type-ping [[version [tid _]] & _]
   (pong-packet version tid))
 (defmethod -handle-request :type-inspect-req [p _ _ inspect-handler & _]
