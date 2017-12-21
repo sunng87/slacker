@@ -19,7 +19,9 @@
                 :type-auth-ack 6
                 :type-inspect-req 7
                 :type-inspect-ack 8
-                :type-interrupt 9}))
+                :type-interrupt 9
+                :type-client-hello 10
+                :type-server-hello 11}))
 
 (def content-type
   (enum (byte) {:carb 0 :json 1 :clj 2 :nippy 3
@@ -117,6 +119,19 @@
   (frame
    (int32)))
 
+(def slacker-client-hello-codec
+  (frame
+   ;; client version
+   (string :prefix (uint16))
+   ;; client name
+   (string :prefix (uint16))))
+
+(def slacker-server-hello-codec
+  (frame
+   ;; server version
+   (string :prefix (uint16))
+   ))
+
 (def slacker-v5-codec
   (frame
    (int32) ;; transaction id
@@ -147,7 +162,9 @@
      :type-auth-ack slacker-auth-ack-codec
      :type-inspect-req slacker-inspect-req-codec
      :type-inspect-ack slacker-inspect-ack-codec
-     :type-interrupt slacker-interrupt-codec})))
+     :type-interrupt slacker-interrupt-codec
+     :type-client-hello slacker-client-hello-codec
+     :type-server-hello slacker-server-hello-codec})))
 
 (def slacker-root-codec
   (header
