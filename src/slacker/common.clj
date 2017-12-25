@@ -1,4 +1,5 @@
-(ns slacker.common)
+(ns slacker.common
+  (:require [trptcolin.versioneer.core :as ver]))
 
 (def
   ^{:doc "Debug flag. This flag can be override by binding if you like to see some debug output."
@@ -35,3 +36,6 @@
    sent to remote server using same content type with the request body."
   [ext-map & body]
   `(binding [*extensions* ~ext-map] ~@body))
+
+(def slacker-version
+  (ver/get-version "slacker" "slacker"))
