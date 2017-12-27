@@ -28,7 +28,7 @@
       {:cause {:error :invalid-result-code}})))
 
 (defn make-client-hello [client-version client-name]
-  [client-version client-name])
+  [0 [:type-client-hello [client-version client-name]]])
 
 (defn make-request [tid content-type func-name params extensions]
   [tid [:type-request [content-type func-name params extensions]]])
@@ -360,6 +360,9 @@
                     slacker-client (->> addr-str
                                         (get-purgatory @factory-ref)
                                         :refs
+                                        ;; TODO: multiple client to
+                                        ;; same server with different
+                                        ;; configuration
                                         (filter #(= addr-str (.-addr %)))
                                         first)
                     slacker-options (.-options slacker-client)

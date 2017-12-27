@@ -137,6 +137,8 @@
   :type-error [code])
 (def-packet-fn make-inspect-ack [data]
   :type-inspect-ack [data])
+(def-packet-fn server-hello-packet [server-version]
+  :type-server-hello [server-version])
 
 (defn ^:no-doc build-server-pipeline [interceptors running-threads]
   #(-> %
@@ -198,7 +200,8 @@
                                           inspect-handler
                                           running-threads
                                           executors
-                                          funcs]
+                                          funcs
+                                          & _]
   (let [req-map (assoc (map-req-fields req) :client client-info)
         req-map (look-up-function req-map funcs)]
     (if (nil? (:code req-map))
@@ -237,16 +240,27 @@
   (inspect-handler p))
 (defmethod -handle-request :type-interrupt [p _ client-info _ running-threads & _]
   (interrupt-handler p client-info running-threads))
+(defmethod -handle-request :type-client-hello [p _ client-info _ _ _ _ connected-clients]
+  (let [[version [tid [_ [client-version client-name]]]] p
+        client-data {:addr (:remote-addr client-info)
+                     :name client-name
+                     :version client-version}]
+    (swap! connected-clients assoc (:remote-addr client-info) client-data)
+    (server-hello-packet version tid slacker-version)))
 (defmethod -handle-request :default [[version [tid _]] & _]
   (error-packet version tid :invalid-packet))
 
+
 (defn ^:no-doc handle-request
-  [server-pipeline req client-info inspect-handler running-threads executors funcs]
+  [server-pipeline req client-info inspect-handler running-threads executors
+   funcs connected-clients]
   (log/debug req)
   (-handle-request req server-pipeline
-                   client-info inspect-handler running-threads executors funcs))
+                   client-info inspect-handler running-threads
+                   executors funcs connected-clients))
 
-(defn- create-server-handler [executors funcs interceptors running-threads]
+(defn- create-server-handler [executors funcs interceptors
+                              running-threads connected-clients]
   (let [server-pipeline (build-server-pipeline interceptors running-threads)
         inspect-handler (build-inspect-handler funcs)]
     (create-handler
@@ -261,7 +275,8 @@
                                inspect-handler
                                running-threads
                                executors
-                               funcs)]
+                               funcs
+                               connected-clients)]
                    (log/debug "result" result)
                    (when-not (or (nil? result) (= :interrupted (:code result)))
                      (send! ch result))))
@@ -352,7 +367,9 @@
         default-executor (or executor (thread-pool-executor threads queue-size))
         executors (assoc executors :default default-executor)
         running-threads (atom {})
-        handler (create-server-handler executors funcs interceptors running-threads)
+        connected-clients (atom #{})
+        handler (create-server-handler executors funcs interceptors
+                                       running-threads connected-clients)
         ssl-handler (when ssl-context
                       (ssl-handler-from-jdk-ssl-context ssl-context false))
         handlers [(netty-encoder protocol/slacker-root-codec)
