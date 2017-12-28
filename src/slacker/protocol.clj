@@ -5,6 +5,8 @@
 (def ^:const v5 5)
 (def ^:const v6 6)
 
+(def ^:const default-version v6)
+
 (def versions
   (enum (byte) {v5 5
                 v6 6}))
@@ -122,14 +124,14 @@
 (def slacker-client-hello-codec
   (frame
    ;; client version
-   (string :prefix (uint16))
+   (string :encoding :utf-8 :prefix (uint16))
    ;; client name
-   (string :prefix (uint16))))
+   (string :encoding :utf-8 :prefix (uint16))))
 
 (def slacker-server-hello-codec
   (frame
    ;; server version
-   (string :prefix (uint16))
+   (string :encoding :utf-8 :prefix (uint16))
    ))
 
 (def slacker-v5-codec
@@ -175,4 +177,4 @@
 ;; helper function
 
 (defn of [v data]
-  [(or v v6) data])
+  [(or v default-version) data])

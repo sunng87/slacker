@@ -244,7 +244,8 @@
   (let [[version [tid [_ [client-version client-name]]]] p
         client-data {:addr (:remote-addr client-info)
                      :name client-name
-                     :version client-version}]
+                     :version client-version
+                     :connected-on (System/currentTimeMillis)}]
     (swap! connected-clients assoc (:remote-addr client-info) client-data)
     (server-hello-packet version tid slacker-version)))
 (defmethod -handle-request :default [[version [tid _]] & _]
@@ -282,7 +283,9 @@
                      (send! ch result))))
      (on-error [ch ^Exception e]
                (log/error e "Unexpected error in event loop")
-               (close! ch)))))
+               (close! ch))
+     (on-inactive [ch]
+                  (swap! connected-clients dissoc (remote-addr ch))))))
 
 
 (defn ^:no-doc parse-funcs [n]
@@ -367,7 +370,7 @@
         default-executor (or executor (thread-pool-executor threads queue-size))
         executors (assoc executors :default default-executor)
         running-threads (atom {})
-        connected-clients (atom #{})
+        connected-clients (atom {})
         handler (create-server-handler executors funcs interceptors
                                        running-threads connected-clients)
         ssl-handler (when ssl-context
