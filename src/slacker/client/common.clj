@@ -360,7 +360,7 @@
                     slacker-client (->> addr-str
                                         (get-purgatory @factory-ref)
                                         :refs
-                                        ;; TODO: multiple client to
+                                        ;; TODO: multiple clients to
                                         ;; same server with different
                                         ;; configuration
                                         (filter #(= addr-str (.-addr %)))

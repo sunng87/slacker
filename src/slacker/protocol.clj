@@ -108,7 +108,8 @@
 (def slacker-inspect-req-codec
   (frame
    (enum (byte) {:functions 0
-                 :meta 1})
+                 :meta 1
+                 :clients 2})
    (byte-block :prefix (uint16))))
 
 ;; type-inspect-ack
