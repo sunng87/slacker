@@ -155,7 +155,7 @@
 ;; inspection handler
 ;; inspect request data structure
 ;; [version tid  [request-type [cmd data]]]
-(defn ^:no-doc build-inspect-handler [funcs]
+(defn ^:no-doc build-inspect-handler [funcs connected-clients]
   (fn [req]
     (let [[prot-ver [tid [_ [cmd byte-block]]]] req]
       (try
@@ -168,6 +168,8 @@
                         (let [fname data
                               metadata (meta (funcs fname))]
                           (select-keys metadata [:name :doc :arglists]))
+                        :clients
+                        @connected-clients
                         nil)
               sresult (serialize :clj results)]
           (make-inspect-ack prot-ver tid sresult))
@@ -236,13 +238,13 @@
           (release-buffer! req-map))))))
 (defmethod -handle-request :type-ping [[version [tid _]] & _]
   (pong-packet version tid))
-(defmethod -handle-request :type-inspect-req [p _ _ inspect-handler & _]
-  (inspect-handler p))
+(defmethod -handle-request :type-inspect-req [p _ _ inspect-handler _ _ _ connected-clients & _]
+  (inspect-handler p connected-clients))
 (defmethod -handle-request :type-interrupt [p _ client-info _ running-threads & _]
   (interrupt-handler p client-info running-threads))
 (defmethod -handle-request :type-client-hello [p _ client-info _ _ _ _ connected-clients]
   (let [[version [tid [_ [client-version client-name]]]] p
-        client-data {:addr (:remote-addr client-info)
+        client-data {:addr (str (:remote-addr client-info))
                      :name client-name
                      :version client-version
                      :connected-on (System/currentTimeMillis)}]
@@ -269,6 +271,7 @@
                  (log/debug "data received" data)
                  (let [client-info {:remote-addr (remote-addr ch)
                                     :channel ch}
+                       ;; FIXME: refactor arguments
                        result (handle-request
                                server-pipeline
                                data
