@@ -478,5 +478,14 @@
       (throw (ex-info "Slacker client error"
                       (user-friendly-cause call-result))))))
 
+(defn clients-remote
+  "get clients information on remote server"
+  [sc]
+  (let [call-result (inspect @sc :clients nil)]
+    (if (nil? (:cause call-result))
+      (:result call-result)
+      (throw (ex-info "Slacker client error"
+                      (user-friendly-cause call-result))))))
+
 (defn shutdown-factory [factory]
   (shutdown factory))

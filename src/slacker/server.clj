@@ -238,8 +238,8 @@
           (release-buffer! req-map))))))
 (defmethod -handle-request :type-ping [[version [tid _]] & _]
   (pong-packet version tid))
-(defmethod -handle-request :type-inspect-req [p _ _ inspect-handler _ _ _ connected-clients & _]
-  (inspect-handler p connected-clients))
+(defmethod -handle-request :type-inspect-req [p _ _ inspect-handler & _]
+  (inspect-handler p))
 (defmethod -handle-request :type-interrupt [p _ client-info _ running-threads & _]
   (interrupt-handler p client-info running-threads))
 (defmethod -handle-request :type-client-hello [p _ client-info _ _ _ _ connected-clients]
@@ -265,7 +265,7 @@
 (defn- create-server-handler [executors funcs interceptors
                               running-threads connected-clients]
   (let [server-pipeline (build-server-pipeline interceptors running-threads)
-        inspect-handler (build-inspect-handler funcs)]
+        inspect-handler (build-inspect-handler funcs connected-clients)]
     (create-handler
      (on-message [ch data]
                  (log/debug "data received" data)
