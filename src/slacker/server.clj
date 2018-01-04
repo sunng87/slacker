@@ -169,7 +169,7 @@
                               metadata (meta (funcs fname))]
                           (select-keys metadata [:name :doc :arglists]))
                         :clients
-                        @connected-clients
+                        (vals @connected-clients)
                         nil)
               sresult (serialize :clj results)]
           (make-inspect-ack prot-ver tid sresult))
