@@ -179,3 +179,6 @@
 
 (defn of [v data]
   [(or v default-version) data])
+
+(defn packet-type-from-frame [p]
+  (let [[_ [_ [packet-type]]] p] packet-type))
