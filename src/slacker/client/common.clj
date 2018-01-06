@@ -364,14 +364,15 @@
                                         ;; same server with different
                                         ;; configuration
                                         (filter #(= addr-str (.-addr %)))
-                                        first)
-                    slacker-options (.-options slacker-client)
-                    protocol-version (:protocol-version slacker-options)
-                    client-name (:client-name slacker-options "")]
-                (log/debug "slacker-options for this channel:" slacker-options)
-                (send! ch
-                       (protocol/of protocol-version
-                                    (make-client-hello client-version client-name)))))
+                                        first)]
+                (when slacker-client
+                  (let [slacker-options (.-options slacker-client)
+                        protocol-version (:protocol-version slacker-options)
+                        client-name (:client-name slacker-options "")]
+                    (log/debug "slacker-options for this channel:" slacker-options)
+                    (send! ch
+                           (protocol/of protocol-version
+                                        (make-client-hello client-version client-name)))))))
    (on-inactive [ch]
                 (when-let [rmap (->> ch
                                      (channel-hostport)
