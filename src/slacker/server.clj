@@ -10,7 +10,8 @@
             [slacker.interceptor :as interceptor]
             [link.ssl :refer [ssl-handler-from-jdk-ssl-context]]
             [link.codec :refer [netty-encoder netty-decoder]])
-  (:import [java.util.concurrent TimeUnit ExecutorService
+  (:import [java.util Date]
+           [java.util.concurrent TimeUnit ExecutorService
             ThreadPoolExecutor LinkedBlockingQueue RejectedExecutionHandler
             RejectedExecutionException ThreadPoolExecutor$AbortPolicy ThreadFactory]
            [io.netty.buffer ByteBuf]))
@@ -247,7 +248,7 @@
         client-data {:addr (str (:remote-addr client-info))
                      :name client-name
                      :version client-version
-                     :connected-on (System/currentTimeMillis)}]
+                     :connected-on (Date.)}]
     (swap! connected-clients assoc (:remote-addr client-info) client-data)
     (server-hello-packet version tid slacker-version)))
 (defmethod -handle-request :default [_ [version [tid _]] _]
