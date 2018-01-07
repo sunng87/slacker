@@ -123,3 +123,8 @@
       (merge metadata
              (meta-remote sc (str remote-ns "/" remote-fn)))
       metadata)))
+
+(defn slacker-server-status
+  "Fetch server status of current slacker server."
+  [sc]
+  (clients-remote sc))
