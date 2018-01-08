@@ -156,7 +156,7 @@
 ;; inspection handler
 ;; inspect request data structure
 ;; [version tid  [request-type [cmd data]]]
-(defn ^:no-doc build-inspect-handler [funcs connected-clients]
+(defn ^:no-doc build-inspect-handler [funcs server-status]
   (fn [req]
     (let [[prot-ver [tid [_ [cmd byte-block]]]] req]
       (try
@@ -170,7 +170,8 @@
                               metadata (meta (funcs fname))]
                           (select-keys metadata [:name :doc :arglists]))
                         :clients
-                        (vals @connected-clients)
+                        (-> @server-status
+                            (update-in [:connected-clients] vals))
                         nil)
               sresult (serialize :clj results)]
           (make-inspect-ack prot-ver tid sresult))
@@ -243,13 +244,14 @@
   (inspect-handler p))
 (defmethod -handle-request :type-interrupt [{:keys [running-threads]} p client-info]
   (interrupt-handler p client-info running-threads))
-(defmethod -handle-request :type-client-hello [{:keys [connected-clients]} p client-info]
+(defmethod -handle-request :type-client-hello [{:keys [server-status]} p client-info]
   (let [[version [tid [_ [client-version client-name]]]] p
         client-data {:addr (str (:remote-addr client-info))
                      :name client-name
                      :version client-version
                      :connected-on (Date.)}]
-    (swap! connected-clients assoc (:remote-addr client-info) client-data)
+    (swap! server-status update-in [:connected-clients]
+           assoc (:remote-addr client-info) client-data)
     (server-hello-packet version tid slacker-version)))
 (defmethod -handle-request :default [_ [version [tid _]] _]
   (error-packet version tid :invalid-packet))
@@ -262,17 +264,19 @@
 
 (defn- create-server-handler [{:keys [executors funcs interceptors]}]
   (let [running-threads (atom {})
-        connected-clients (atom {})
+        server-status (atom {:connected-clients {}
+                             :started-on (Date.)
+                             :version slacker-version})
 
         server-pipeline (build-server-pipeline interceptors running-threads)
-        inspect-handler (build-inspect-handler funcs connected-clients)
+        inspect-handler (build-inspect-handler funcs server-status)
         handle-request-partial (partial handle-request
                                         {:server-pipeline server-pipeline
                                          :inspect-handler inspect-handler
                                          :running-threads running-threads
                                          :executors executors
                                          :funcs funcs
-                                         :connected-clients connected-clients})]
+                                         :server-status server-status})]
     (create-handler
      (on-message [ch data]
                  (log/debug "data received" data)
@@ -286,7 +290,8 @@
                (log/error e "Unexpected error in event loop")
                (close! ch))
      (on-inactive [ch]
-                  (swap! connected-clients dissoc (remote-addr ch))))))
+                  (swap! server-status update-in [:connected-clients]
+                         dissoc (remote-addr ch))))))
 
 
 (defn ^:no-doc parse-funcs [n]
