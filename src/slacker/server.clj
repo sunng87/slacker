@@ -10,7 +10,8 @@
             [slacker.interceptor :as interceptor]
             [link.ssl :refer [ssl-handler-from-jdk-ssl-context]]
             [link.codec :refer [netty-encoder netty-decoder]])
-  (:import [java.util.concurrent TimeUnit ExecutorService
+  (:import [java.util Date]
+           [java.util.concurrent TimeUnit ExecutorService
             ThreadPoolExecutor LinkedBlockingQueue RejectedExecutionHandler
             RejectedExecutionException ThreadPoolExecutor$AbortPolicy ThreadFactory]
            [io.netty.buffer ByteBuf]))
@@ -137,6 +138,8 @@
   :type-error [code])
 (def-packet-fn make-inspect-ack [data]
   :type-inspect-ack [data])
+(def-packet-fn server-hello-packet [server-version]
+  :type-server-hello [server-version])
 
 (defn ^:no-doc build-server-pipeline [interceptors running-threads]
   #(-> %
@@ -153,7 +156,7 @@
 ;; inspection handler
 ;; inspect request data structure
 ;; [version tid  [request-type [cmd data]]]
-(defn ^:no-doc build-inspect-handler [funcs]
+(defn ^:no-doc build-inspect-handler [funcs server-status]
   (fn [req]
     (let [[prot-ver [tid [_ [cmd byte-block]]]] req]
       (try
@@ -166,6 +169,9 @@
                         (let [fname data
                               metadata (meta (funcs fname))]
                           (select-keys metadata [:name :doc :arglists]))
+                        :clients
+                        (-> @server-status
+                            (update-in [:connected-clients] vals))
                         nil)
               sresult (serialize :clj results)]
           (make-inspect-ack prot-ver tid sresult))
@@ -191,14 +197,15 @@
       (.release ^ByteBuf bb))))
 
 ;; p: [version [tid [type ...]]]
-(defmulti ^:private -handle-request (fn [p & _] (let [[_ [_ [packet-type]]] p] packet-type)))
-(defmethod -handle-request :type-request [req
-                                          server-pipeline
-                                          client-info
-                                          inspect-handler
-                                          running-threads
-                                          executors
-                                          funcs]
+(defmulti ^:private -handle-request
+  (fn [_ p _] (protocol/packet-type-from-frame p)))
+
+(defmethod -handle-request :type-request [{:keys [server-pipeline
+                                                  inspect-handler
+                                                  running-threads
+                                                  executors
+                                                  funcs]}
+                                          req client-info]
   (let [req-map (assoc (map-req-fields req) :client client-info)
         req-map (look-up-function req-map funcs)]
     (if (nil? (:code req-map))
@@ -231,43 +238,60 @@
         (error-packet (:version req-map) (:tid req-map) :not-found)
         (finally
           (release-buffer! req-map))))))
-(defmethod -handle-request :type-ping [[version [tid _]] & _]
+(defmethod -handle-request :type-ping [_ [version [tid _]] _]
   (pong-packet version tid))
-(defmethod -handle-request :type-inspect-req [p _ _ inspect-handler & _]
+(defmethod -handle-request :type-inspect-req [{:keys [inspect-handler]} p _]
   (inspect-handler p))
-(defmethod -handle-request :type-interrupt [p _ client-info _ running-threads & _]
+(defmethod -handle-request :type-interrupt [{:keys [running-threads]} p client-info]
   (interrupt-handler p client-info running-threads))
-(defmethod -handle-request :default [[version [tid _]] & _]
+(defmethod -handle-request :type-client-hello [{:keys [server-status]} p client-info]
+  (let [[version [tid [_ [client-version client-name]]]] p
+        client-data {:addr (str (:remote-addr client-info))
+                     :name client-name
+                     :version client-version
+                     :connected-on (Date.)}]
+    (swap! server-status update-in [:connected-clients]
+           assoc (:remote-addr client-info) client-data)
+    (server-hello-packet version tid slacker-version)))
+(defmethod -handle-request :default [_ [version [tid _]] _]
   (error-packet version tid :invalid-packet))
 
-(defn ^:no-doc handle-request
-  [server-pipeline req client-info inspect-handler running-threads executors funcs]
-  (log/debug req)
-  (-handle-request req server-pipeline
-                   client-info inspect-handler running-threads executors funcs))
 
-(defn- create-server-handler [executors funcs interceptors running-threads]
-  (let [server-pipeline (build-server-pipeline interceptors running-threads)
-        inspect-handler (build-inspect-handler funcs)]
+(defn ^:no-doc handle-request
+  [context request client-info]
+  (log/debug request)
+  (-handle-request context request client-info))
+
+(defn- create-server-handler [{:keys [executors funcs interceptors]}]
+  (let [running-threads (atom {})
+        server-status (atom {:connected-clients {}
+                             :started-on (Date.)
+                             :version slacker-version})
+
+        server-pipeline (build-server-pipeline interceptors running-threads)
+        inspect-handler (build-inspect-handler funcs server-status)
+        handle-request-partial (partial handle-request
+                                        {:server-pipeline server-pipeline
+                                         :inspect-handler inspect-handler
+                                         :running-threads running-threads
+                                         :executors executors
+                                         :funcs funcs
+                                         :server-status server-status})]
     (create-handler
      (on-message [ch data]
                  (log/debug "data received" data)
                  (let [client-info {:remote-addr (remote-addr ch)
                                     :channel ch}
-                       result (handle-request
-                               server-pipeline
-                               data
-                               client-info
-                               inspect-handler
-                               running-threads
-                               executors
-                               funcs)]
+                       result (handle-request-partial data client-info)]
                    (log/debug "result" result)
                    (when-not (or (nil? result) (= :interrupted (:code result)))
                      (send! ch result))))
      (on-error [ch ^Exception e]
                (log/error e "Unexpected error in event loop")
-               (close! ch)))))
+               (close! ch))
+     (on-inactive [ch]
+                  (swap! server-status update-in [:connected-clients]
+                         dissoc (remote-addr ch))))))
 
 
 (defn ^:no-doc parse-funcs [n]
@@ -305,13 +329,10 @@
         server-pipeline (build-server-pipeline interceptors nil)]
     (fn [req]
       (let [client-info (http-client-info req)
-            curried-handler (fn [req] (handle-request server-pipeline
+            curried-handler (fn [req] (handle-request {:server-pipeline server-pipeline
+                                                      :funcs funcs}
                                                      req
-                                                     client-info
-                                                     nil
-                                                     nil
-                                                     nil
-                                                     nil))]
+                                                     client-info))]
         (-> req
             ring-req->slacker-req
             curried-handler
@@ -333,7 +354,7 @@
   Options:
 
   * `interceptors` add server interceptors
-  * `http` http port for slacker http transport
+  * `Http` Http port for slacker http transport
   * `ssl-context` the SSLContext object for enabling tls support
   * `executor` custom java.util.concurrent.ExecutorService for tasks execution, note this executor will be shutdown when you stop the slacker server
   * `threads` size of thread pool if no executor provided
@@ -351,8 +372,9 @@
         funcs (apply merge (map parse-funcs fn-coll))
         default-executor (or executor (thread-pool-executor threads queue-size))
         executors (assoc executors :default default-executor)
-        running-threads (atom {})
-        handler (create-server-handler executors funcs interceptors running-threads)
+        handler (create-server-handler {:executors executors
+                                        :funcs funcs
+                                        :interceptors interceptors})
         ssl-handler (when ssl-context
                       (ssl-handler-from-jdk-ssl-context ssl-context false))
         handlers [(netty-encoder protocol/slacker-root-codec)

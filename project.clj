@@ -3,10 +3,11 @@
   :url "http://github.com/sunng87/slacker"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
-  :dependencies [[link "0.11.1"]
+  :dependencies [[link "0.11.2"]
                  [rigui "0.5.2"]
                  [manifold "0.1.6"]
-                 [org.clojure/tools.logging "0.4.0"]]
+                 [org.clojure/tools.logging "0.4.0"]
+                 [trptcolin/versioneer "0.2.0"]]
   :profiles {:example {:source-paths ["examples"]
                        :dependencies [[org.clojure/java.jmx "0.3.4"]]}
              :dev {:dependencies [[org.clojure/clojure "1.9.0"]

@@ -27,6 +27,9 @@
       :thread-pool-full {:cause {:error code}}
       {:cause {:error :invalid-result-code}})))
 
+(defn make-client-hello [client-version client-name]
+  [0 [:type-client-hello [client-version client-name]]])
+
 (defn make-request [tid content-type func-name params extensions]
   [tid [:type-request [content-type func-name params extensions]]])
 
@@ -330,13 +333,14 @@
 
 (defn- create-link-handler
   "The event handler for client"
-  [server-requests]
+  [{factory-ref :factory-ref
+    client-version :client-version}]
   (create-handler
    (on-message [ch msg]
-               (when-let [rmap (-> ch
-                                   (channel-hostport)
-                                   (@server-requests)
-                                   :pendings)]
+               (when-let [rmap (->> ch
+                                    (channel-hostport)
+                                    (get-purgatory @factory-ref)
+                                    :pendings)]
                  (let [[_ [tid msg-body]] msg
                        handler (get @rmap tid)]
                    (swap! rmap dissoc tid)
@@ -351,11 +355,29 @@
                   (instance? ClosedChannelException exc))
                (log/warn "Failed to connect to server or connection lost.")
                (log/error exc "Unexpected error in event loop")))
+   (on-active [ch]
+              (let [addr-str (channel-hostport ch)
+                    slacker-client (->> addr-str
+                                        (get-purgatory @factory-ref)
+                                        :refs
+                                        ;; TODO: multiple clients to
+                                        ;; same server with different
+                                        ;; configuration
+                                        (filter #(= addr-str (.-addr %)))
+                                        first)]
+                (when slacker-client
+                  (let [slacker-options (.-options slacker-client)
+                        protocol-version (:protocol-version slacker-options)
+                        client-name (:client-name slacker-options "")]
+                    (log/debug "slacker-options for this channel:" slacker-options)
+                    (send! ch
+                           (protocol/of protocol-version
+                                        (make-client-hello client-version client-name)))))))
    (on-inactive [ch]
-                (when-let [rmap (-> ch
-                                    (channel-hostport)
-                                    (@server-requests)
-                                    :pendings)]
+                (when-let [rmap (->> ch
+                                     (channel-hostport)
+                                     (get-purgatory @factory-ref)
+                                     :pendings)]
                   (doseq [handler (vals @rmap)]
                     (when (not-empty handler)
                       (deliver (:promise handler)
@@ -371,8 +393,11 @@
    :connect-timeout-millis (int 5000)})
 
 (defn create-client-factory [ssl-context]
-  (let [server-requests (atom {})
-        handler (create-link-handler server-requests)
+  (let [purgatory (atom {})
+        factory-ref (atom {})
+        handler (create-link-handler {:factory-ref factory-ref
+                                      :purgatory purgatory
+                                      :client-version slacker-version})
         timer (rigui/start 5 10 (fn [f] (f)))
         ssl-handler (when ssl-context
                       (ssl-handler-from-jdk-ssl-context ssl-context true))
@@ -381,10 +406,13 @@
                   handler]
         handlers (if ssl-handler
                    (conj (seq handlers) ssl-handler)
-                   handlers)]
-    (DefaultSlackerClientFactory.
-     (tcp-client-factory handlers :options *options*)
-      timer server-requests)))
+                   handlers)
+        factory (DefaultSlackerClientFactory.
+                 (tcp-client-factory handlers :options *options*)
+                 timer purgatory)]
+    ;; pass ref to handler, indirectly
+    (reset! factory-ref factory)
+    factory))
 
 (defn host-port
   "get host and port from connection string"
@@ -395,9 +423,9 @@
 (defn create-client [slacker-client-factory addr content-type options]
   (let [[host port] (host-port addr)
         host (.. (InetSocketAddress. ^String host ^int port) (getAddress) (getHostAddress))
-        client (open-tcp-client slacker-client-factory host port)
+        client-ch (open-tcp-client slacker-client-factory host port)
         slacker-client (SlackerClient. (str host ":" port)
-                                       client
+                                       client-ch
                                        slacker-client-factory
                                        content-type
                                        options)]
@@ -446,6 +474,15 @@
   "get functions of a remote namespace"
   [sc n]
   (let [call-result (inspect @sc :functions n)]
+    (if (nil? (:cause call-result))
+      (:result call-result)
+      (throw (ex-info "Slacker client error"
+                      (user-friendly-cause call-result))))))
+
+(defn clients-remote
+  "get clients information on remote server"
+  [sc]
+  (let [call-result (inspect @sc :clients nil)]
     (if (nil? (:cause call-result))
       (:result call-result)
       (throw (ex-info "Slacker client error"

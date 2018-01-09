@@ -5,6 +5,8 @@
 (def ^:const v5 5)
 (def ^:const v6 6)
 
+(def ^:const default-version v6)
+
 (def versions
   (enum (byte) {v5 5
                 v6 6}))
@@ -19,7 +21,9 @@
                 :type-auth-ack 6
                 :type-inspect-req 7
                 :type-inspect-ack 8
-                :type-interrupt 9}))
+                :type-interrupt 9
+                :type-client-hello 10
+                :type-server-hello 11}))
 
 (def content-type
   (enum (byte) {:carb 0 :json 1 :clj 2 :nippy 3
@@ -104,7 +108,8 @@
 (def slacker-inspect-req-codec
   (frame
    (enum (byte) {:functions 0
-                 :meta 1})
+                 :meta 1
+                 :clients 2})
    (byte-block :prefix (uint16))))
 
 ;; type-inspect-ack
@@ -116,6 +121,19 @@
 (def slacker-interrupt-codec
   (frame
    (int32)))
+
+(def slacker-client-hello-codec
+  (frame
+   ;; client version
+   (string :encoding :utf-8 :prefix (uint16))
+   ;; client name
+   (string :encoding :utf-8 :prefix (uint16))))
+
+(def slacker-server-hello-codec
+  (frame
+   ;; server version
+   (string :encoding :utf-8 :prefix (uint16))
+   ))
 
 (def slacker-v5-codec
   (frame
@@ -147,7 +165,9 @@
      :type-auth-ack slacker-auth-ack-codec
      :type-inspect-req slacker-inspect-req-codec
      :type-inspect-ack slacker-inspect-ack-codec
-     :type-interrupt slacker-interrupt-codec})))
+     :type-interrupt slacker-interrupt-codec
+     :type-client-hello slacker-client-hello-codec
+     :type-server-hello slacker-server-hello-codec})))
 
 (def slacker-root-codec
   (header
@@ -158,4 +178,7 @@
 ;; helper function
 
 (defn of [v data]
-  [(or v v6) data])
+  [(or v default-version) data])
+
+(defn packet-type-from-frame [p]
+  (let [[_ [_ [packet-type]]] p] packet-type))
