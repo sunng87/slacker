@@ -37,7 +37,12 @@
   (println (rand-ints 10))
 
   ;; call a function with another client
-  (println (with-slackerc conn2 (timestamp)))
+  (println "Calling timestmap by alternative client: "
+           (with-slackerc conn2 (timestamp)))
+
+  ;; call a function by name, without declaring
+  (println "Calling timestmap by name: "
+           (call-remote conn "slacker.example.api" "timestamp" []))
 
   (println (echo2 "Echo me."))
   (try

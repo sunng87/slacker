@@ -75,6 +75,12 @@
   [sc-sym fname]
   (eval (list 'slacker.client/defn-remote sc-sym (symbol fname))))
 
+(defn call-remote [sc remote-ns remote-fn args
+                   & {:keys [async? callback extensions]
+                      :as options}]
+  (apply invoke-slacker sc [remote-ns remote-fn args]
+         (mapcat vec (into [] options))))
+
 (defn use-remote
   "import remote functions the current namespace, this function
   will generate remote call, use it carefully in a declarative style."
