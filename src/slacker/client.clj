@@ -75,9 +75,20 @@
   [sc-sym fname]
   (eval (list 'slacker.client/defn-remote sc-sym (symbol fname))))
 
-(defn call-remote [sc remote-ns remote-fn args
-                   & {:keys [async? callback extensions]
-                      :as options}]
+(defn call-remote
+  "call a remote function by its namespace and function name, without a
+  local `defn-remote` reference.
+
+  * `sc` the slacker client
+  * `remote-ns` remote namespace, string
+  * `remote-fn` remote function name, string
+  * `args` arguments, vec
+  * `:async? true` make this a async function, returns a manifold deferred
+  * `:callback (fn [r e] )` set a callback for this async function
+  * `:extensions {}` add extension data for the function call"
+  [sc remote-ns remote-fn args
+   & {:keys [async? callback extensions]
+      :as options}]
   (apply invoke-slacker sc [remote-ns remote-fn args]
          (mapcat vec (into [] options))))
 
