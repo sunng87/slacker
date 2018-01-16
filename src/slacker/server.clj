@@ -52,11 +52,16 @@
            :tid tid
            :protocol-version prot-ver)))
 
+(def slacker-function-not-found
+  "-slacker-function-not-found")
+
 (defn- look-up-function [req funcs]
-  (if-let [func (funcs (:fname req))]
-    (let [[ns-name fn-name] (clojure.string/split (:fname req) #"/" 2)]
-      (assoc req :func func :ns-name ns-name :fn-name fn-name))
-    (assoc req :code :not-found)))
+  (let [[ns-name fn-name] (clojure.string/split (:fname req) #"/" 2)]
+    (if-let [func (funcs (:fname req))]
+      (assoc req :func func :ns-name ns-name :fn-name fn-name)
+      (if-let [func (funcs (str ns-name "/" slacker-function-not-found))]
+        (assoc req :func func :ns-name ns-name :fn-name fn-name :not-found true)
+        (assoc req :code :not-found)))))
 
 (defn- deserialize-args [req]
   (if (nil? (:code req))
@@ -73,8 +78,11 @@
   (if (nil? (:code req))
     (try
       (with-extensions (:extensions req)
-        (let [{f :func args :args} req
-              r0 (apply f args)
+        (let [{f :func args :args
+               fn-name :fn-name not-found :not-found} req
+              r0 (if-not not-found
+                   (apply f args)
+                   (f fn-name args))
               r (if (seq? r0) (doall r0) r0)]
           (assoc req :result r :code :success)))
       (catch InterruptedException e
@@ -292,7 +300,6 @@
      (on-inactive [ch]
                   (swap! server-status update-in [:connected-clients]
                          dissoc (remote-addr ch))))))
-
 
 (defn ^:no-doc parse-funcs [n]
   (if (map? n)

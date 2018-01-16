@@ -38,3 +38,6 @@
   true)
 
 (defn ^:no-slacker unreachable [] true)
+
+(defn -slacker-function-not-found [fname args]
+  ["Function not found: " fname args])

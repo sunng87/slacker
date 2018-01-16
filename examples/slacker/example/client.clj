@@ -44,6 +44,10 @@
   (println "Calling timestmap by name: "
            (call-remote conn "slacker.example.api" "timestamp" []))
 
+  ;; call a non-exist function, catched by -slacker-function-not-found
+  (println "Calling non-exist function: "
+           (call-remote conn "slacker.example.api" "no-such-fn" [1 2 3]))
+
   (println (echo2 "Echo me."))
   (try
     (make-error)
