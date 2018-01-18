@@ -368,7 +368,6 @@
                               (handle-request {:server-pipeline server-pipeline
                                                :funcs funcs
                                                :send-response (fn [_ resp]
-                                                                ;; TODO: full async
                                                                 (-> resp
                                                                     map-response-fields
                                                                     slacker-resp->ring-resp

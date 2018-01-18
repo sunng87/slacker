@@ -33,8 +33,7 @@
 (defn slacker-resp->ring-resp
   "transform slacker response to ring response"
   [resp]
-  (let [resp (if (:future resp) @(:future resp) resp)
-        [_ [_ resp-body]] resp
+  (let [[_ [_ resp-body]] resp
         packet-type (first resp-body)]
     (let [[ct code result _] (second resp-body)
           content-type (str "application/" (name ct))
@@ -47,8 +46,6 @@
       {:status status
        :headers {"content-type" content-type}
        :body body})))
-
-
 
 (defn http-client-info
   "Get http client information (remote IP) from ring request"
