@@ -230,7 +230,7 @@
 (defmulti ^:private -handle-request
   (fn [_ p _] (protocol/packet-type-from-frame p)))
 
-(defn- write-response [client-info resp]
+(defn- link-write-response [client-info resp]
   (let [result (map-response-fields resp)]
     (when-not (or (nil? result) (= :interrupted (:code result)))
       (link/send! (:channel client-info) result))))
@@ -239,7 +239,8 @@
                                                   inspect-handler
                                                   running-threads
                                                   executors
-                                                  funcs]}
+                                                  funcs
+                                                  send-response]}
                                           req client-info]
   (let [req-map (assoc (map-req-fields req) :client client-info)
         req-map (look-up-function req-map funcs)]
@@ -256,20 +257,20 @@
             (try
               (let [resp (server-pipeline req-map)]
                 (if-let [resp-future (:future resp)]
-                  (d/chain resp-future (partial write-response client-info))
-                  (write-response client-info resp)))
+                  (d/chain resp-future (partial send-response client-info))
+                  (send-response client-info resp)))
               (finally
-                (release-buffer! req-map)))
-            nil)
+                (release-buffer! req-map))))
           ;; async run, return nil so sync wait won't send
-          nil
           (catch RejectedExecutionException _
             (log/warn "Server thread pool is full for" (:ns-name req-map))
             (release-buffer! req-map)
-            (error-packet (:version req-map) (:tid req-map) :thread-pool-full))))
+            (send-response (:channel client-info)
+                           (error-packet (:version req-map) (:tid req-map) :thread-pool-full)))))
       ;; return error
       (try
-        (error-packet (:version req-map) (:tid req-map) :not-found)
+        (send-response (:channel client-info)
+                       (error-packet (:version req-map) (:tid req-map) :not-found))
         (finally
           (release-buffer! req-map))))))
 
@@ -313,7 +314,8 @@
                                          :running-threads running-threads
                                          :executors executors
                                          :funcs funcs
-                                         :server-status server-status})]
+                                         :server-status server-status
+                                         :send-response link-write-response})]
     (create-handler
      (on-message [ch data]
                  (log/debug "data received" data)
@@ -353,23 +355,29 @@
    :child.tcp-nodelay true})
 
 (defn slacker-ring-app
-  "Wrap slacker as a ring app that can be deployed to any ring adaptors.
+  "Wrap slacker as a ring **async** app that can be deployed to any ring adaptors.
   You can also configure interceptors just like `start-slacker-server`"
   [fn-coll & {:keys [interceptors]
               :or {interceptors interceptor/default-interceptors}}]
   (let [fn-coll (if (vector? fn-coll) fn-coll [fn-coll])
         funcs (apply merge (map parse-funcs fn-coll))
         server-pipeline (build-server-pipeline interceptors nil)]
-    (fn [req]
+    (fn [req resp-callback _]
       (let [client-info (http-client-info req)
-            curried-handler (fn [req] (handle-request {:server-pipeline server-pipeline
-                                                      :funcs funcs}
-                                                     req
-                                                     client-info))]
+            curried-handler (fn [req]
+                              (handle-request {:server-pipeline server-pipeline
+                                               :funcs funcs
+                                               :send-response (fn [_ resp]
+                                                                ;; TODO: full async
+                                                                (-> resp
+                                                                    map-response-fields
+                                                                    slacker-resp->ring-resp
+                                                                    resp-callback))}
+                                              req
+                                              client-info))]
         (-> req
             ring-req->slacker-req
-            curried-handler
-            slacker-resp->ring-resp)))))
+            curried-handler)))))
 
 (defn start-slacker-server
   "Start a slacker server to expose all public functions under
@@ -423,7 +431,8 @@
                             (http-server http (apply slacker-ring-app fn-coll
                                                      (flatten (into [] options)))
                                          :threads threads
-                                         :ssl-context ssl-context))]
+                                         :ssl-context ssl-context
+                                         :async? true))]
       [the-tcp-server the-http-server executors])))
 
 (defn stop-slacker-server [server]
