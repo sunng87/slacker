@@ -50,3 +50,10 @@
                       (d/success! defr "Deferred result.")))
       (.start))
     defr))
+
+(defn async-exception []
+  (let [defr (d/deferred)]
+    (doto (Thread. #(do
+                      (d/error! defr (RuntimeException. "Expected error in async fn."))))
+      (.start))
+    defr))

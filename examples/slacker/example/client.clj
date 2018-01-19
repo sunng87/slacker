@@ -21,6 +21,7 @@
 (defn-remote conn slacker.example.api/make-error)
 (defn-remote conn slacker.example.api/return-nil)
 (defn-remote conn slacker.example.api/async-result)
+(defn-remote conn slacker.example.api/async-exception)
 #_(defn-remote conn slacker.example.api/not-found)
 (defn-remote conn2 slacker.example.api2/echo2)
 
@@ -51,6 +52,12 @@
 
   (println "Calling server-side async function: "
            (async-result))
+
+  (println "Calling a server-side async function that throws exception: ")
+  (try
+    (async-exception)
+    (catch Exception e
+      (println "Exception received: " (-> (ex-data e) :cause :exception))))
 
   (println (echo2 "Echo me."))
   (try
