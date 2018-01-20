@@ -5,7 +5,8 @@
             [slacker.protocol :as protocol]
             [clojure.test :refer :all]
             [clojure.string :refer [split]]
-            [link.core :as link])
+            [link.core :as link]
+            [link.mock :as mock])
   (:import [io.netty.buffer Unpooled]))
 
 (def funcs {"a/plus" + "a/minus" - "a/prod" * "a/div" /})
@@ -41,26 +42,31 @@
     (is (= "0" (deserialize :nippy (:result (server-pipeline req)))))))
 
 (deftest test-ping
-  (let [request [protocol/v5 [0 [:type-ping]]]
-        [_ [_ response]] (handle-request {} request nil)]
-    (is (= :type-pong (nth response 0)))))
+  (let [ch (mock/mock-channel {})
+        request [protocol/v5 [0 [:type-ping]]]]
+    (handle-request {} request {:channel ch})
+    (let [[_ [_ response]] (first @ch)]
+      (is (= :type-pong (first response))))))
 
 (deftest test-invalid-packet
-  (let [request [protocol/v5 [0 [:type-unknown]]]
-        [_ [_ response]] (handle-request {} request nil)]
-    (is (= :type-error (nth response 0)))
-    (is (= :invalid-packet (-> response
-                               second
-                               first)))))
-
+  (let [ch (mock/mock-channel {})
+        request [protocol/v5 [0 [:type-unknown]]]]
+    (handle-request {} request {:channel ch})
+    (let [[_ [_ response]] (first @ch)]
+      (is (= :type-error (nth response 0)))
+      (is (= :invalid-packet (-> response
+                                 second
+                                 first))))))
 
 (deftest test-functions-inspect
-  (let [request [protocol/v5 [0 [:type-inspect-req [:functions
-                                                    (Unpooled/wrappedBuffer (.getBytes "\"a\""))]]]]
-        [_ [_ [_ [result]]]] (handle-request {:inspect-handler (build-inspect-handler funcs (atom {}))}
-                                             request nil)
-        response (deserialize :clj result)]
-    (is (= (keys funcs) response))))
+  (let [ch (mock/mock-channel {})
+        request [protocol/v5 [0 [:type-inspect-req [:functions
+                                                    (Unpooled/wrappedBuffer (.getBytes "\"a\""))]]]]]
+    (handle-request {:inspect-handler (build-inspect-handler funcs (atom {}))}
+                    request {:channel ch})
+    (let [[_ [_ [_ [result]]]] (first @ch)
+          response (deserialize :clj result)]
+      (is (= (keys funcs) response)))))
 
 (deftest test-parse-functions
   (testing "parsing function map"
