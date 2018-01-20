@@ -112,9 +112,8 @@
         (invoke-error-handler req e)))
     req))
 
-(defn- call-interceptor [req interceptor]
+(defn- do-call-interceptor [req interceptor]
   (try
-    ;; TODO: async
     (interceptor req)
     (catch Throwable e
       (if-not *debug*
@@ -122,6 +121,12 @@
         (assoc req :code :exception
                :result {:msg (.getMessage ^Exception e)
                         :stacktrace (.getStackTrace ^Exception e)})))))
+
+(defn- call-interceptor [req interceptor]
+  (if-let [future-result (:future req)]
+    (assoc req :future
+           (d/chain (:future req) #(do-call-interceptor % interceptor)))
+    (do-call-interceptor req interceptor)))
 
 (defn- do-serialize-result [req]
   (assoc req
