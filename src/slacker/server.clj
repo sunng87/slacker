@@ -245,7 +245,8 @@
                                                   running-threads
                                                   executors
                                                   funcs
-                                                  send-response]}
+                                                  send-response]
+                                           :or {send-response link-write-response}}
                                           req client-info]
   (let [req-map (assoc (map-req-fields req) :client client-info)
         req-map (look-up-function req-map funcs)]

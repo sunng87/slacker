@@ -6,28 +6,52 @@
             [clojure.test :refer :all]
             [clojure.string :refer [split]]
             [link.core :as link]
-            [link.mock :as mock])
+            [link.mock :as mock]
+            [manifold.deferred :as d])
   (:import [io.netty.buffer Unpooled]))
 
-(def funcs {"a/plus" + "a/minus" - "a/prod" * "a/div" /})
+(def funcs {"a/plus" + "a/minus" - "a/prod" * "a/div" /
+            "a/async" (fn [] (let [defr (d/deferred)]
+                              (d/success! defr 1)
+                              defr))})
 
-(deftest test-server-pipeline
-  (let [server-pipeline (build-server-pipeline
-                         {:pre identity :before identity :after identity :post identity}
-                         (atom {}))
-        req {:content-type :nippy
-             :data (serialize :nippy [100 0])
-             :fname "a/plus" :func +}
-        req3 {:content-type :nippy
-              :data (serialize :nippy [100 0])
-              :fname "a/div" :func /}]
+(deftest test-request-handler
+  (let [server-pipeline (build-server-pipeline {} (atom {}))
+        req1 [protocol/v6
+              [1 [:type-request
+                  [:nippy "a/plus" (serialize :nippy [100 0]) {}]]]]
+        ch1 (mock/mock-channel {})
 
-    (let [result (server-pipeline req)]
-      (is (= :success (:code result)))
-      (is (= 100 (deserialize :nippy (:result result)))))
+        req2 [protocol/v6
+              [2 [:type-request
+                  [:nippy "a/div" (serialize :nippy [100 0]) {}]]]]
+        ch2 (mock/mock-channel {})
 
-    (let [result (server-pipeline req3)]
-      (is (= :exception (:code result))))))
+        req3 [protocol/v6
+              [3 [:type-request
+                  [:clj "a/async" (serialize :clj []) {}]]]]
+        ch3 (mock/mock-channel {})]
+
+    (handle-request {:funcs funcs
+                     :server-pipeline server-pipeline}
+                    req1 {:channel ch1})
+    (handle-request {:funcs funcs
+                     :server-pipeline server-pipeline}
+                    req2 {:channel ch2})
+    (handle-request {:funcs funcs
+                     :server-pipeline server-pipeline}
+                    req3 {:channel ch3})
+
+    (let [[_ [_ [_ [ct code result _]]]] (first @ch1)]
+      (is (= :success code))
+      (is (= 100 (deserialize :nippy result))))
+
+    (let [[_ [_ [_ [ct code result _]]]] (first @ch2)]
+      (is (= :exception code)))
+
+    (let [[_ [_ [_ [ct code result _]]]] (first @ch3)]
+      (is (= :success code))
+      (is (= 1 (deserialize :clj result))))))
 
 (def interceptor (fn [req] (update-in req [:result] str)))
 
