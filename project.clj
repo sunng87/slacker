@@ -16,18 +16,15 @@
                                    :exclusions [org.clojure/clojure]]
                                   [com.cognitect/transit-clj "0.8.300"]
                                   [log4j "1.2.17"]]}
-             :clojure15 {:dependencies [[org.clojure/clojure "1.5.1"]]}
-             :clojure16 {:dependencies [[org.clojure/clojure "1.6.0"]]}
-             :clojure17 {:dependencies [[org.clojure/clojure "1.7.0"]]}
              :clojure18 {:dependencies [[org.clojure/clojure "1.8.0"]]}
              :clojure19 {:dependencies [[org.clojure/clojure "1.9.0"]]}}
   :plugins [[lein-exec "0.3.1"]
             [lein-codox "0.9.5"]]
   :global-vars {*warn-on-reflection* true}
-  :aliases {"run-example-server" ["trampoline" "with-profile" "default,clojure18,example" "run" "-m" "slacker.example.server"]
-            "run-example-client" ["trampoline" "with-profile" "default,clojure18,example" "run" "-m" "slacker.example.client"]
-            "run-bench" ["trampoline" "with-profiles" "default,clojure18,example" "run" "-m" "slacker.example.bench"]
-            "test-all" ["with-profile" "default,clojure15:default,clojure16:default,clojure17:default,clojure18" "test"]}
+  :aliases {"run-example-server" ["trampoline" "with-profile" "default,clojure19,example" "run" "-m" "slacker.example.server"]
+            "run-example-client" ["trampoline" "with-profile" "default,clojure19,example" "run" "-m" "slacker.example.client"]
+            "run-bench" ["trampoline" "with-profiles" "default,clojure19,example" "run" "-m" "slacker.example.bench"]
+            "test-all" ["with-profile" "default,clojure18:default,clojure19" "test"]}
   :deploy-repositories {"releases" :clojars}
   :codox {:output-path "target/codox"
           :source-uri "https://github.com/sunng87/slacker/blob/master/{filepath}#L{line}"
