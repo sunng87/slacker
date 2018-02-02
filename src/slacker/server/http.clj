@@ -47,8 +47,6 @@
        :headers {"content-type" content-type}
        :body body})))
 
-
-
 (defn http-client-info
   "Get http client information (remote IP) from ring request"
   [req]

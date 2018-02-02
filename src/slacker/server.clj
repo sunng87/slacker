@@ -9,7 +9,8 @@
             [slacker.server.http :refer :all]
             [slacker.interceptor :as interceptor]
             [link.ssl :refer [ssl-handler-from-jdk-ssl-context]]
-            [link.codec :refer [netty-encoder netty-decoder]])
+            [link.codec :refer [netty-encoder netty-decoder]]
+            [manifold.deferred :as d])
   (:import [java.util Date]
            [java.util.concurrent TimeUnit ExecutorService
             ThreadPoolExecutor LinkedBlockingQueue RejectedExecutionHandler
@@ -34,11 +35,13 @@
                        ^RejectedExecutionHandler (ThreadPoolExecutor$AbortPolicy.)))
 
 (defmacro ^:private with-executor [executor & body]
-  `(.submit ~executor
-            ^Runnable (cast Runnable
-                            (fn [] (try ~@body
-                                       (catch Throwable e#
-                                         (log/warn e# "Uncaught exception in Slacker executor")))))))
+  `(if ~executor
+     (.submit ~executor
+              ^Runnable (cast Runnable
+                              (fn [] (try ~@body
+                                         (catch Throwable e#
+                                           (log/warn e# "Uncaught exception in Slacker executor"))))))
+     (do ~@body)))
 
 (defn- thread-map-key [client tid]
   (str (:remote-addr client) "::" tid))
@@ -74,6 +77,16 @@
                                         extensions))))
     req))
 
+(defn- future-result? [r]
+  (d/deferred? r))
+
+(defn- invoke-error-handler [req e]
+  (if-not *debug*
+    (assoc req :code :exception :result (str e) :exception e)
+    (assoc req :code :exception
+           :result {:msg (.getMessage ^Exception e)
+                    :stacktrace (.getStackTrace ^Exception e)})))
+
 (defn- do-invoke [req]
   (if (nil? (:code req))
     (try
@@ -84,19 +97,22 @@
                    (apply f args)
                    (f fn-name args))
               r (if (seq? r0) (doall r0) r0)]
-          (assoc req :result r :code :success)))
+          (if-not (future-result? r)
+            ;; sync call
+            (assoc req :result r :code :success)
+            ;; async call
+            (assoc req :future
+                   (-> r
+                       (d/chain #(assoc req :result % :code :success))
+                       (d/catch #(invoke-error-handler req %)))))))
       (catch InterruptedException e
         (log/info "Thread execution interrupted." (:client req) (:tid req))
         (assoc req :code :interrupted))
       (catch Throwable e
-        (if-not *debug*
-          (assoc req :code :exception :result (str e) :exception e)
-          (assoc req :code :exception
-                 :result {:msg (.getMessage ^Exception e)
-                          :stacktrace (.getStackTrace ^Exception e)}))))
+        (invoke-error-handler req e)))
     req))
 
-(defn- call-interceptor [req interceptor]
+(defn- do-call-interceptor [req interceptor]
   (try
     (interceptor req)
     (catch Throwable e
@@ -106,12 +122,23 @@
                :result {:msg (.getMessage ^Exception e)
                         :stacktrace (.getStackTrace ^Exception e)})))))
 
-(defn- serialize-result [req]
+(defn- call-interceptor [req interceptor]
+  (if-let [future-result (:future req)]
+    (assoc req :future
+           (d/chain (:future req) #(do-call-interceptor % interceptor)))
+    (do-call-interceptor req interceptor)))
+
+(defn- do-serialize-result [req]
   (assoc req
          :result (serialize (:content-type req) (:result req))
          :raw-extensions (->> (:extensions req)
-                          (into [])
-                          (mapv #(update % 1 (partial serialize (:content-type req)))))))
+                              (into [])
+                              (mapv #(update % 1 (partial serialize (:content-type req)))))))
+
+(defn- serialize-result [req]
+  (if-let [future-result (:future req)]
+    (assoc req :future (d/chain future-result do-serialize-result))
+    (do-serialize-result req)))
 
 (defn- map-response-fields [req]
   (protocol/of (:protocol-version req)
@@ -208,50 +235,58 @@
 (defmulti ^:private -handle-request
   (fn [_ p _] (protocol/packet-type-from-frame p)))
 
+(defn- link-write-response [client-info resp]
+  (let [result (map-response-fields resp)]
+    (when-not (or (nil? result) (= :interrupted (:code result)))
+      (link/send! (:channel client-info) result))))
+
 (defmethod -handle-request :type-request [{:keys [server-pipeline
                                                   inspect-handler
                                                   running-threads
                                                   executors
-                                                  funcs]}
+                                                  funcs
+                                                  send-response]
+                                           :or {send-response link-write-response}}
                                           req client-info]
   (let [req-map (assoc (map-req-fields req) :client client-info)
         req-map (look-up-function req-map funcs)]
     (if (nil? (:code req-map))
-      (if-let [thread-pool (get executors (:ns-name req-map)
-                                          (:default executors))]
-        ;; async run on dedicated or global thread pool
-        ;; http call always runs on default thread
-        (do
-          (try
-            (with-executor ^ThreadPoolExecutor thread-pool
-              (try
-                (let [result (map-response-fields (server-pipeline req-map))]
-                  (when-not (or (nil? result) (= :interrupted (:code result)))
-                    (link/send! (:channel client-info) result)))
-                (finally
-                  (release-buffer! req-map))))
-            ;; async run, return nil so sync wait won't send
-            nil
-            (catch RejectedExecutionException _
-              (log/warn "Server thread pool is full for" (:ns-name req-map))
-              (release-buffer! req-map)
-              (error-packet (:version req-map) (:tid req-map) :thread-pool-full))))
-        ;; run on default thread
+      (let [thread-pool (get executors (:ns-name req-map)
+                             (:default executors))]
         (try
-          (map-response-fields (server-pipeline req-map))
-          (finally
-            (release-buffer! req-map))))
+          (with-executor ^ThreadPoolExecutor thread-pool
+            ;; when thread-pool is nil the body will run on default
+            ;; thread. We keep it return null so we will deal with the
+            ;; result sending.
+            ;; async run on dedicated or global thread pool
+            ;; http call always runs on default thread
+            (try
+              (let [resp (server-pipeline req-map)]
+                (if-let [resp-future (:future resp)]
+                  (d/chain resp-future (partial send-response client-info))
+                  (send-response client-info resp)))
+              (finally
+                (release-buffer! req-map))))
+          ;; async run, return nil so sync wait won't send
+          (catch RejectedExecutionException _
+            (log/warn "Server thread pool is full for" (:ns-name req-map))
+            (release-buffer! req-map)
+            (send-response (:channel client-info)
+                           (error-packet (:version req-map) (:tid req-map) :thread-pool-full)))))
       ;; return error
       (try
-        (error-packet (:version req-map) (:tid req-map) :not-found)
+        (send-response (:channel client-info)
+                       (error-packet (:version req-map) (:tid req-map) :not-found))
         (finally
           (release-buffer! req-map))))))
-(defmethod -handle-request :type-ping [_ [version [tid _]] _]
-  (pong-packet version tid))
-(defmethod -handle-request :type-inspect-req [{:keys [inspect-handler]} p _]
-  (inspect-handler p))
+
+(defmethod -handle-request :type-ping [_ [version [tid _]] {ch :channel}]
+  (link/send! ch (pong-packet version tid)))
+(defmethod -handle-request :type-inspect-req [{:keys [inspect-handler]} p {ch :channel}]
+  (link/send! ch (inspect-handler p)))
 (defmethod -handle-request :type-interrupt [{:keys [running-threads]} p client-info]
-  (interrupt-handler p client-info running-threads))
+  (link/send! (:channel client-info)
+              (interrupt-handler p client-info running-threads)))
 (defmethod -handle-request :type-client-hello [{:keys [server-status]} p client-info]
   (let [[version [tid [_ [client-version client-name]]]] p
         client-data {:addr (str (:remote-addr client-info))
@@ -260,9 +295,10 @@
                      :connected-on (Date.)}]
     (swap! server-status update-in [:connected-clients]
            assoc (:remote-addr client-info) client-data)
-    (server-hello-packet version tid slacker-version)))
-(defmethod -handle-request :default [_ [version [tid _]] _]
-  (error-packet version tid :invalid-packet))
+    (link/send! (:channel client-info)
+                (server-hello-packet version tid slacker-version))))
+(defmethod -handle-request :default [_ [version [tid _]] {ch :channel}]
+  (link/send! ch (error-packet version tid :invalid-packet)))
 
 
 (defn ^:no-doc handle-request
@@ -284,16 +320,14 @@
                                          :running-threads running-threads
                                          :executors executors
                                          :funcs funcs
-                                         :server-status server-status})]
+                                         :server-status server-status
+                                         :send-response link-write-response})]
     (create-handler
      (on-message [ch data]
                  (log/debug "data received" data)
                  (let [client-info {:remote-addr (remote-addr ch)
-                                    :channel ch}
-                       result (handle-request-partial data client-info)]
-                   (log/debug "result" result)
-                   (when-not (or (nil? result) (= :interrupted (:code result)))
-                     (send! ch result))))
+                                    :channel ch}]
+                   (handle-request-partial data client-info)))
      (on-error [ch ^Exception e]
                (log/error e "Unexpected error in event loop")
                (close! ch))
@@ -327,23 +361,28 @@
    :child.tcp-nodelay true})
 
 (defn slacker-ring-app
-  "Wrap slacker as a ring app that can be deployed to any ring adaptors.
+  "Wrap slacker as a ring **async** app that can be deployed to any ring adaptors.
   You can also configure interceptors just like `start-slacker-server`"
   [fn-coll & {:keys [interceptors]
               :or {interceptors interceptor/default-interceptors}}]
   (let [fn-coll (if (vector? fn-coll) fn-coll [fn-coll])
         funcs (apply merge (map parse-funcs fn-coll))
         server-pipeline (build-server-pipeline interceptors nil)]
-    (fn [req]
+    (fn [req resp-callback _]
       (let [client-info (http-client-info req)
-            curried-handler (fn [req] (handle-request {:server-pipeline server-pipeline
-                                                      :funcs funcs}
-                                                     req
-                                                     client-info))]
+            curried-handler (fn [req]
+                              (handle-request {:server-pipeline server-pipeline
+                                               :funcs funcs
+                                               :send-response (fn [_ resp]
+                                                                (-> resp
+                                                                    map-response-fields
+                                                                    slacker-resp->ring-resp
+                                                                    resp-callback))}
+                                              req
+                                              client-info))]
         (-> req
             ring-req->slacker-req
-            curried-handler
-            slacker-resp->ring-resp)))))
+            curried-handler)))))
 
 (defn start-slacker-server
   "Start a slacker server to expose all public functions under
@@ -397,7 +436,8 @@
                             (http-server http (apply slacker-ring-app fn-coll
                                                      (flatten (into [] options)))
                                          :threads threads
-                                         :ssl-context ssl-context))]
+                                         :ssl-context ssl-context
+                                         :async? true))]
       [the-tcp-server the-http-server executors])))
 
 (defn stop-slacker-server [server]

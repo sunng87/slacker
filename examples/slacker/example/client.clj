@@ -20,6 +20,8 @@
 (defn-remote conn slacker.example.api/rand-ints)
 (defn-remote conn slacker.example.api/make-error)
 (defn-remote conn slacker.example.api/return-nil)
+(defn-remote conn slacker.example.api/async-result)
+(defn-remote conn slacker.example.api/async-exception)
 #_(defn-remote conn slacker.example.api/not-found)
 (defn-remote conn2 slacker.example.api2/echo2)
 
@@ -47,6 +49,15 @@
   ;; call a non-exist function, catched by -slacker-function-not-found
   (println "Calling non-exist function: "
            (call-remote conn "slacker.example.api" "no-such-fn" [1 2 3]))
+
+  (println "Calling server-side async function: "
+           (async-result))
+
+  (println "Calling a server-side async function that throws exception: ")
+  (try
+    (async-exception)
+    (catch Exception e
+      (println "Exception received: " (-> (ex-data e) :cause :exception))))
 
   (println (echo2 "Echo me."))
   (try
