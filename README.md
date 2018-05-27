@@ -8,6 +8,7 @@ Clojure.
 [![Build Status](https://travis-ci.org/sunng87/slacker.png?branch=master)](https://travis-ci.org/sunng87/slacker)
 [![Clojars](https://img.shields.io/clojars/v/slacker/slacker.svg)](https://clojars.org/slacker)
 [![License](https://img.shields.io/badge/license-eclipse-blue.svg)](https://github.com/sunng87/slacker/blob/master/LICENSE)
+[![Donate](https://img.shields.io/badge/donate-liberapay-yellow.svg)](https://liberapay.com/Sunng/donate)
 
 ## Features
 
@@ -309,6 +310,12 @@ handle more than **15700** calls per second on this machine.
 
 ## License
 
-Copyright (C) 2011-2017 Sun Ning
+Copyright (C) 2011-2018 Sun Ning
 
 Distributed under the Eclipse Public License, the same as Clojure.
+
+## Donation
+
+I'm now accepting donation on [liberapay](https://liberapay.com/Sunng/donate),
+if you find my work helpful and want to keep it going.
+
