@@ -14,7 +14,7 @@ Clojure.
 
 * Fast network layer, fully asynchronous and multiplexed
 * Plugable serialization backend, EDN, JSON and Nippy are built-in.
-* Transparent and non-invasive API. Calling remote just like local invocation.
+* Transparent and non-incursive API. Calling remote is just like local invocation.
 * Extensible server and client with interceptor framework.
 * Flexible cluster with Zookeeper (moved to
   [slacker-cluster](https://github.com/sunng87/slacker-cluster))
