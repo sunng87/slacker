@@ -3,18 +3,18 @@
   :url "http://github.com/sunng87/slacker"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
-  :dependencies [[link "0.11.2"]
+  :dependencies [[link "0.12.2"]
                  [rigui "0.5.2"]
-                 [manifold "0.1.6"]
-                 [org.clojure/tools.logging "0.4.0"]
+                 [manifold "0.1.8"]
+                 [org.clojure/tools.logging "0.4.1"]
                  [trptcolin/versioneer "0.2.0"]]
   :profiles {:example {:source-paths ["examples"]
                        :dependencies [[org.clojure/java.jmx "0.3.4"]]}
              :dev {:dependencies [[org.clojure/clojure "1.10.0"]
-                                  [cheshire "5.8.0"]
-                                  [com.taoensso/nippy "2.13.0"
+                                  [cheshire "5.8.1"]
+                                  [com.taoensso/nippy "2.14.0"
                                    :exclusions [org.clojure/clojure]]
-                                  [com.cognitect/transit-clj "0.8.300"]
+                                  [com.cognitect/transit-clj "0.8.313"]
                                   [log4j "1.2.17"]]}
              :clojure18 {:dependencies [[org.clojure/clojure "1.8.0"]]}
              :clojure19 {:dependencies [[org.clojure/clojure "1.9.0"]]}
