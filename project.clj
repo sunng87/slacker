@@ -20,7 +20,7 @@
              :clojure19 {:dependencies [[org.clojure/clojure "1.9.0"]]}
              :clojure110 {:dependencies [[org.clojure/clojure "1.8.0"]]}}
   :plugins [[lein-exec "0.3.1"]
-            [lein-codox "0.9.5"]]
+            [lein-codox "0.10.7"]]
   :global-vars {*warn-on-reflection* true}
   :aliases {"run-example-server" ["trampoline" "with-profile" "default,clojure19,example" "run" "-m" "slacker.example.server"]
             "run-example-client" ["trampoline" "with-profile" "default,clojure19,example" "run" "-m" "slacker.example.client"]
