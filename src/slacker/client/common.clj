@@ -23,6 +23,7 @@
       :success {:result data :extensions extensions}
       :not-found {:cause {:error code} :extensions extensions}
       :exception {:cause {:error code :exception data} :extensions extensions}
+      :canceled {:cause {:error code}}
       :interrupted {:cause {:error code}}
       :thread-pool-full {:cause {:error code}}
       {:cause {:error :invalid-result-code}})))
@@ -187,8 +188,11 @@
           fname (str ns-name "/" func-name)
           tid (next-trans-id (:idgen state))
           content-type (:content-type call-options content-type)
+
+          timeout (or (:timeout call-options) *timeout*)
+          extensions (:extensions call-options)
           req-data (-> {:fname fname :data params :content-type content-type
-                        :extensions (:extensions call-options)}
+                        :extensions extensions :call-options call-options}
                        ((:pre (:interceptors call-options) identity))
                        (serialize-params)
                        ((:before (:interceptors call-options) identity)))
@@ -199,7 +203,6 @@
                                              (:extensions req-data)))
           backlog (or (:backlog options) *backlog*)
           prms (promise)
-          timeout (or (:timeout call-options) *timeout*)
 
           resp (if-not (> (count @(:pendings state)) backlog 0)
                  (do
@@ -239,8 +242,10 @@
           tid (next-trans-id (:idgen state))
           content-type (:content-type call-options content-type)
 
+          timeout (or (:timeout call-options) *timeout*)
+          extensions (:extensions call-options)
           req-data (-> {:fname fname :data params :content-type content-type
-                        :extensions (:extensions call-options)}
+                        :extensions extensions :call-options call-options}
                        ((:pre (:interceptors call-options) identity))
                        (serialize-params)
                        ((:before (:interceptors call-options) identity)))
@@ -251,7 +256,6 @@
                                              (:fname req-data) (:args req-data)
                                              (:extensions req-data)))
           backlog (or (:backlog options) *backlog*)
-          timeout (or (:timeout call-options) *timeout*)
 
           post-hook (fn [result]
                       (try
