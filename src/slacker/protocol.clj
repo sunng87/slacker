@@ -39,6 +39,7 @@
                 :not-found 11
                 :exception 12
                 :thread-pool-full 13
+                :canceled 14
                 :protocol-mismatch 20
                 :invalid-packet 21
                 :acl-reject 22}))
