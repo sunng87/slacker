@@ -18,7 +18,7 @@
                                   [log4j "1.2.17"]]}
              :clojure18 {:dependencies [[org.clojure/clojure "1.8.0"]]}
              :clojure19 {:dependencies [[org.clojure/clojure "1.9.0"]]}
-             :clojure110 {:dependencies [[org.clojure/clojure "1.8.0"]]}}
+             :clojure110 {:dependencies [[org.clojure/clojure "1.10.1"]]}}
   :plugins [[lein-exec "0.3.1"]
             [lein-codox "0.10.7"]]
   :global-vars {*warn-on-reflection* true}
