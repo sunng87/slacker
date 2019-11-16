@@ -290,7 +290,7 @@ raised.
 
 ## API Documentation
 
-[API docs](https://sunng87.github.io/slacker/)
+[API docs](https://cljdoc.org/s/slacker/slacker/)
 
 ## Performance
 
@@ -307,7 +307,7 @@ handle more than **15700** calls per second on this machine.
 
 ## License
 
-Copyright (C) 2011-2018 Sun Ning
+Copyright (C) 2011-2019 Sun Ning
 
 Distributed under the Eclipse Public License, the same as Clojure.
 
@@ -315,4 +315,3 @@ Distributed under the Eclipse Public License, the same as Clojure.
 
 I'm now accepting donation on [liberapay](https://liberapay.com/Sunng/donate),
 if you find my work helpful and want to keep it going.
-
