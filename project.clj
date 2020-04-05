@@ -6,15 +6,15 @@
   :dependencies [[link "0.12.4"]
                  [rigui "0.5.2"]
                  [manifold "0.1.8"]
-                 [org.clojure/tools.logging "0.5.0"]
+                 [org.clojure/tools.logging "1.0.0"]
                  [trptcolin/versioneer "0.2.0"]]
   :profiles {:example {:source-paths ["examples"]
-                       :dependencies [[org.clojure/java.jmx "0.3.4"]]}
+                       :dependencies [[org.clojure/java.jmx "1.0.0"]]}
              :dev {:dependencies [[org.clojure/clojure "1.10.1"]
-                                  [cheshire "5.9.0"]
+                                  [cheshire "5.10.0"]
                                   [com.taoensso/nippy "2.14.0"
                                    :exclusions [org.clojure/clojure]]
-                                  [com.cognitect/transit-clj "0.8.319"]
+                                  [com.cognitect/transit-clj "1.0.324"]
                                   [log4j "1.2.17"]]}
              :clojure18 {:dependencies [[org.clojure/clojure "1.8.0"]]}
              :clojure19 {:dependencies [[org.clojure/clojure "1.9.0"]]}
