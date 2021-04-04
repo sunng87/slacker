@@ -7,7 +7,7 @@
 (def conn (slackerc "127.0.0.1:2104" :ping-interval 5 :content-type :nippy))
 (def conn2 (slackerc "127.0.0.1:2104" :content-type :transit-json
                      :protocol-version v5))
-(defn-remote conn slacker.example.api/timestamp)
+(defn-remote conn slacker.example.api/timestamp :fire-and-forget? true)
 (defn-remote conn2 slacker.example.api/inc-m)
 (defn-remote conn slacker.example.api/get-m :async? true)
 (defn-remote conn2 show-m
