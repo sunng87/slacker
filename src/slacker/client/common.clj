@@ -188,6 +188,7 @@
           fname (str ns-name "/" func-name)
           tid (next-trans-id (:idgen state))
           content-type (:content-type call-options content-type)
+          fire-and-forget? (:fire-and-forget? call-options)
 
           timeout (or (:timeout call-options) *timeout*)
           extensions (:extensions call-options)
@@ -206,22 +207,24 @@
 
           resp (if-not (> (count @(:pendings state)) backlog 0)
                  (do
-                   (swap! (:pendings state) assoc tid {:promise prms})
+                   (when-not fire-and-forget?
+                     (swap! (:pendings state) assoc tid {:promise prms}))
                    (send! conn request)
-                   (try
-                     (deref prms timeout nil)
-                     (if (realized? prms)
-                       @prms
-                       (do
+                   (when-not fire-and-forget?
+                     (try
+                       (deref prms timeout nil)
+                       (if (realized? prms)
+                         @prms
+                         (do
+                           (swap! (:pendings state) dissoc tid)
+                           (when (:interrupt-on-timeout call-options)
+                             (interrupt this tid))
+                           {:cause {:error :timeout :timeout timeout} :fname fname}))
+                       (catch InterruptedException e
+                         (log/debug "Client interrupted" tid)
+                         (interrupt this tid)
                          (swap! (:pendings state) dissoc tid)
-                         (when (:interrupt-on-timeout call-options)
-                           (interrupt this tid))
-                         {:cause {:error :timeout :timeout timeout} :fname fname}))
-                     (catch InterruptedException e
-                       (log/debug "Client interrupted" tid)
-                       (interrupt this tid)
-                       (swap! (:pendings state) dissoc tid)
-                       {:cause {:error :interrupted} :fname fname})))
+                         {:cause {:error :interrupted} :fname fname}))))
                  {:cause {:error :backlog-overflow} :fname fname})]
 
       (try
@@ -446,8 +449,8 @@
   A call-info tuple should be passed in. Usually you don't use this
   function directly. You should define remote call facade with defremote"
   [sc remote-call-info
-   & {:keys [async? callback]
-      :or {async? false callback nil}
+   & {:keys [async? fire-and-forget? callback]
+      :or {async? false fire-and-forget? false callback nil}
       :as options}]
   (let [sc @(or *sc* sc)  ;; allow local binding to override client
         [nsname fname args] remote-call-info

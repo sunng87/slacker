@@ -46,10 +46,13 @@
 (defmacro defn-remote
   "Define a facade for remote function. You have to provide the
   connection and the function name. (Argument list is not required here.)"
-  ([sc fname & {:keys [remote-ns remote-name async? callback extensions]
+  ([sc fname & {:keys [remote-ns remote-name async? fire-and-forget?
+                       callback extensions]
                 :or {remote-ns (ns-name *ns*)
                      remote-name nil
-                     async? false callback nil}
+                     async? false
+                     fire-and-forget? false
+                     callback nil}
                 :as options}]
      (let [fname-str (str fname)
            remote-ns-declared (> (.indexOf fname-str "/") 0)
