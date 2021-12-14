@@ -15,7 +15,8 @@
                                   [com.taoensso/nippy "3.1.1"
                                    :exclusions [org.clojure/clojure]]
                                   [com.cognitect/transit-clj "1.0.324"]
-                                  [log4j "1.2.17"]]}
+                                  [org.apache.logging.log4j/log4j-api "2.15.0"]
+                                  [org.apache.logging.log4j/log4j-core "2.15.0"]]}
              :clojure18 {:dependencies [[org.clojure/clojure "1.8.0"]]}
              :clojure19 {:dependencies [[org.clojure/clojure "1.9.0"]]}}
   :plugins [[lein-exec "0.3.1"]
