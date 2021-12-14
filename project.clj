@@ -5,13 +5,13 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[link "0.12.7"]
                  [rigui "0.5.2"]
-                 [manifold "0.1.8"]
-                 [org.clojure/tools.logging "1.1.0"]
+                 [manifold "0.1.9"]
+                 [org.clojure/tools.logging "1.2.1"]
                  [trptcolin/versioneer "0.2.0"]]
   :profiles {:example {:source-paths ["examples"]
                        :dependencies [[org.clojure/java.jmx "1.0.0"]]}
              :dev {:dependencies [[org.clojure/clojure "1.10.3"]
-                                  [cheshire "5.10.0"]
+                                  [cheshire "5.10.1"]
                                   [com.taoensso/nippy "3.1.1"
                                    :exclusions [org.clojure/clojure]]
                                   [com.cognitect/transit-clj "1.0.324"]
