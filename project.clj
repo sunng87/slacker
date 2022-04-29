@@ -4,19 +4,19 @@
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[link "0.12.7"]
-                 [rigui "0.5.2"]
-                 [manifold "0.1.9"]
-                 [org.clojure/tools.logging "1.2.1"]
+                 [rigui "0.5.3"]
+                 [manifold "0.2.3"]
+                 [org.clojure/tools.logging "1.2.4"]
                  [trptcolin/versioneer "0.2.0"]]
   :profiles {:example {:source-paths ["examples"]
                        :dependencies [[org.clojure/java.jmx "1.0.0"]]}
-             :dev {:dependencies [[org.clojure/clojure "1.10.3"]
-                                  [cheshire "5.10.1"]
+             :dev {:dependencies [[org.clojure/clojure "1.11.1"]
+                                  [cheshire "5.10.2"]
                                   [com.taoensso/nippy "3.1.1"
                                    :exclusions [org.clojure/clojure]]
                                   [com.cognitect/transit-clj "1.0.324"]
-                                  [org.apache.logging.log4j/log4j-api "2.15.0"]
-                                  [org.apache.logging.log4j/log4j-core "2.15.0"]]}
+                                  [org.apache.logging.log4j/log4j-api "2.17.2"]
+                                  [org.apache.logging.log4j/log4j-core "2.17.2"]]}
              :clojure18 {:dependencies [[org.clojure/clojure "1.8.0"]]}
              :clojure19 {:dependencies [[org.clojure/clojure "1.9.0"]]}}
   :plugins [[lein-exec "0.3.1"]
